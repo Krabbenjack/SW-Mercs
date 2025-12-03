@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt, QRectF, QPointF
+from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
 
 

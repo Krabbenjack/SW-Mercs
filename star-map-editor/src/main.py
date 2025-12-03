@@ -1,6 +1,11 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from gui import StarMapEditor
+
+# Handle both direct execution and module execution
+try:
+    from gui import StarMapEditor
+except ModuleNotFoundError:
+    from src.gui import StarMapEditor
 
 
 def main():
