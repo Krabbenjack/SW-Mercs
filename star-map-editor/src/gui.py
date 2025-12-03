@@ -78,7 +78,7 @@ class MapView(QGraphicsView):
         self.keys_pressed = set()  # Currently pressed navigation keys
         self.pan_timer = QTimer(self)
         self.pan_timer.timeout.connect(self._handle_continuous_pan)
-        self.pan_timer.setInterval(16)  # ~60 FPS for smooth panning
+        self.pan_timer.setInterval(33)  # ~30 FPS for smooth panning with lower CPU usage
         
         # Mouse panning state
         self.is_panning = False  # Whether mouse drag panning is active
@@ -160,14 +160,14 @@ class MapView(QGraphicsView):
     def _handle_continuous_pan(self):
         """Handle continuous panning based on pressed keys.
         
-        Called by timer at ~60 FPS while navigation keys are held.
+        Called by timer at ~30 FPS while navigation keys are held.
         Pan speed is scaled inversely with zoom level for consistent feel.
         """
         if not self.keys_pressed:
             return
         
-        # Calculate pan speed scaled by zoom level
-        scaled_speed = self.pan_speed / self.current_zoom
+        # Calculate pan speed scaled by zoom level (with safety check)
+        scaled_speed = self.pan_speed / max(self.current_zoom, 0.01)
         
         # Handle vertical panning
         if Qt.Key_W in self.keys_pressed or Qt.Key_Up in self.keys_pressed:
