@@ -1,0 +1,265 @@
+import json
+from PyQt5.QtWidgets import (
+    QMainWindow, QGraphicsView, QGraphicsScene,
+    QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, QMessageBox
+)
+from PyQt5.QtCore import Qt, QRectF, QPointF
+from PyQt5.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
+
+
+class GridOverlay(QGraphicsScene):
+    """Custom QGraphicsScene to draw a semi-transparent grid overlay."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.grid_spacing = 100
+        self.grid_color = QColor(255, 255, 255, 80)  # Semi-transparent white
+        self.show_grid = False
+        
+    def drawForeground(self, painter, rect):
+        """Draw the grid overlay on top of scene items."""
+        if not self.show_grid:
+            return
+            
+        painter.save()
+        painter.setPen(QPen(self.grid_color, 1))
+        
+        # Get scene bounds
+        scene_rect = self.sceneRect()
+        left = int(scene_rect.left() / self.grid_spacing) * self.grid_spacing
+        top = int(scene_rect.top() / self.grid_spacing) * self.grid_spacing
+        
+        # Draw vertical lines
+        x = left
+        while x <= scene_rect.right():
+            painter.drawLine(int(x), int(scene_rect.top()), int(x), int(scene_rect.bottom()))
+            x += self.grid_spacing
+            
+        # Draw horizontal lines
+        y = top
+        while y <= scene_rect.bottom():
+            painter.drawLine(int(scene_rect.left()), int(y), int(scene_rect.right()), int(y))
+            y += self.grid_spacing
+            
+        painter.restore()
+
+
+class MapView(QGraphicsView):
+    """Custom QGraphicsView with zoom and pan controls."""
+    
+    def __init__(self, scene, parent=None):
+        super().__init__(scene, parent)
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        self.setDragMode(QGraphicsView.NoDrag)
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.setResizeAnchor(QGraphicsView.NoAnchor)
+        self.zoom_factor = 1.15
+        
+    def wheelEvent(self, event: QWheelEvent):
+        """Handle mouse wheel for zooming, anchored under cursor."""
+        # Get the position of the mouse in scene coordinates
+        old_pos = self.mapToScene(event.pos())
+        
+        # Calculate zoom factor
+        if event.angleDelta().y() > 0:
+            zoom = self.zoom_factor
+        else:
+            zoom = 1.0 / self.zoom_factor
+            
+        # Apply zoom
+        self.scale(zoom, zoom)
+        
+        # Get the new position of the mouse in scene coordinates
+        new_pos = self.mapToScene(event.pos())
+        
+        # Calculate the difference and move the scene to keep it under the mouse
+        delta = new_pos - old_pos
+        self.translate(-delta.x(), -delta.y())
+        
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle WASD keys for panning the view."""
+        pan_distance = 20
+        
+        if event.key() == Qt.Key_W:
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - pan_distance
+            )
+        elif event.key() == Qt.Key_S:
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() + pan_distance
+            )
+        elif event.key() == Qt.Key_A:
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - pan_distance
+            )
+        elif event.key() == Qt.Key_D:
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() + pan_distance
+            )
+        else:
+            super().keyPressEvent(event)
+
+
+class StarMapEditor(QMainWindow):
+    """Main window for the Star Map Editor application."""
+    
+    def __init__(self):
+        super().__init__()
+        self.current_pixmap = None
+        self.map_name = "Unnamed Map"
+        self.init_ui()
+    
+    def init_ui(self):
+        """Initialize the user interface."""
+        self.setWindowTitle('Star Map Editor')
+        self.setGeometry(100, 100, 1000, 700)
+        
+        # Create central widget and main layout
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Create button bar
+        button_layout = QHBoxLayout()
+        
+        self.load_btn = QPushButton('Load Template')
+        self.load_btn.clicked.connect(self.load_template)
+        button_layout.addWidget(self.load_btn)
+        
+        self.systems_btn = QPushButton('Systems')
+        self.systems_btn.clicked.connect(self.show_systems)
+        button_layout.addWidget(self.systems_btn)
+        
+        self.routes_btn = QPushButton('Routes')
+        self.routes_btn.clicked.connect(self.show_routes)
+        button_layout.addWidget(self.routes_btn)
+        
+        self.zones_btn = QPushButton('Zones')
+        self.zones_btn.clicked.connect(self.show_zones)
+        button_layout.addWidget(self.zones_btn)
+        
+        self.stats_btn = QPushButton('Stats')
+        self.stats_btn.clicked.connect(self.show_stats)
+        button_layout.addWidget(self.stats_btn)
+        
+        self.export_btn = QPushButton('Export')
+        self.export_btn.clicked.connect(self.export_map)
+        button_layout.addWidget(self.export_btn)
+        
+        button_layout.addStretch()
+        
+        main_layout.addLayout(button_layout)
+        
+        # Create graphics scene and view
+        self.scene = GridOverlay()
+        self.view = MapView(self.scene)
+        self.view.setFocusPolicy(Qt.StrongFocus)
+        main_layout.addWidget(self.view)
+        
+        self.show()
+    
+    def load_template(self):
+        """Load a template image and display it in the scene."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Template Image",
+            "",
+            "Image Files (*.png *.jpg *.jpeg *.bmp);;All Files (*)"
+        )
+        
+        if file_path:
+            pixmap = QPixmap(file_path)
+            if pixmap.isNull():
+                QMessageBox.warning(self, "Error", "Could not load image.")
+                return
+            
+            # Clear the scene
+            self.scene.clear()
+            self.current_pixmap = pixmap
+            
+            # Add pixmap to scene
+            self.scene.addPixmap(pixmap)
+            
+            # Set scene rect to match the image
+            self.scene.setSceneRect(0, 0, pixmap.width(), pixmap.height())
+            
+            # Enable grid overlay
+            self.scene.show_grid = True
+            
+            # Reset view and fit to window
+            self.view.resetTransform()
+            self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+            
+            # Update scene to show grid
+            self.scene.update()
+    
+    def show_systems(self):
+        """Placeholder for Systems functionality."""
+        QMessageBox.information(
+            self,
+            "Systems",
+            "Systems editor coming soon!\n\n"
+            "This will allow you to add and edit star systems on the map."
+        )
+    
+    def show_routes(self):
+        """Placeholder for Routes functionality."""
+        QMessageBox.information(
+            self,
+            "Routes",
+            "Routes editor coming soon!\n\n"
+            "This will allow you to create hyperlane routes between systems."
+        )
+    
+    def show_zones(self):
+        """Placeholder for Zones functionality."""
+        QMessageBox.information(
+            self,
+            "Zones",
+            "Zones editor coming soon!\n\n"
+            "This will allow you to define territorial zones and regions."
+        )
+    
+    def show_stats(self):
+        """Placeholder for Stats functionality."""
+        QMessageBox.information(
+            self,
+            "Stats",
+            "Stats viewer coming soon!\n\n"
+            "This will display statistics about your map."
+        )
+    
+    def export_map(self):
+        """Export the map data to a JSON file."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Map",
+            "map.json",
+            "JSON Files (*.json);;All Files (*)"
+        )
+        
+        if file_path:
+            map_data = {
+                "mapName": self.map_name,
+                "systems": [],
+                "routes": [],
+                "zones": [],
+                "stats": {}
+            }
+            
+            try:
+                with open(file_path, 'w') as f:
+                    json.dump(map_data, f, indent=2)
+                QMessageBox.information(
+                    self,
+                    "Export Successful",
+                    f"Map exported to:\n{file_path}"
+                )
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Export Failed",
+                    f"Could not export map:\n{str(e)}"
+                )

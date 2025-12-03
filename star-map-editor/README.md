@@ -1,11 +1,11 @@
 # Star Map Editor
 
-A PyQt5-based application for editing star maps.
+A PyQt5-based desktop application for creating and editing Star Wars-inspired galactic maps.
 
 ## Requirements
 
 - Python 3.10+
-- PyQt5
+- PyQt5 5.15.0+
 
 ## Installation
 
@@ -27,20 +27,44 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the application:
+Run the application from the star-map-editor directory:
 
 ```bash
-python src/main.py
+python -m src.main
 ```
+
+Or alternatively:
+
+```bash
+cd src
+python main.py
+```
+
+## Project Structure
+
+- **`src/main.py`**: Application entry point - creates QApplication and launches the main window
+- **`src/gui.py`**: PyQt5 GUI implementation containing:
+  - `StarMapEditor`: Main window class
+  - `MapView`: Custom QGraphicsView with zoom and pan controls
+  - `GridOverlay`: Custom QGraphicsScene with semi-transparent grid rendering
 
 ## Current Features
 
-- **PyQt5 GUI**: Modern graphical interface with button toolbar
+- **PyQt5 Desktop GUI**: Modern graphical interface with button toolbar
 - **Load Template**: Import PNG/JPG/BMP images as map backgrounds
-- **Grid Overlay**: Semi-transparent 100px grid overlay for alignment
-- **Zoom**: Mouse wheel zoom anchored under cursor
-- **Pan**: WASD keyboard navigation
-- **JSON Export**: Save map data structure (placeholder)
+- **Semi-transparent Grid Overlay**: 100px grid overlay for precise alignment
+- **Mouse Wheel Zoom**: Zoom in/out anchored under cursor position
+- **WASD Panning**: Keyboard navigation for moving around the map
+- **JSON Export**: Save map data structure with the following format:
+  ```json
+  {
+    "mapName": "Unnamed Map",
+    "systems": [],
+    "routes": [],
+    "zones": [],
+    "stats": {}
+  }
+  ```
 - **Placeholder Buttons**: Systems, Routes, Zones, and Stats (coming soon)
 
 ## High-level Design
