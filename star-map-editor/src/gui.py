@@ -1,10 +1,10 @@
 import json
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, QMessageBox
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
 
 
 class GridOverlay(QGraphicsScene):

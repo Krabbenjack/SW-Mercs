@@ -1,11 +1,11 @@
 # Star Map Editor
 
-A PyQt5-based desktop application for creating and editing Star Wars-inspired galactic maps.
+A PySide6-based desktop application for creating and editing Star Wars-inspired galactic maps.
 
 ## Requirements
 
 - Python 3.10+
-- PyQt5 5.15.0+
+- PySide6 6.6+
 
 ## Installation
 
@@ -43,14 +43,14 @@ python main.py
 ## Project Structure
 
 - **`src/main.py`**: Application entry point - creates QApplication and launches the main window
-- **`src/gui.py`**: PyQt5 GUI implementation containing:
+- **`src/gui.py`**: PySide6 GUI implementation containing:
   - `StarMapEditor`: Main window class
   - `MapView`: Custom QGraphicsView with zoom and pan controls
   - `GridOverlay`: Custom QGraphicsScene with semi-transparent grid rendering
 
 ## Current Features
 
-- **PyQt5 Desktop GUI**: Modern graphical interface with button toolbar
+- **PySide6 Desktop GUI**: Modern graphical interface with button toolbar
 - **Load Template**: Import PNG/JPG/BMP images as map backgrounds
 - **Semi-transparent Grid Overlay**: 100px grid overlay for precise alignment
 - **Mouse Wheel Zoom**: Zoom in/out anchored under cursor position

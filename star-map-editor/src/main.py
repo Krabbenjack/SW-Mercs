@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 
 # Handle both direct execution and module execution
 try:
@@ -12,7 +12,7 @@ def main():
     """Main entry point for the application."""
     app = QApplication(sys.argv)
     window = StarMapEditor()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
