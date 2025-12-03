@@ -9,7 +9,7 @@ from PyQt5.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
 
 
 class GridOverlay(QGraphicsScene):
-    """Custom QGraphicsItem to draw a semi-transparent grid overlay."""
+    """Custom QGraphicsScene to draw a semi-transparent grid overlay."""
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -76,7 +76,7 @@ class MapView(QGraphicsView):
         
         # Calculate the difference and move the scene to keep it under the mouse
         delta = new_pos - old_pos
-        self.translate(delta.x(), delta.y())
+        self.translate(-delta.x(), -delta.y())
         
     def keyPressEvent(self, event: QKeyEvent):
         """Handle WASD keys for panning the view."""
@@ -156,6 +156,7 @@ class StarMapEditor(QMainWindow):
         # Create graphics scene and view
         self.scene = GridOverlay()
         self.view = MapView(self.scene)
+        self.view.setFocusPolicy(Qt.StrongFocus)
         main_layout.addWidget(self.view)
         
         self.show()
