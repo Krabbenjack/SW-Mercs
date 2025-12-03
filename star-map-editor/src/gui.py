@@ -8,12 +8,16 @@ from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEven
 
 
 class GridOverlay(QGraphicsScene):
-    """Custom QGraphicsScene to draw a semi-transparent grid overlay."""
+    """Custom QGraphicsScene to draw a semi-transparent grid overlay.
+    
+    The grid is drawn in the foreground, on top of all scene items,
+    and scales/moves with the view transformations.
+    """
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.grid_spacing = 100
-        self.grid_color = QColor(144, 238, 144, 100)  # Semi-transparent light green
+        self.grid_spacing = 100  # Grid spacing in scene coordinates
+        self.grid_color = QColor(144, 238, 144, 128)  # Semi-transparent light green
         self.show_grid = False
         
     def drawForeground(self, painter, rect):
@@ -45,7 +49,15 @@ class GridOverlay(QGraphicsScene):
 
 
 class MapView(QGraphicsView):
-    """Custom QGraphicsView with zoom and pan controls."""
+    """Custom QGraphicsView with zoom and pan controls.
+    
+    Features:
+    - Mouse wheel zoom centered on cursor position with min/max limits
+    - Continuous WASD/Arrow key panning with zoom-scaled speed
+    - Middle mouse button drag panning
+    - Space + left mouse button drag panning
+    - Automatic scene update to refresh grid overlay
+    """
     
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
@@ -56,25 +68,29 @@ class MapView(QGraphicsView):
         self.setResizeAnchor(QGraphicsView.NoAnchor)
         
         # Zoom configuration
-        self.zoom_factor = 1.15
-        self.min_zoom = 0.1
-        self.max_zoom = 10.0
-        self.current_zoom = 1.0
+        self.zoom_factor = 1.15  # Zoom step per wheel event
+        self.min_zoom = 0.1  # Minimum zoom level (10%)
+        self.max_zoom = 10.0  # Maximum zoom level (1000%)
+        self.current_zoom = 1.0  # Current zoom level tracking
         
         # Panning configuration
-        self.pan_speed = 15
-        self.keys_pressed = set()
+        self.pan_speed = 15  # Base pan speed in pixels
+        self.keys_pressed = set()  # Currently pressed navigation keys
         self.pan_timer = QTimer(self)
         self.pan_timer.timeout.connect(self._handle_continuous_pan)
-        self.pan_timer.setInterval(16)  # ~60 FPS
+        self.pan_timer.setInterval(16)  # ~60 FPS for smooth panning
         
         # Mouse panning state
-        self.is_panning = False
-        self.pan_start_pos = None
-        self.space_pressed = False
+        self.is_panning = False  # Whether mouse drag panning is active
+        self.pan_start_pos = None  # Starting position for drag panning
+        self.space_pressed = False  # Whether Space key is currently held
         
     def wheelEvent(self, event: QWheelEvent):
-        """Handle mouse wheel for zooming, anchored under cursor with limits."""
+        """Handle mouse wheel for zooming, anchored under cursor with limits.
+        
+        Zooms in/out centered on the mouse cursor position, respecting
+        min/max zoom limits to prevent extreme zoom levels.
+        """
         # Calculate zoom factor
         if event.angleDelta().y() > 0:
             zoom = self.zoom_factor
@@ -104,7 +120,11 @@ class MapView(QGraphicsView):
         self.scene().update()
         
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle key press for continuous WASD/Arrow panning and Space for mouse pan."""
+        """Handle key press for continuous WASD/Arrow panning and Space for mouse pan.
+        
+        WASD/Arrow keys start continuous panning via timer.
+        Space key enables mouse drag panning mode.
+        """
         if event.key() in (Qt.Key_W, Qt.Key_S, Qt.Key_A, Qt.Key_D,
                           Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right):
             self.keys_pressed.add(event.key())
@@ -118,7 +138,10 @@ class MapView(QGraphicsView):
             super().keyPressEvent(event)
     
     def keyReleaseEvent(self, event: QKeyEvent):
-        """Handle key release to stop continuous panning."""
+        """Handle key release to stop continuous panning.
+        
+        Stops the panning timer when all navigation keys are released.
+        """
         if event.key() in (Qt.Key_W, Qt.Key_S, Qt.Key_A, Qt.Key_D,
                           Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right):
             self.keys_pressed.discard(event.key())
@@ -135,7 +158,11 @@ class MapView(QGraphicsView):
             super().keyReleaseEvent(event)
     
     def _handle_continuous_pan(self):
-        """Handle continuous panning based on pressed keys."""
+        """Handle continuous panning based on pressed keys.
+        
+        Called by timer at ~60 FPS while navigation keys are held.
+        Pan speed is scaled inversely with zoom level for consistent feel.
+        """
         if not self.keys_pressed:
             return
         
@@ -166,7 +193,10 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning."""
+        """Handle mouse press for panning.
+        
+        Initiates drag panning with middle mouse button or Space+left mouse.
+        """
         # Middle mouse button or Space + left mouse button for panning
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.space_pressed):
@@ -178,7 +208,10 @@ class MapView(QGraphicsView):
             super().mousePressEvent(event)
     
     def mouseMoveEvent(self, event):
-        """Handle mouse move for panning."""
+        """Handle mouse move for panning.
+        
+        Updates view position during drag panning operations.
+        """
         if self.is_panning and self.pan_start_pos is not None:
             # Calculate delta
             delta = event.pos() - self.pan_start_pos
@@ -199,7 +232,10 @@ class MapView(QGraphicsView):
             super().mouseMoveEvent(event)
     
     def mouseReleaseEvent(self, event):
-        """Handle mouse release to stop panning."""
+        """Handle mouse release to stop panning.
+        
+        Ends drag panning and restores normal cursor.
+        """
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.is_panning):
             self.is_panning = False
@@ -270,7 +306,15 @@ class StarMapEditor(QMainWindow):
         self.show()
     
     def load_template(self):
-        """Load a template image and display it in the scene."""
+        """Load a template image and display it in the scene.
+        
+        Prompts user to select an image file, then:
+        - Clears the scene
+        - Loads and displays the image
+        - Enables the grid overlay
+        - Fits the view to show the entire image
+        - Sets focus to the view for immediate keyboard control
+        """
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Load Template Image",
