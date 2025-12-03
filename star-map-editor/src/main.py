@@ -71,7 +71,7 @@ class StarMapEditor(QMainWindow):
 def main():
     """Main entry point for the application."""
     app = QApplication(sys.argv)
-    editor = StarMapEditor()
+    window = StarMapEditor()
     sys.exit(app.exec_())
 
 
