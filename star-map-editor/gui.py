@@ -100,6 +100,9 @@ class MapView(QGraphicsView):
         self.max_zoom = 10.0  # Maximum zoom level (1000%)
         self.current_zoom = 1.0  # Current zoom level tracking
         
+        # Template scaling configuration
+        self.template_scale_base_factor = 0.1  # Base scale change per wheel tick
+        
         # Panning configuration
         self.pan_speed = 15  # Base pan speed in pixels
         self.pan_sensitivity = 1.0  # Pan sensitivity multiplier
@@ -141,13 +144,12 @@ class MapView(QGraphicsView):
             if isinstance(item, TemplateItem):
                 # Calculate scale factor with sensitivity applied
                 # Use multiplicative approach to avoid invalid scale values
-                base_factor = 0.1  # Base scale change per wheel tick
                 if event.angleDelta().y() > 0:
                     # Zoom in: multiply by (1 + factor)
-                    scale_change = 1.0 + (base_factor * self.template_scale_sensitivity)
+                    scale_change = 1.0 + (self.template_scale_base_factor * self.template_scale_sensitivity)
                 else:
                     # Zoom out: divide by (1 + factor) to ensure value stays positive
-                    scale_change = 1.0 / (1.0 + (base_factor * self.template_scale_sensitivity))
+                    scale_change = 1.0 / (1.0 + (self.template_scale_base_factor * self.template_scale_sensitivity))
                 
                 item.scale_relative(scale_change)
                 event.accept()
@@ -219,8 +221,9 @@ class MapView(QGraphicsView):
             return
         
         # Calculate pan speed scaled by zoom level and pan sensitivity
-        # Ensure minimum zoom is respected to avoid division issues
-        scaled_speed = (self.pan_speed / max(self.current_zoom, self.min_zoom)) * self.pan_sensitivity
+        # Ensure safe division by using max of current zoom and min zoom (0.1)
+        safe_zoom = max(self.current_zoom, self.min_zoom)
+        scaled_speed = (self.pan_speed / safe_zoom) * self.pan_sensitivity
         
         # Handle vertical panning
         if Qt.Key_W in self.keys_pressed or Qt.Key_Up in self.keys_pressed:
@@ -343,6 +346,9 @@ class MapView(QGraphicsView):
 class StarMapEditor(QMainWindow):
     """Main window for the Star Map Editor application."""
     
+    # UI Constants
+    SENSITIVITY_SCALE_FACTOR = 100  # Multiplier for slider values to sensitivity values
+    
     def __init__(self):
         super().__init__()
         
@@ -422,9 +428,9 @@ class StarMapEditor(QMainWindow):
         
         pan_sensitivity_layout.addWidget(QLabel('Pan Sensitivity:'))
         self.pan_sensitivity_slider = QSlider(Qt.Horizontal)
-        self.pan_sensitivity_slider.setMinimum(50)  # 0.5 * 100
-        self.pan_sensitivity_slider.setMaximum(500)  # 5.0 * 100
-        self.pan_sensitivity_slider.setValue(100)  # 1.0 * 100
+        self.pan_sensitivity_slider.setMinimum(int(0.5 * self.SENSITIVITY_SCALE_FACTOR))
+        self.pan_sensitivity_slider.setMaximum(int(5.0 * self.SENSITIVITY_SCALE_FACTOR))
+        self.pan_sensitivity_slider.setValue(int(1.0 * self.SENSITIVITY_SCALE_FACTOR))
         self.pan_sensitivity_slider.setMaximumWidth(200)
         self.pan_sensitivity_slider.valueChanged.connect(self.on_pan_sensitivity_changed)
         pan_sensitivity_layout.addWidget(self.pan_sensitivity_slider)
@@ -559,9 +565,9 @@ class StarMapEditor(QMainWindow):
         # Scale Sensitivity controls
         toolbar_layout.addWidget(QLabel('Scale Sensitivity:'))
         self.scale_sensitivity_slider = QSlider(Qt.Horizontal)
-        self.scale_sensitivity_slider.setMinimum(10)  # 0.1 * 100
-        self.scale_sensitivity_slider.setMaximum(300)  # 3.0 * 100
-        self.scale_sensitivity_slider.setValue(100)  # 1.0 * 100
+        self.scale_sensitivity_slider.setMinimum(int(0.1 * self.SENSITIVITY_SCALE_FACTOR))
+        self.scale_sensitivity_slider.setMaximum(int(3.0 * self.SENSITIVITY_SCALE_FACTOR))
+        self.scale_sensitivity_slider.setValue(int(1.0 * self.SENSITIVITY_SCALE_FACTOR))
         self.scale_sensitivity_slider.setMaximumWidth(150)
         self.scale_sensitivity_slider.valueChanged.connect(self.on_scale_sensitivity_changed)
         toolbar_layout.addWidget(self.scale_sensitivity_slider)
@@ -941,9 +947,9 @@ class StarMapEditor(QMainWindow):
         """Handle scale sensitivity slider change.
         
         Args:
-            value: Scale sensitivity (10-300, representing 0.1x-3.0x)
+            value: Scale sensitivity slider value (scaled by SENSITIVITY_SCALE_FACTOR)
         """
-        sensitivity = value / 100.0
+        sensitivity = value / self.SENSITIVITY_SCALE_FACTOR
         self.view.set_template_scale_sensitivity(sensitivity)
         self.scale_sensitivity_label.setText(f'{sensitivity:.1f}x')
     
@@ -951,9 +957,9 @@ class StarMapEditor(QMainWindow):
         """Handle pan sensitivity slider change.
         
         Args:
-            value: Pan sensitivity (50-500, representing 0.5x-5.0x)
+            value: Pan sensitivity slider value (scaled by SENSITIVITY_SCALE_FACTOR)
         """
-        sensitivity = value / 100.0
+        sensitivity = value / self.SENSITIVITY_SCALE_FACTOR
         self.view.set_pan_sensitivity(sensitivity)
         self.pan_sensitivity_label.setText(f'{sensitivity:.1f}x')
     
