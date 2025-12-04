@@ -44,28 +44,68 @@ python main.py
 
 - **`src/main.py`**: Application entry point - creates QApplication and launches the main window
 - **`src/gui.py`**: PySide6 GUI implementation containing:
-  - `StarMapEditor`: Main window class
-  - `MapView`: Custom QGraphicsView with zoom and pan controls
+  - `StarMapEditor`: Main window class with mode management
+  - `MapView`: Custom QGraphicsView with zoom, pan controls, and system placement
   - `GridOverlay`: Custom QGraphicsScene with semi-transparent grid rendering
+- **`src/systems.py`**: System placement and management module containing:
+  - `SystemData`: Data model for star systems
+  - `SystemItem`: Graphics representation of systems
+  - `SystemDialog`: Dialog for creating/editing systems
 
 ## Current Features
 
-- **PySide6 Desktop GUI**: Modern graphical interface with button toolbar
+### Navigation & View
+- **PySide6 Desktop GUI**: Modern graphical interface with mode-based toolbar
 - **Load Template**: Import PNG/JPG/BMP images as map backgrounds
-- **Semi-transparent Grid Overlay**: 100px grid overlay for precise alignment
-- **Mouse Wheel Zoom**: Zoom in/out anchored under cursor position
-- **WASD Panning**: Keyboard navigation for moving around the map
-- **JSON Export**: Save map data structure with the following format:
+- **Semi-transparent Grid Overlay**: Light green 100px grid overlay for precise alignment
+- **Mouse Wheel Zoom**: Smooth zoom (0.1x-10x) anchored under cursor position with limits
+- **Keyboard Panning**: 
+  - WASD/Arrow keys for continuous panning at 30 FPS
+  - Pan speed scales with zoom level for consistent control
+- **Mouse Drag Panning**: Middle mouse or Space+left mouse for intuitive map navigation
+
+### System Placement Mode
+- **Mode Selection**: Click the Systems button to enter placement mode (button turns green)
+- **Place Systems**: Left-click on the map to place a new star system
+  - Opens a dialog to enter the system name
+  - Systems appear as blue circles with white labels
+  - Each system gets a unique UUID identifier
+- **Edit Systems**: Right-click on an existing system to edit or delete it
+- **Drag Systems**: Click and drag systems to reposition them
+  - Works smoothly at all zoom levels
+  - Position updates automatically in the data model
+- **Visual Feedback**: 
+  - Normal systems: Blue circles
+  - Selected systems: Orange/yellow circles
+  - System names displayed as labels
+
+### Data Management
+- **JSON Export**: Save complete map data with systems:
   ```json
   {
     "mapName": "Unnamed Map",
-    "systems": [],
+    "systems": [
+      {
+        "id": "uuid-string",
+        "name": "System Name",
+        "x": 1000.0,
+        "y": 750.0
+      }
+    ],
     "routes": [],
     "zones": [],
-    "stats": {}
+    "stats": {
+      "totalSystems": 5,
+      "totalRoutes": 0,
+      "totalZones": 0
+    }
   }
   ```
-- **Placeholder Buttons**: Systems, Routes, Zones, and Stats (coming soon)
+
+### Coming Soon
+- **Routes Mode**: Create hyperlane connections between systems
+- **Zones Mode**: Define territorial regions and special areas
+- **Stats Viewer**: Display map statistics and analytics
 
 ## High-level Design
 
