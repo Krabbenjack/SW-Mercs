@@ -1,11 +1,9 @@
+"""Main entry point for the Star Map Editor application."""
+
 import sys
 from PySide6.QtWidgets import QApplication
 
-# Handle both direct execution and module execution
-try:
-    from gui import StarMapEditor
-except ModuleNotFoundError:
-    from src.gui import StarMapEditor
+from gui import StarMapEditor
 
 
 def main():
