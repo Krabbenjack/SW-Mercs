@@ -140,11 +140,14 @@ class MapView(QGraphicsView):
             
             if isinstance(item, TemplateItem):
                 # Calculate scale factor with sensitivity applied
+                # Use multiplicative approach to avoid invalid scale values
                 base_factor = 0.1  # Base scale change per wheel tick
                 if event.angleDelta().y() > 0:
+                    # Zoom in: multiply by (1 + factor)
                     scale_change = 1.0 + (base_factor * self.template_scale_sensitivity)
                 else:
-                    scale_change = 1.0 - (base_factor * self.template_scale_sensitivity)
+                    # Zoom out: divide by (1 + factor) to ensure value stays positive
+                    scale_change = 1.0 / (1.0 + (base_factor * self.template_scale_sensitivity))
                 
                 item.scale_relative(scale_change)
                 event.accept()
@@ -216,7 +219,8 @@ class MapView(QGraphicsView):
             return
         
         # Calculate pan speed scaled by zoom level and pan sensitivity
-        scaled_speed = (self.pan_speed / max(self.current_zoom, 0.01)) * self.pan_sensitivity
+        # Ensure minimum zoom is respected to avoid division issues
+        scaled_speed = (self.pan_speed / max(self.current_zoom, self.min_zoom)) * self.pan_sensitivity
         
         # Handle vertical panning
         if Qt.Key_W in self.keys_pressed or Qt.Key_Up in self.keys_pressed:
