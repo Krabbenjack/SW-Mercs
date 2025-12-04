@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 from typing import Dict, Optional
 
-# Add parent directory to path for core imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add current directory to path for core imports
+sys.path.insert(0, str(Path(__file__).parent))
 
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
@@ -83,6 +83,9 @@ class MapView(QGraphicsView):
     # Signal emitted when user clicks to place/edit a system
     system_click = Signal(QPointF, bool)  # (position, is_right_click)
     
+    # Signal emitted when an item is moved/modified
+    item_modified = Signal()  # Emitted when items are moved
+    
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -112,6 +115,9 @@ class MapView(QGraphicsView):
         # Mode state
         self.systems_mode_active = False
         self.template_mode_active = False
+        
+        # Item drag tracking
+        self.dragging_item = False
         
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
@@ -250,6 +256,9 @@ class MapView(QGraphicsView):
                     self.system_click.emit(scene_pos, False)
                     event.accept()
                     return
+                else:
+                    # Clicking on a system to drag it
+                    self.dragging_item = True
             elif event.button() == Qt.RightButton:
                 # Right click - edit existing system if clicked
                 item = self.itemAt(event.pos())
@@ -258,6 +267,13 @@ class MapView(QGraphicsView):
                     event.accept()
                     return
             # Let default behavior handle system dragging
+            super().mousePressEvent(event)
+        # In template mode, check if clicking on a template
+        elif self.template_mode_active:
+            if event.button() == Qt.LeftButton:
+                item = self.itemAt(event.pos())
+                if isinstance(item, TemplateItem):
+                    self.dragging_item = True
             super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
@@ -284,7 +300,7 @@ class MapView(QGraphicsView):
             super().mouseMoveEvent(event)
     
     def mouseReleaseEvent(self, event):
-        """Handle mouse release to stop panning."""
+        """Handle mouse release to stop panning and track item movements."""
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.is_panning):
             self.is_panning = False
@@ -292,6 +308,10 @@ class MapView(QGraphicsView):
             self.setCursor(Qt.ArrowCursor)
             event.accept()
         else:
+            # Check if we were dragging an item
+            if self.dragging_item and event.button() == Qt.LeftButton:
+                self.item_modified.emit()
+                self.dragging_item = False
             super().mouseReleaseEvent(event)
 
 
@@ -387,6 +407,7 @@ class StarMapEditor(QMainWindow):
         self.view = MapView(self.scene)
         self.view.setFocusPolicy(Qt.StrongFocus)
         self.view.system_click.connect(self.handle_system_click)
+        self.view.item_modified.connect(self.mark_unsaved_changes)
         
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
@@ -526,7 +547,7 @@ class StarMapEditor(QMainWindow):
             return
         
         # Default to Saves directory
-        saves_dir = Path(__file__).parent.parent / "Saves"
+        saves_dir = Path(__file__).parent / "Saves"
         saves_dir.mkdir(exist_ok=True)
         
         file_path, _ = QFileDialog.getOpenFileName(
@@ -598,7 +619,7 @@ class StarMapEditor(QMainWindow):
     def save_project_as(self):
         """Save the current project with a new name."""
         # Default to Saves directory
-        saves_dir = Path(__file__).parent.parent / "Saves"
+        saves_dir = Path(__file__).parent / "Saves"
         saves_dir.mkdir(exist_ok=True)
         
         file_path, _ = QFileDialog.getSaveFileName(
@@ -633,7 +654,7 @@ class StarMapEditor(QMainWindow):
     def export_map_data_action(self):
         """Export map data to game-readable format."""
         # Default to Exports directory
-        exports_dir = Path(__file__).parent.parent / "Exports"
+        exports_dir = Path(__file__).parent / "Exports"
         exports_dir.mkdir(exist_ok=True)
         
         file_path, _ = QFileDialog.getSaveFileName(
