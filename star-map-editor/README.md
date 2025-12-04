@@ -77,6 +77,13 @@ The application includes a full File menu for project management:
   - Pan speed scales with zoom level for consistent control
 - **Mouse Drag Panning**: Middle mouse or Space+left mouse for intuitive map navigation
 - **Semi-transparent Grid Overlay**: Light green 100px grid overlay for precise alignment
+- **Pan Sensitivity Slider**: Adjusts how fast the camera pans when using keyboard controls (0.5x-5.0x)
+  - Located below the mode buttons, always visible
+  - Default: 1.0x (normal speed)
+  - Lower values: Slower, more precise camera movement
+  - Higher values: Faster camera navigation
+  - Applies to WASD and arrow key panning
+  - Pan speed still scales appropriately with zoom level
 
 ### Template Mode
 
@@ -103,6 +110,12 @@ The workspace toolbar provides the following controls (visible only in Template 
 - **Lock/Unlock Template**: Toggle to prevent/allow moving or scaling the template
 
 - **Opacity Slider**: Adjusts the selected template's opacity (0-100%)
+
+- **Scale Sensitivity Slider**: Adjusts how sensitive template scaling is to mouse wheel input (0.1x-3.0x)
+  - Default: 1.0x (normal sensitivity)
+  - Lower values: Finer, more precise scaling control
+  - Higher values: Faster scaling adjustments
+  - Only affects Ctrl+wheel scaling in Template Mode
 
 #### Template Interaction
 
@@ -347,6 +360,9 @@ Planned features for expanded gameplay:
 - Adjust template opacity to see systems more clearly
 - Save your project frequently
 - Use multiple templates to layer different reference images
+- Lower the Scale Sensitivity slider for precise template scaling adjustments
+- Increase the Pan Sensitivity slider for faster map navigation when working on large maps
+- Adjust sensitivity sliders to match your workflow preference and input device characteristics
 
 ## Troubleshooting
 
