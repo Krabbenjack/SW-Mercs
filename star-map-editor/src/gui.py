@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QLabel
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
-from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QMouseEvent
+from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
 
 # Import system management classes
 from systems import SystemData, SystemItem, SystemDialog
@@ -529,7 +529,6 @@ class StarMapEditor(QMainWindow):
             # Remove from storage
             del self.system_items[system_id]
             del self.systems[system_id]
-
     
     def show_routes(self):
         """Toggle routes mode (placeholder)."""
