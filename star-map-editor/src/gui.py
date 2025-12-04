@@ -1,10 +1,14 @@
 import json
+from typing import Dict, Optional
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
-    QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, QMessageBox
+    QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, QMessageBox, QLabel
 )
-from PySide6.QtCore import Qt, QTimer, QPointF
-from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent
+from PySide6.QtCore import Qt, QTimer, QPointF, Signal
+from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QMouseEvent
+
+# Import system management classes
+from systems import SystemData, SystemItem, SystemDialog
 
 
 class GridOverlay(QGraphicsScene):
@@ -57,7 +61,11 @@ class MapView(QGraphicsView):
     - Middle mouse button drag panning
     - Space + left mouse button drag panning
     - Automatic scene update to refresh grid overlay
+    - System placement mode support
     """
+    
+    # Signal emitted when user clicks to place/edit a system
+    system_click = Signal(QPointF, bool)  # (position, is_right_click)
     
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
@@ -84,6 +92,9 @@ class MapView(QGraphicsView):
         self.is_panning = False  # Whether mouse drag panning is active
         self.pan_start_pos = None  # Starting position for drag panning
         self.space_pressed = False  # Whether Space key is currently held
+        
+        # Mode state
+        self.systems_mode_active = False  # Whether systems placement mode is active
         
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming, anchored under cursor with limits.
@@ -193,9 +204,10 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning.
+        """Handle mouse press for panning and system placement.
         
         Initiates drag panning with middle mouse button or Space+left mouse.
+        In systems mode, handles left/right clicks for placement/editing.
         """
         # Middle mouse button or Space + left mouse button for panning
         if event.button() == Qt.MiddleButton or \
@@ -204,6 +216,26 @@ class MapView(QGraphicsView):
             self.pan_start_pos = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
+        # In systems mode, handle clicks for placement/editing
+        elif self.systems_mode_active:
+            scene_pos = self.mapToScene(event.pos())
+            if event.button() == Qt.LeftButton:
+                # Check if clicking on an existing system
+                item = self.itemAt(event.pos())
+                if not isinstance(item, SystemItem):
+                    # Left click on empty space - place new system
+                    self.system_click.emit(scene_pos, False)
+                    event.accept()
+                    return
+            elif event.button() == Qt.RightButton:
+                # Right click - edit existing system if clicked
+                item = self.itemAt(event.pos())
+                if isinstance(item, SystemItem):
+                    self.system_click.emit(scene_pos, True)
+                    event.accept()
+                    return
+            # Let default behavior handle system dragging
+            super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
     
@@ -253,6 +285,17 @@ class StarMapEditor(QMainWindow):
         super().__init__()
         self.current_pixmap = None
         self.map_name = "Unnamed Map"
+        
+        # System data storage
+        self.systems: Dict[str, SystemData] = {}  # id -> SystemData
+        self.system_items: Dict[str, SystemItem] = {}  # id -> SystemItem
+        
+        # Current mode
+        self.current_mode = None  # None, 'systems', 'routes', 'zones'
+        
+        # Preview item for new system placement
+        self.preview_system_item: Optional[SystemItem] = None
+        
         self.init_ui()
     
     def init_ui(self):
@@ -273,15 +316,19 @@ class StarMapEditor(QMainWindow):
         self.load_btn.clicked.connect(self.load_template)
         button_layout.addWidget(self.load_btn)
         
+        # Mode buttons (checkable)
         self.systems_btn = QPushButton('Systems')
-        self.systems_btn.clicked.connect(self.show_systems)
+        self.systems_btn.setCheckable(True)
+        self.systems_btn.clicked.connect(self.toggle_systems_mode)
         button_layout.addWidget(self.systems_btn)
         
         self.routes_btn = QPushButton('Routes')
+        self.routes_btn.setCheckable(True)
         self.routes_btn.clicked.connect(self.show_routes)
         button_layout.addWidget(self.routes_btn)
         
         self.zones_btn = QPushButton('Zones')
+        self.zones_btn.setCheckable(True)
         self.zones_btn.clicked.connect(self.show_zones)
         button_layout.addWidget(self.zones_btn)
         
@@ -297,10 +344,17 @@ class StarMapEditor(QMainWindow):
         
         main_layout.addLayout(button_layout)
         
+        # Status label for mode indication
+        self.status_label = QLabel()
+        self.status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
+        self.update_status_message()
+        main_layout.addWidget(self.status_label)
+        
         # Create graphics scene and view
         self.scene = GridOverlay()
         self.view = MapView(self.scene)
         self.view.setFocusPolicy(Qt.StrongFocus)
+        self.view.system_click.connect(self.handle_system_click)
         main_layout.addWidget(self.view)
         
         self.show()
@@ -328,8 +382,10 @@ class StarMapEditor(QMainWindow):
                 QMessageBox.warning(self, "Error", "Could not load image.")
                 return
             
-            # Clear the scene
+            # Clear the scene and systems
             self.scene.clear()
+            self.systems.clear()
+            self.system_items.clear()
             self.current_pixmap = pixmap
             
             # Add pixmap to scene
@@ -352,32 +408,157 @@ class StarMapEditor(QMainWindow):
             # Set focus to the view so keyboard input works immediately
             self.view.setFocus()
     
-    def show_systems(self):
-        """Placeholder for Systems functionality."""
-        QMessageBox.information(
-            self,
-            "Systems",
-            "Systems editor coming soon!\n\n"
-            "This will allow you to add and edit star systems on the map."
-        )
+    def update_status_message(self):
+        """Update the status label based on current mode."""
+        if self.current_mode == 'systems':
+            self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
+        else:
+            self.status_label.setText("Ready")
+    
+    def set_mode(self, mode: Optional[str]):
+        """Set the current editor mode.
+        
+        Args:
+            mode: The mode to activate ('systems', 'routes', 'zones', or None)
+        """
+        self.current_mode = mode
+        
+        # Update button states
+        self.systems_btn.setChecked(mode == 'systems')
+        self.routes_btn.setChecked(mode == 'routes')
+        self.zones_btn.setChecked(mode == 'zones')
+        
+        # Update button styles
+        for btn, btn_mode in [(self.systems_btn, 'systems'), 
+                               (self.routes_btn, 'routes'),
+                               (self.zones_btn, 'zones')]:
+            if mode == btn_mode:
+                btn.setStyleSheet("QPushButton:checked { background-color: #90EE90; }")
+            else:
+                btn.setStyleSheet("")
+        
+        # Update view mode
+        self.view.systems_mode_active = (mode == 'systems')
+        
+        # Update status
+        self.update_status_message()
+    
+    def toggle_systems_mode(self):
+        """Toggle systems placement mode on/off."""
+        if self.current_mode == 'systems':
+            self.set_mode(None)
+        else:
+            self.set_mode('systems')
+    
+    def handle_system_click(self, scene_pos: QPointF, is_right_click: bool):
+        """Handle clicks in system placement mode.
+        
+        Args:
+            scene_pos: Position in scene coordinates
+            is_right_click: True for right-click (edit), False for left-click (place)
+        """
+        if is_right_click:
+            # Find and edit the clicked system
+            item = self.view.itemAt(self.view.mapFromScene(scene_pos))
+            if isinstance(item, SystemItem):
+                self.edit_system(item)
+        else:
+            # Create new system at clicked position
+            self.create_system_at(scene_pos)
+    
+    def create_system_at(self, position: QPointF):
+        """Create a new system at the specified position.
+        
+        Args:
+            position: Scene coordinates for the new system
+        """
+        # Create temporary system data for preview
+        temp_system = SystemData.create_new("New System", position)
+        
+        # Create preview item
+        self.preview_system_item = SystemItem(temp_system)
+        self.scene.addItem(self.preview_system_item)
+        
+        # Show dialog
+        dialog = SystemDialog(temp_system, is_new=True, parent=self)
+        if dialog.exec():
+            if dialog.result_action == 'save':
+                # Update name and save
+                temp_system.name = dialog.get_name()
+                self.systems[temp_system.id] = temp_system
+                self.system_items[temp_system.id] = self.preview_system_item
+                self.preview_system_item.update_name(temp_system.name)
+                self.preview_system_item = None
+            else:
+                # Cancel or close - remove preview
+                self.scene.removeItem(self.preview_system_item)
+                self.preview_system_item = None
+        else:
+            # Dialog rejected - remove preview
+            self.scene.removeItem(self.preview_system_item)
+            self.preview_system_item = None
+    
+    def edit_system(self, system_item: SystemItem):
+        """Edit an existing system.
+        
+        Args:
+            system_item: The SystemItem to edit
+        """
+        system_data = system_item.get_system_data()
+        
+        # Show dialog
+        dialog = SystemDialog(system_data, is_new=False, parent=self)
+        if dialog.exec():
+            if dialog.result_action == 'save':
+                # Update name
+                new_name = dialog.get_name()
+                system_item.update_name(new_name)
+            elif dialog.result_action == 'delete':
+                # Remove system
+                self.remove_system(system_data.id)
+    
+    def remove_system(self, system_id: str):
+        """Remove a system from the map.
+        
+        Args:
+            system_id: The ID of the system to remove
+        """
+        if system_id in self.system_items:
+            # Remove from scene
+            self.scene.removeItem(self.system_items[system_id])
+            # Remove from storage
+            del self.system_items[system_id]
+            del self.systems[system_id]
+
     
     def show_routes(self):
-        """Placeholder for Routes functionality."""
-        QMessageBox.information(
-            self,
-            "Routes",
-            "Routes editor coming soon!\n\n"
-            "This will allow you to create hyperlane routes between systems."
-        )
+        """Toggle routes mode (placeholder)."""
+        if self.current_mode == 'routes':
+            self.set_mode(None)
+        else:
+            self.set_mode('routes')
+            QMessageBox.information(
+                self,
+                "Routes",
+                "Routes editor coming soon!\n\n"
+                "This will allow you to create hyperlane routes between systems."
+            )
+            self.set_mode(None)
     
     def show_zones(self):
-        """Placeholder for Zones functionality."""
-        QMessageBox.information(
-            self,
-            "Zones",
-            "Zones editor coming soon!\n\n"
-            "This will allow you to define territorial zones and regions."
-        )
+        """Toggle zones mode (placeholder)."""
+        if self.current_mode == 'zones':
+            self.set_mode(None)
+        else:
+            self.set_mode('zones')
+            QMessageBox.information(
+                self,
+                "Zones",
+                "Zones editor coming soon!\n\n"
+                "This will allow you to define territorial zones and regions."
+            )
+            self.set_mode(None)
+
     
     def show_stats(self):
         """Placeholder for Stats functionality."""
@@ -398,12 +579,26 @@ class StarMapEditor(QMainWindow):
         )
         
         if file_path:
+            # Convert systems to exportable format
+            systems_data = []
+            for system_id, system in self.systems.items():
+                systems_data.append({
+                    "id": system.id,
+                    "name": system.name,
+                    "x": system.position.x(),
+                    "y": system.position.y()
+                })
+            
             map_data = {
                 "mapName": self.map_name,
-                "systems": [],
+                "systems": systems_data,
                 "routes": [],
                 "zones": [],
-                "stats": {}
+                "stats": {
+                    "totalSystems": len(self.systems),
+                    "totalRoutes": 0,
+                    "totalZones": 0
+                }
             }
             
             try:
