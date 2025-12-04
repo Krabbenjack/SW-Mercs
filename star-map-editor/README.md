@@ -48,11 +48,6 @@ star-map-editor/
 │   ├─ templates.py     # Template graphics management
 │   └─ __init__.py
 │
-├─ src/                 # Legacy source (maintained for compatibility)
-│   ├─ main.py
-│   ├─ gui.py
-│   └─ systems.py
-│
 ├─ Saves/               # Default location for .swmproj project files
 ├─ Exports/             # Default location for exported map data
 │

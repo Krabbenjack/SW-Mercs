@@ -13,21 +13,17 @@ This document summarizes the implementation completed for the Star Map Editor en
 **New Directory Layout:**
 ```
 star-map-editor/
-├── main.py                 # New entry point at root
-├── gui.py                  # Rewritten with all new features
-├── core/                   # Business logic (NEW)
+├── main.py                 # Entry point
+├── gui.py                  # Complete GUI with all features
+├── core/                   # Business logic
 │   ├── __init__.py
 │   ├── project_model.py    # MapProject, TemplateData
 │   ├── project_io.py       # Save/load/export
 │   ├── systems.py          # System data and graphics
 │   └── templates.py        # Template graphics management
-├── src/                    # Legacy compatibility (kept)
-│   ├── main.py
-│   ├── gui.py
-│   └── systems.py
-├── Saves/                  # Project files (.swmproj) (NEW)
-├── Exports/                # Exported map data (NEW)
-└── resources/              # Application resources (NEW)
+├── Saves/                  # Project files (.swmproj)
+├── Exports/                # Exported map data
+└── resources/              # Application resources
     ├── icons/
     └── example_templates/
 ```
