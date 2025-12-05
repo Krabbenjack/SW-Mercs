@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
-    QGraphicsPathItem
+    QGraphicsPathItem, QInputDialog
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath
@@ -24,6 +24,7 @@ from core import (
     MapProject, TemplateData, SystemData, SystemItem, 
     SystemDialog, TemplateItem, RouteData, RouteItem
 )
+from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
 
 
@@ -273,9 +274,6 @@ class MapView(QGraphicsView):
                     item = self.itemAt(event.pos())
                     if isinstance(item, RouteItem):
                         # Toggle route for group selection
-                        from PySide6.QtCore import Signal as QtSignal
-                        # We need to emit a signal to the main window
-                        # For now, let's handle it with a custom approach
                         self.toggle_route_group_selection(item)
                         event.accept()
                         return
@@ -370,8 +368,6 @@ class MapView(QGraphicsView):
             global_pos: Global position for the menu
             route_item: The RouteItem to show menu for
         """
-        from PySide6.QtWidgets import QInputDialog
-        
         menu = QMenu()
         rename_action = menu.addAction("Rename Route")
         
@@ -1433,7 +1429,6 @@ class StarMapEditor(QMainWindow):
             )
             return
         
-        from PySide6.QtWidgets import QInputDialog
         name, ok = QInputDialog.getText(
             self,
             "Create Route Group",
@@ -1441,7 +1436,6 @@ class StarMapEditor(QMainWindow):
         )
         
         if ok and name:
-            from core.project_model import RouteGroup
             route_group = RouteGroup.create_new(name, list(self.routes_selected_for_group))
             self.project.add_route_group(route_group)
             
