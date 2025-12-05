@@ -448,6 +448,9 @@ class StarMapEditor(QMainWindow):
         # Route group selection state
         self.routes_selected_for_group: set[str] = set()  # Track route IDs selected for grouping
         
+        # Theme state
+        self.is_dark_mode = True  # Default to dark mode
+        
         self.init_ui()
     
     def init_ui(self):
@@ -550,6 +553,9 @@ class StarMapEditor(QMainWindow):
         
         main_layout.addWidget(self.view)
         
+        # Apply dark mode by default
+        self.apply_dark_mode()
+        
         self.show()
     
     def create_menu_bar(self):
@@ -600,6 +606,23 @@ class StarMapEditor(QMainWindow):
         quit_action.setShortcut('Ctrl+Q')
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
+        
+        # View menu
+        view_menu = menubar.addMenu('&View')
+        
+        # Dark Mode action
+        self.dark_mode_action = QAction('&Dark Mode', self)
+        self.dark_mode_action.setCheckable(True)
+        self.dark_mode_action.setChecked(True)  # Default to dark mode
+        self.dark_mode_action.triggered.connect(self.apply_dark_mode)
+        view_menu.addAction(self.dark_mode_action)
+        
+        # Light Mode action
+        self.light_mode_action = QAction('&Light Mode', self)
+        self.light_mode_action.setCheckable(True)
+        self.light_mode_action.setChecked(False)
+        self.light_mode_action.triggered.connect(self.apply_light_mode)
+        view_menu.addAction(self.light_mode_action)
     
     def create_workspace_toolbar(self) -> QWidget:
         """Create the workspace toolbar for template mode."""
@@ -672,6 +695,13 @@ class StarMapEditor(QMainWindow):
         toolbar_layout = QHBoxLayout(toolbar_widget)
         toolbar_layout.setContentsMargins(5, 5, 5, 5)
         
+        # Current Route label
+        self.current_route_label = QLabel('Current Route: None')
+        self.current_route_label.setStyleSheet("font-weight: bold; color: #333;")
+        toolbar_layout.addWidget(self.current_route_label)
+        
+        toolbar_layout.addSpacing(20)
+        
         # Create Route Group button
         self.create_group_btn = QPushButton('Create Route Group')
         self.create_group_btn.clicked.connect(self.create_route_group_dialog)
@@ -685,6 +715,84 @@ class StarMapEditor(QMainWindow):
         toolbar_layout.addStretch()
         
         return toolbar_widget
+    
+    # ===== Theme Management =====
+    
+    def apply_dark_mode(self):
+        """Apply dark mode theme to the application."""
+        if not self.dark_mode_action.isChecked():
+            # User unchecked dark mode, switch to light
+            self.light_mode_action.setChecked(True)
+            self.apply_light_mode()
+            return
+        
+        # Uncheck light mode
+        self.light_mode_action.setChecked(False)
+        self.is_dark_mode = True
+        
+        # Set dark background for the scene
+        self.scene.setBackgroundBrush(QColor(5, 8, 20))  # ≈ #050814
+        
+        # Update grid color for dark mode
+        self.scene.grid_color = QColor(144, 238, 144, 80)  # Lighter, more transparent green
+        
+        # Update route colors for better visibility on dark background
+        RouteItem.NORMAL_COLOR = QColor(100, 200, 255)  # Light blue
+        RouteItem.SELECTED_COLOR = QColor(255, 255, 100)  # Yellow
+        RouteItem.GROUP_SELECTION_COLOR = QColor(255, 150, 255)  # Magenta
+        
+        # Update all existing routes
+        for route_item in self.route_items.values():
+            route_item.update_visual_state()
+            # Update label color for dark background
+            if hasattr(route_item, 'label'):
+                route_item.label.setDefaultTextColor(QColor(200, 220, 255))
+        
+        # Update system label colors
+        for system_item in self.system_items.values():
+            if hasattr(system_item, 'label'):
+                system_item.label.setDefaultTextColor(Qt.white)
+        
+        # Force scene update
+        self.scene.update()
+    
+    def apply_light_mode(self):
+        """Apply light mode theme to the application."""
+        if not self.light_mode_action.isChecked():
+            # User unchecked light mode, switch to dark
+            self.dark_mode_action.setChecked(True)
+            self.apply_dark_mode()
+            return
+        
+        # Uncheck dark mode
+        self.dark_mode_action.setChecked(False)
+        self.is_dark_mode = False
+        
+        # Set light background for the scene
+        self.scene.setBackgroundBrush(QColor(240, 240, 240))  # Light gray
+        
+        # Update grid color for light mode
+        self.scene.grid_color = QColor(100, 150, 100, 128)  # Darker green, more visible
+        
+        # Update route colors for better visibility on light background
+        RouteItem.NORMAL_COLOR = QColor(50, 100, 200)  # Darker blue
+        RouteItem.SELECTED_COLOR = QColor(200, 150, 0)  # Dark yellow/gold
+        RouteItem.GROUP_SELECTION_COLOR = QColor(200, 50, 200)  # Dark magenta
+        
+        # Update all existing routes
+        for route_item in self.route_items.values():
+            route_item.update_visual_state()
+            # Update label color for light background
+            if hasattr(route_item, 'label'):
+                route_item.label.setDefaultTextColor(QColor(0, 0, 100))
+        
+        # Update system label colors
+        for system_item in self.system_items.values():
+            if hasattr(system_item, 'label'):
+                system_item.label.setDefaultTextColor(Qt.black)
+        
+        # Force scene update
+        self.scene.update()
     
     # ===== File Menu Actions =====
     
@@ -1119,14 +1227,17 @@ class StarMapEditor(QMainWindow):
         # Find selected template
         selected_items = self.scene.selectedItems()
         template_selected = None
+        route_selected = None
         
         for item in selected_items:
             if isinstance(item, TemplateItem):
                 template_selected = item
-                break
+            elif isinstance(item, RouteItem):
+                route_selected = item
         
         self.selected_template = template_selected
         self.update_workspace_controls()
+        self.update_route_workspace_controls(route_selected)
     
     def on_item_modified(self):
         """Handle item modification (movement, etc.)."""
@@ -1161,6 +1272,19 @@ class StarMapEditor(QMainWindow):
             self.lock_btn.setText('Lock Template')
             self.opacity_slider.setValue(100)
             self.opacity_label.setText('100%')
+    
+    def update_route_workspace_controls(self, route_selected: Optional[RouteItem]):
+        """Update route workspace controls based on selection.
+        
+        Args:
+            route_selected: The selected RouteItem, or None if no route selected
+        """
+        if hasattr(self, 'current_route_label'):
+            if route_selected:
+                route_name = route_selected.get_route_data().name
+                self.current_route_label.setText(f'Current Route: {route_name}')
+            else:
+                self.current_route_label.setText('Current Route: None')
     
     # ===== System Management =====
     
