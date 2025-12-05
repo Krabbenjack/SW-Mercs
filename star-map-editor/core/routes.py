@@ -136,6 +136,7 @@ class RouteItem(QGraphicsPathItem):
     LINE_WIDTH = 3
     NORMAL_COLOR = QColor(100, 200, 255)  # Light blue for normal state
     SELECTED_COLOR = QColor(255, 255, 100)  # Yellow for selected state
+    GROUP_SELECTION_COLOR = QColor(255, 150, 255)  # Magenta for group selection
     
     def __init__(self, route_data: RouteData, system_items_dict: Dict[str, 'SystemItem']):
         """Initialize the route graphics item.
@@ -149,6 +150,7 @@ class RouteItem(QGraphicsPathItem):
         self.route_data = route_data
         self.system_items = system_items_dict
         self.handles: List[RouteHandleItem] = []
+        self.is_group_selected = False  # Track if selected for grouping
         
         # Configure appearance
         self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
@@ -292,13 +294,10 @@ class RouteItem(QGraphicsPathItem):
         """
         if change == QGraphicsPathItem.ItemSelectedHasChanged:
             # Update visual appearance when selection changes
+            self.update_visual_state()
             if self.isSelected():
-                self.setPen(QPen(self.SELECTED_COLOR, self.LINE_WIDTH, 
-                                Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
                 self.show_handles()
             else:
-                self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH,
-                                Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
                 self.hide_handles()
         
         return super().itemChange(change, value)
@@ -330,3 +329,27 @@ class RouteItem(QGraphicsPathItem):
         self.label.setPlainText(name)
         # Recompute path to update label position
         self.recompute_path()
+    
+    def set_group_selection(self, selected: bool):
+        """Set group selection state and update visual appearance.
+        
+        Args:
+            selected: Whether this route is selected for grouping
+        """
+        self.is_group_selected = selected
+        self.update_visual_state()
+    
+    def update_visual_state(self):
+        """Update visual appearance based on selection state."""
+        if self.is_group_selected:
+            # Use group selection color with thicker line
+            self.setPen(QPen(self.GROUP_SELECTION_COLOR, self.LINE_WIDTH + 1, 
+                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        elif self.isSelected():
+            # Use normal selected color
+            self.setPen(QPen(self.SELECTED_COLOR, self.LINE_WIDTH, 
+                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        else:
+            # Use normal color
+            self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH,
+                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))

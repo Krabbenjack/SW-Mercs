@@ -87,6 +87,9 @@ class MapView(QGraphicsView):
     # Signal emitted when user clicks in routes mode
     route_click = Signal(QPointF)  # (position)
     
+    # Signal emitted when a route is toggled for group selection
+    route_group_toggle = Signal(str)  # (route_id)
+    
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
     
@@ -265,6 +268,18 @@ class MapView(QGraphicsView):
         # In routes mode, handle clicks for route creation
         elif self.routes_mode_active:
             if event.button() == Qt.LeftButton:
+                # Check if CTRL is pressed for group selection
+                if event.modifiers() & Qt.ControlModifier:
+                    item = self.itemAt(event.pos())
+                    if isinstance(item, RouteItem):
+                        # Toggle route for group selection
+                        from PySide6.QtCore import Signal as QtSignal
+                        # We need to emit a signal to the main window
+                        # For now, let's handle it with a custom approach
+                        self.toggle_route_group_selection(item)
+                        event.accept()
+                        return
+                
                 scene_pos = self.mapToScene(event.pos())
                 # Emit signal for route click handling (will be handled by main window)
                 self.route_click.emit(scene_pos)
@@ -375,6 +390,16 @@ class MapView(QGraphicsView):
                 # Emit signal to mark unsaved changes
                 self.item_modified.emit()
     
+    def toggle_route_group_selection(self, route_item: RouteItem):
+        """Toggle a route's group selection state.
+        
+        Args:
+            route_item: The RouteItem to toggle
+        """
+        # Emit signal to let main window handle the logic
+        route_id = route_item.get_route_data().id
+        self.route_group_toggle.emit(route_id)
+    
     def contextMenuEvent(self, event):
         """Handle right-click context menu in routes mode."""
         if self.routes_mode_active:
@@ -435,6 +460,9 @@ class StarMapEditor(QMainWindow):
         # Route creation state
         self.route_creation_start_system_id: Optional[str] = None
         self.route_preview_line: Optional[QGraphicsPathItem] = None
+        
+        # Route group selection state
+        self.routes_selected_for_group: set[str] = set()  # Track route IDs selected for grouping
         
         self.init_ui()
     
@@ -513,6 +541,11 @@ class StarMapEditor(QMainWindow):
         main_layout.addWidget(self.workspace_toolbar)
         self.workspace_toolbar.hide()
         
+        # Create routes workspace toolbar (visible only in routes mode)
+        self.routes_toolbar = self.create_routes_toolbar()
+        main_layout.addWidget(self.routes_toolbar)
+        self.routes_toolbar.hide()
+        
         # Status label for mode indication
         self.status_label = QLabel()
         self.status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
@@ -525,6 +558,7 @@ class StarMapEditor(QMainWindow):
         self.view.setFocusPolicy(Qt.StrongFocus)
         self.view.system_click.connect(self.handle_system_click)
         self.view.route_click.connect(self.handle_route_click)
+        self.view.route_group_toggle.connect(self.toggle_route_for_group)
         self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
@@ -642,6 +676,27 @@ class StarMapEditor(QMainWindow):
         self.scale_sensitivity_label = QLabel('1.0x')
         self.scale_sensitivity_label.setMinimumWidth(40)
         toolbar_layout.addWidget(self.scale_sensitivity_label)
+        
+        toolbar_layout.addStretch()
+        
+        return toolbar_widget
+    
+    def create_routes_toolbar(self) -> QWidget:
+        """Create the workspace toolbar for routes mode."""
+        toolbar_widget = QWidget()
+        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
+        toolbar_layout = QHBoxLayout(toolbar_widget)
+        toolbar_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Create Route Group button
+        self.create_group_btn = QPushButton('Create Route Group')
+        self.create_group_btn.clicked.connect(self.create_route_group_dialog)
+        toolbar_layout.addWidget(self.create_group_btn)
+        
+        # Info label
+        info_label = QLabel('CTRL+Click routes to select for grouping')
+        info_label.setStyleSheet("color: #555; font-style: italic;")
+        toolbar_layout.addWidget(info_label)
         
         toolbar_layout.addStretch()
         
@@ -930,12 +985,22 @@ class StarMapEditor(QMainWindow):
         # Clear route creation state when leaving routes mode
         if mode != 'routes':
             self.cancel_route_creation()
+            # Clear group selection when leaving routes mode
+            for route_id in list(self.routes_selected_for_group):
+                if route_id in self.route_items:
+                    self.route_items[route_id].set_group_selection(False)
+            self.routes_selected_for_group.clear()
         
-        # Show/hide workspace toolbar
+        # Show/hide workspace toolbars
         if mode == 'template':
             self.workspace_toolbar.show()
+            self.routes_toolbar.hide()
+        elif mode == 'routes':
+            self.workspace_toolbar.hide()
+            self.routes_toolbar.show()
         else:
             self.workspace_toolbar.hide()
+            self.routes_toolbar.hide()
         
         # Update status
         self.update_status_message()
@@ -1341,6 +1406,58 @@ class StarMapEditor(QMainWindow):
         for route_item in self.route_items.values():
             route_item.update_from_system_movement()
     
+    def toggle_route_for_group(self, route_id: str):
+        """Toggle a route's selection for group creation.
+        
+        Args:
+            route_id: ID of the route to toggle
+        """
+        if route_id in self.routes_selected_for_group:
+            # Deselect
+            self.routes_selected_for_group.remove(route_id)
+            if route_id in self.route_items:
+                self.route_items[route_id].set_group_selection(False)
+        else:
+            # Select
+            self.routes_selected_for_group.add(route_id)
+            if route_id in self.route_items:
+                self.route_items[route_id].set_group_selection(True)
+    
+    def create_route_group_dialog(self):
+        """Show dialog to create a named route group from selected routes."""
+        if not self.routes_selected_for_group:
+            QMessageBox.warning(
+                self,
+                "No Routes Selected",
+                "Please select routes using CTRL+click before creating a group."
+            )
+            return
+        
+        from PySide6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(
+            self,
+            "Create Route Group",
+            f"Enter name for group ({len(self.routes_selected_for_group)} routes selected):"
+        )
+        
+        if ok and name:
+            from core.project_model import RouteGroup
+            route_group = RouteGroup.create_new(name, list(self.routes_selected_for_group))
+            self.project.add_route_group(route_group)
+            
+            # Clear selection and highlight
+            for route_id in list(self.routes_selected_for_group):
+                if route_id in self.route_items:
+                    self.route_items[route_id].set_group_selection(False)
+            self.routes_selected_for_group.clear()
+            
+            self.mark_unsaved_changes()
+            QMessageBox.information(
+                self,
+                "Route Group Created",
+                f"Route group '{name}' created with {len(route_group.route_ids)} routes."
+            )
+    
     # ===== Placeholder Mode Actions =====
     
     def show_zones(self):
@@ -1364,6 +1481,7 @@ class StarMapEditor(QMainWindow):
 Templates: {len(self.project.templates)}
 Systems: {len(self.project.systems)}
 Routes: {len(self.project.routes)}
+Route Groups: {len(self.project.route_groups)}
 Zones: {len(self.project.zones)}
 """
         QMessageBox.information(

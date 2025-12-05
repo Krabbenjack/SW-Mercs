@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 from PySide6.QtCore import QPointF
 
-from .project_model import MapProject, TemplateData
+from .project_model import MapProject, TemplateData, RouteGroup
 from .systems import SystemData
 from .routes import RouteData
 
@@ -58,6 +58,14 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                     "control_points": r.control_points
                 }
                 for r in project.routes.values()
+            ],
+            "route_groups": [
+                {
+                    "id": g.id,
+                    "name": g.name,
+                    "route_ids": g.route_ids
+                }
+                for g in project.route_groups.values()
             ],
             "zones": project.zones
         }
@@ -127,6 +135,15 @@ def load_project(file_path: Path) -> Optional[MapProject]:
                     control_points=[tuple(cp) for cp in r_dict.get("control_points", [])]
                 )
                 project.routes[route.id] = route
+        
+        # Load route groups
+        for g_dict in project_dict.get("route_groups", []):
+            route_group = RouteGroup(
+                id=g_dict["id"],
+                name=g_dict["name"],
+                route_ids=g_dict.get("route_ids", [])
+            )
+            project.route_groups[route_group.id] = route_group
         
         # Load zones (for future use)
         project.zones = project_dict.get("zones", [])

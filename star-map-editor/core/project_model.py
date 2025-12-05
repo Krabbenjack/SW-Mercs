@@ -54,6 +54,40 @@ class TemplateData:
 
 
 @dataclass
+class RouteGroup:
+    """Data model for a named group of routes.
+    
+    Route groups allow organizing multiple route segments under a common name,
+    which can be useful for defining trade lanes, patrol routes, etc.
+    
+    Attributes:
+        id: Unique identifier for the group (UUID string)
+        name: Display name of the group
+        route_ids: List of route IDs that belong to this group
+    """
+    id: str
+    name: str
+    route_ids: List[str] = field(default_factory=list)
+    
+    @classmethod
+    def create_new(cls, name: str, route_ids: Optional[List[str]] = None):
+        """Create a new route group with a generated UUID.
+        
+        Args:
+            name: Display name for the group
+            route_ids: Optional list of route IDs to include
+            
+        Returns:
+            New RouteGroup instance
+        """
+        return cls(
+            id=str(uuid.uuid4()),
+            name=name,
+            route_ids=route_ids or []
+        )
+
+
+@dataclass
 class MapProject:
     """Master data container for a complete map project.
     
@@ -64,12 +98,14 @@ class MapProject:
         templates: List of template image data
         systems: Dictionary mapping system ID to SystemData
         routes: Dictionary mapping route ID to RouteData
+        route_groups: Dictionary mapping route group ID to RouteGroup
         zones: List of zone data (future implementation)
         metadata: Optional project metadata (name, version, etc.)
     """
     templates: List[TemplateData] = field(default_factory=list)
     systems: Dict[str, 'SystemData'] = field(default_factory=dict)
     routes: Dict[str, 'RouteData'] = field(default_factory=dict)
+    route_groups: Dict[str, RouteGroup] = field(default_factory=dict)
     zones: List = field(default_factory=list)
     metadata: Dict = field(default_factory=dict)
     
@@ -139,11 +175,40 @@ class MapProject:
         """
         return self.routes.get(route_id)
     
+    def add_route_group(self, route_group: RouteGroup):
+        """Add a route group to the project.
+        
+        Args:
+            route_group: RouteGroup to add
+        """
+        self.route_groups[route_group.id] = route_group
+    
+    def remove_route_group(self, group_id: str):
+        """Remove a route group from the project.
+        
+        Args:
+            group_id: ID of the route group to remove
+        """
+        if group_id in self.route_groups:
+            del self.route_groups[group_id]
+    
+    def get_route_group(self, group_id: str) -> Optional[RouteGroup]:
+        """Get a route group by ID.
+        
+        Args:
+            group_id: ID of the route group to retrieve
+            
+        Returns:
+            RouteGroup if found, None otherwise
+        """
+        return self.route_groups.get(group_id)
+    
     def clear(self):
         """Clear all project data."""
         self.templates.clear()
         self.systems.clear()
         self.routes.clear()
+        self.route_groups.clear()
         self.zones.clear()
         self.metadata = {
             "name": "Unnamed Map",
