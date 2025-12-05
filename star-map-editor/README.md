@@ -167,9 +167,61 @@ Click the **"Systems Mode"** button in the mode bar. When active, the button tur
   - Selected systems: Orange/yellow circles
   - System names displayed as labels
 
-### Routes Mode (Coming Soon)
+### Routes Mode
 
-Placeholder for creating hyperlane routes between systems.
+Routes Mode allows you to create curved hyperlane routes between star systems with adjustable control points.
+
+#### Activating Routes Mode
+
+Click the **"Routes"** button in the mode bar. When active, the button turns green.
+
+**Status bar message**: *"Routes mode: Click a start system, then an end system. Select routes to show/drag control points."*
+
+#### Creating Routes
+
+1. **Select Start System**: Click on any system to designate it as the route's starting point
+   - The system must be clicked directly (or within a small snap radius)
+   - Status updates to indicate start system is selected
+
+2. **Select End System**: Click on another system to complete the route
+   - Cannot create routes to the same system
+   - Duplicate routes between the same systems are prevented
+   - Route is automatically created and named (e.g., "System A - System B")
+
+#### Editing Routes
+
+- **Select Route**: Click on a route path to select it
+  - Selected routes turn yellow
+  - Control point handles appear as draggable orange circles
+
+- **Adjust Curve**: Drag the orange control point handles to bend the route
+  - Control points can be positioned anywhere
+  - The spline path updates in real-time as you drag
+  - Multiple control points create smooth curves through all points
+
+- **Route Follows Systems**: When you move a system (in Systems Mode), all connected routes automatically update to follow the new position
+  - Route endpoints remain attached to their systems
+  - Control points maintain their positions
+
+#### Deleting Routes
+
+- **Delete Key**: Select a route and press the **Delete** key
+  - A confirmation dialog appears
+  - Route and all its handles are removed
+
+#### Route Visualization
+
+- **Normal routes**: Light blue curved lines
+- **Selected routes**: Yellow curved lines with visible control handles
+- **Routes layer below systems** but above templates
+
+#### Notes
+
+- Routes are saved with your project and restored when you load
+- Initial routes are straight lines (no control points)
+- Add curvature by selecting a route and dragging its handles
+- Routes can pass over/under each other freely
+- Route names can be customized (currently auto-generated from system names)
 
 ### Zones Mode (Coming Soon)
 
@@ -212,7 +264,15 @@ Projects are saved as `.swmproj` files in JSON format, containing:
       "y": 750.0
     }
   ],
-  "routes": [],
+  "routes": [
+    {
+      "id": "uuid-string",
+      "name": "Corellian Run",
+      "start_system_id": "system-uuid-1",
+      "end_system_id": "system-uuid-2",
+      "control_points": [[1500.0, 800.0], [2000.0, 900.0]]
+    }
+  ],
   "zones": []
 }
 ```
@@ -223,8 +283,10 @@ Projects are saved as `.swmproj` files in JSON format, containing:
 2. **Enter Template Mode** and load one or more template images
 3. **Adjust templates** as needed (position, scale, opacity)
 4. **Switch to Systems Mode** and place star systems
-5. **Save your project** frequently (Ctrl+S)
-6. **Export map data** when ready for use in your game/simulation
+5. **Switch to Routes Mode** and create routes between systems
+6. **Select routes to edit** and drag control points to adjust curves
+7. **Save your project** frequently (Ctrl+S)
+8. **Export map data** when ready for use in your game/simulation
 
 ### Export Format
 
@@ -241,11 +303,19 @@ Exported map data (for game use) is saved as clean JSON:
       "y": 750.0
     }
   ],
-  "routes": [],
+  "routes": [
+    {
+      "id": "uuid-string",
+      "name": "Corellian Run",
+      "start_system_id": "system-uuid-1",
+      "end_system_id": "system-uuid-2",
+      "control_points": [[1500.0, 800.0], [2000.0, 900.0]]
+    }
+  ],
   "zones": [],
   "stats": {
     "totalSystems": 1,
-    "totalRoutes": 0,
+    "totalRoutes": 1,
     "totalZones": 0,
     "version": "1.0"
   }
@@ -363,6 +433,10 @@ Planned features for expanded gameplay:
 - Lower the Scale Sensitivity slider for precise template scaling adjustments
 - Increase the Pan Sensitivity slider for faster map navigation when working on large maps
 - Adjust sensitivity sliders to match your workflow preference and input device characteristics
+- Create systems first, then add routes between them
+- Routes automatically update when you move connected systems
+- Select a route and drag its control handles to create curved paths
+- Use the Delete key to remove selected routes
 
 ## Troubleshooting
 
@@ -378,10 +452,20 @@ Planned features for expanded gameplay:
 - Check if the template is locked (unlock it in the workspace toolbar)
 - Make sure you're in Template Mode
 
+### Routes won't snap to systems
+- Make sure you're clicking directly on the system (or very close to it)
+- Systems have a snap radius of about 20 pixels
+- Check that you're in Routes Mode
+
+### Can't see route control handles
+- Make sure the route is selected (click on it)
+- Control handles only appear when a route is selected
+- Handles are small orange circles along the route path
+
 ## Coming Soon
 
-- **Routes Mode**: Create hyperlane connections between systems
 - **Zones Mode**: Define territorial regions and special areas
+- **Route Properties**: Edit route names, colors, and types
 - **Enhanced Export**: More export format options
 - **Undo/Redo**: Full undo/redo support
 - **Layers Panel**: Better template management
