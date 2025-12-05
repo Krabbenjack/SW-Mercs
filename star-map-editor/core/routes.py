@@ -246,13 +246,22 @@ class RouteItem(QGraphicsPathItem):
         
         self.setPath(path)
         
-        # Update label position (at midpoint between start and end)
-        midpoint = QPointF((start_pos.x() + end_pos.x()) / 2, 
-                          (start_pos.y() + end_pos.y()) / 2)
-        # Offset label slightly above the midpoint
+        # Update label position
+        # If there are control points, use the first one as reference for better positioning
+        # Otherwise use the midpoint between start and end
+        if self.route_data.control_points:
+            # Use first control point as label anchor
+            first_cp = self.route_data.control_points[0]
+            label_pos = QPointF(first_cp[0], first_cp[1])
+        else:
+            # Use simple midpoint for straight routes
+            label_pos = QPointF((start_pos.x() + end_pos.x()) / 2, 
+                               (start_pos.y() + end_pos.y()) / 2)
+        
+        # Offset label slightly above the position
         label_bounds = self.label.boundingRect()
-        self.label.setPos(midpoint.x() - label_bounds.width() / 2, 
-                         midpoint.y() - label_bounds.height() - 5)
+        self.label.setPos(label_pos.x() - label_bounds.width() / 2, 
+                         label_pos.y() - label_bounds.height() - 5)
     
     def handle_moved(self, index: int, position: QPointF):
         """Called when a control point handle is moved.

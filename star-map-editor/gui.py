@@ -396,18 +396,6 @@ class MapView(QGraphicsView):
         route_id = route_item.get_route_data().id
         self.route_group_toggle.emit(route_id)
     
-    def contextMenuEvent(self, event):
-        """Handle right-click context menu in routes mode."""
-        if self.routes_mode_active:
-            # Check if clicking on a route
-            item = self.itemAt(event.pos())
-            if isinstance(item, RouteItem):
-                # Emit a signal for route context menu
-                # For now, we'll handle this in the main window
-                event.accept()
-                return
-        super().contextMenuEvent(event)
-    
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
         
