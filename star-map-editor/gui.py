@@ -269,6 +269,14 @@ class MapView(QGraphicsView):
                 # Emit signal for route click handling (will be handled by main window)
                 self.route_click.emit(scene_pos)
                 event.accept()
+            elif event.button() == Qt.RightButton:
+                # Right click on route - show context menu
+                item = self.itemAt(event.pos())
+                if isinstance(item, RouteItem):
+                    self.show_route_context_menu(event.globalPos(), item)
+                    event.accept()
+                    return
+                super().mousePressEvent(event)
             else:
                 super().mousePressEvent(event)
         # In systems mode, handle clicks for placement/editing
@@ -339,6 +347,45 @@ class MapView(QGraphicsView):
                 self.item_modified.emit()
                 self.dragging_item = False
             super().mouseReleaseEvent(event)
+    
+    def show_route_context_menu(self, global_pos, route_item: RouteItem):
+        """Show context menu for a route.
+        
+        Args:
+            global_pos: Global position for the menu
+            route_item: The RouteItem to show menu for
+        """
+        from PySide6.QtWidgets import QInputDialog
+        
+        menu = QMenu()
+        rename_action = menu.addAction("Rename Route")
+        
+        action = menu.exec(global_pos)
+        if action == rename_action:
+            # Show rename dialog
+            route_data = route_item.get_route_data()
+            new_name, ok = QInputDialog.getText(
+                self,
+                "Rename Route",
+                "Enter new name for route:",
+                text=route_data.name
+            )
+            if ok and new_name:
+                route_item.update_name(new_name)
+                # Emit signal to mark unsaved changes
+                self.item_modified.emit()
+    
+    def contextMenuEvent(self, event):
+        """Handle right-click context menu in routes mode."""
+        if self.routes_mode_active:
+            # Check if clicking on a route
+            item = self.itemAt(event.pos())
+            if isinstance(item, RouteItem):
+                # Emit a signal for route context menu
+                # For now, we'll handle this in the main window
+                event.accept()
+                return
+        super().contextMenuEvent(event)
     
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
@@ -847,7 +894,7 @@ class StarMapEditor(QMainWindow):
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click a start system, then an end system. Select routes to show/drag control points.")
+            self.status_label.setText("Routes mode: Click a start system, then an end system. Select a route to show control points and edit the curve.")
         else:
             self.status_label.setText("Ready")
     
@@ -1223,7 +1270,10 @@ class StarMapEditor(QMainWindow):
             self.project.add_route(route_data)
             
             # Add to scene
-            self.add_route_to_scene(route_data)
+            route_item = self.add_route_to_scene(route_data)
+            
+            # Auto-select the newly created route to show handles immediately
+            route_item.setSelected(True)
             
             # Reset creation state
             self.cancel_route_creation()

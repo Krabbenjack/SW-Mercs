@@ -9,9 +9,9 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from PySide6.QtCore import Qt, QPointF, QRectF
 from PySide6.QtWidgets import (
-    QGraphicsPathItem, QGraphicsEllipseItem, QGraphicsItem
+    QGraphicsPathItem, QGraphicsEllipseItem, QGraphicsItem, QGraphicsTextItem
 )
-from PySide6.QtGui import QPainterPath, QPen, QColor, QBrush, QPainter
+from PySide6.QtGui import QPainterPath, QPen, QColor, QBrush, QPainter, QFont
 
 
 @dataclass
@@ -64,9 +64,9 @@ class RouteHandleItem(QGraphicsEllipseItem):
     Displays as a small circle that can be dragged to adjust the route curve.
     """
     
-    RADIUS = 6  # Handle radius in scene units
-    NORMAL_COLOR = QColor(255, 200, 100)  # Orange for normal state
-    HOVER_COLOR = QColor(255, 150, 50)  # Brighter orange for hover
+    RADIUS = 8  # Handle radius in scene units (increased for better visibility)
+    NORMAL_COLOR = QColor(255, 180, 0)  # Bright orange for normal state
+    HOVER_COLOR = QColor(255, 100, 0)  # Vivid orange for hover
     
     def __init__(self, index: int, position: QPointF, parent: 'RouteItem'):
         """Initialize the handle item.
@@ -160,6 +160,18 @@ class RouteItem(QGraphicsPathItem):
         # Lower z-value so routes are below systems but above templates
         self.setZValue(5)
         
+        # Create label for route name
+        self.label = QGraphicsTextItem(parent=self)
+        self.label.setPlainText(route_data.name)
+        self.label.setDefaultTextColor(QColor(200, 220, 255))  # Light blue-white
+        font = QFont()
+        font.setPointSize(9)
+        font.setBold(True)
+        self.label.setFont(font)
+        self.label.setFlag(QGraphicsTextItem.ItemIsMovable, False)
+        self.label.setFlag(QGraphicsTextItem.ItemIsSelectable, False)
+        self.label.setZValue(6)  # Above the route line
+        
         # Initial path computation
         self.recompute_path()
     
@@ -231,6 +243,14 @@ class RouteItem(QGraphicsPathItem):
                         path.lineTo(p1)
         
         self.setPath(path)
+        
+        # Update label position (at midpoint between start and end)
+        midpoint = QPointF((start_pos.x() + end_pos.x()) / 2, 
+                          (start_pos.y() + end_pos.y()) / 2)
+        # Offset label slightly above the midpoint
+        label_bounds = self.label.boundingRect()
+        self.label.setPos(midpoint.x() - label_bounds.width() / 2, 
+                         midpoint.y() - label_bounds.height() - 5)
     
     def handle_moved(self, index: int, position: QPointF):
         """Called when a control point handle is moved.
@@ -299,3 +319,14 @@ class RouteItem(QGraphicsPathItem):
             for i, handle in enumerate(self.handles):
                 x, y = self.route_data.control_points[i]
                 handle.setPos(QPointF(x, y))
+    
+    def update_name(self, name: str):
+        """Update the route name and label.
+        
+        Args:
+            name: New name for the route
+        """
+        self.route_data.name = name
+        self.label.setPlainText(name)
+        # Recompute path to update label position
+        self.recompute_path()
