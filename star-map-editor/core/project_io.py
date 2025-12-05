@@ -11,6 +11,7 @@ from PySide6.QtCore import QPointF
 
 from .project_model import MapProject, TemplateData
 from .systems import SystemData
+from .routes import RouteData
 
 
 def save_project(project: MapProject, file_path: Path) -> bool:
@@ -48,7 +49,16 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                 }
                 for s in project.systems.values()
             ],
-            "routes": project.routes,
+            "routes": [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "start_system_id": r.start_system_id,
+                    "end_system_id": r.end_system_id,
+                    "control_points": r.control_points
+                }
+                for r in project.routes.values()
+            ],
             "zones": project.zones
         }
         
@@ -104,8 +114,21 @@ def load_project(file_path: Path) -> Optional[MapProject]:
             )
             project.systems[system.id] = system
         
-        # Load routes and zones (for future use)
-        project.routes = project_dict.get("routes", [])
+        # Load routes
+        for r_dict in project_dict.get("routes", []):
+            # Only load routes if both start and end systems exist
+            if (r_dict.get("start_system_id") in project.systems and
+                r_dict.get("end_system_id") in project.systems):
+                route = RouteData(
+                    id=r_dict["id"],
+                    name=r_dict["name"],
+                    start_system_id=r_dict["start_system_id"],
+                    end_system_id=r_dict["end_system_id"],
+                    control_points=[tuple(cp) for cp in r_dict.get("control_points", [])]
+                )
+                project.routes[route.id] = route
+        
+        # Load zones (for future use)
         project.zones = project_dict.get("zones", [])
         
         return project
@@ -140,7 +163,16 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
                 }
                 for s in project.systems.values()
             ],
-            "routes": project.routes,
+            "routes": [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "start_system_id": r.start_system_id,
+                    "end_system_id": r.end_system_id,
+                    "control_points": r.control_points
+                }
+                for r in project.routes.values()
+            ],
             "zones": project.zones,
             "stats": {
                 "totalSystems": len(project.systems),
