@@ -14,14 +14,15 @@ sys.path.insert(0, str(Path(__file__).parent))
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
-    QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu
+    QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
+    QGraphicsPathItem
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
-from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction
+from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath
 
 from core import (
     MapProject, TemplateData, SystemData, SystemItem, 
-    SystemDialog, TemplateItem
+    SystemDialog, TemplateItem, RouteData, RouteItem
 )
 from core.project_io import save_project, load_project, export_map_data
 
@@ -83,6 +84,9 @@ class MapView(QGraphicsView):
     # Signal emitted when user clicks to place/edit a system
     system_click = Signal(QPointF, bool)  # (position, is_right_click)
     
+    # Signal emitted when user clicks in routes mode
+    route_click = Signal(QPointF)  # (position)
+    
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
     
@@ -119,13 +123,14 @@ class MapView(QGraphicsView):
         # Mode state
         self.systems_mode_active = False
         self.template_mode_active = False
+        self.routes_mode_active = False
         
         # Template scaling sensitivity
         self.template_scale_sensitivity = 1.0  # Scale sensitivity multiplier
         
         # Item drag tracking
         self.dragging_item = False
-        
+
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
         
@@ -249,7 +254,7 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning, system placement, and template selection."""
+        """Handle mouse press for panning, system placement, route creation, and template selection."""
         # Middle mouse button or Space + left mouse button for panning
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.space_pressed):
@@ -257,6 +262,15 @@ class MapView(QGraphicsView):
             self.pan_start_pos = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
+        # In routes mode, handle clicks for route creation
+        elif self.routes_mode_active:
+            if event.button() == Qt.LeftButton:
+                scene_pos = self.mapToScene(event.pos())
+                # Emit signal for route click handling (will be handled by main window)
+                self.route_click.emit(scene_pos)
+                event.accept()
+            else:
+                super().mousePressEvent(event)
         # In systems mode, handle clicks for placement/editing
         elif self.systems_mode_active:
             scene_pos = self.mapToScene(event.pos())
@@ -360,6 +374,7 @@ class StarMapEditor(QMainWindow):
         # Graphics items storage
         self.template_items: Dict[str, TemplateItem] = {}  # id -> TemplateItem
         self.system_items: Dict[str, SystemItem] = {}  # id -> SystemItem
+        self.route_items: Dict[str, RouteItem] = {}  # id -> RouteItem
         
         # Current mode
         self.current_mode = None  # None, 'template', 'systems', 'routes', 'zones'
@@ -369,6 +384,10 @@ class StarMapEditor(QMainWindow):
         
         # Preview item for new system placement
         self.preview_system_item: Optional[SystemItem] = None
+        
+        # Route creation state
+        self.route_creation_start_system_id: Optional[str] = None
+        self.route_preview_line: Optional[QGraphicsPathItem] = None
         
         self.init_ui()
     
@@ -458,7 +477,8 @@ class StarMapEditor(QMainWindow):
         self.view = MapView(self.scene)
         self.view.setFocusPolicy(Qt.StrongFocus)
         self.view.system_click.connect(self.handle_system_click)
-        self.view.item_modified.connect(self.mark_unsaved_changes)
+        self.view.route_click.connect(self.handle_route_click)
+        self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
@@ -592,6 +612,7 @@ class StarMapEditor(QMainWindow):
         self.project = MapProject()
         self.template_items.clear()
         self.system_items.clear()
+        self.route_items.clear()
         self.current_file_path = None
         self.unsaved_changes = False
         
@@ -629,6 +650,7 @@ class StarMapEditor(QMainWindow):
                 self.scene.clear()
                 self.template_items.clear()
                 self.system_items.clear()
+                self.route_items.clear()
                 
                 # Load project
                 self.project = project
@@ -642,6 +664,10 @@ class StarMapEditor(QMainWindow):
                 # Restore systems
                 for system_data in self.project.systems.values():
                     self.add_system_to_scene(system_data)
+                
+                # Restore routes
+                for route_data in self.project.routes.values():
+                    self.add_route_to_scene(route_data)
                 
                 # Enable grid if there are templates
                 if self.project.templates:
@@ -773,6 +799,28 @@ class StarMapEditor(QMainWindow):
         else:
             event.ignore()
     
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle key press events for the main window."""
+        if event.key() == Qt.Key_Delete:
+            # Delete selected route in routes mode
+            if self.current_mode == 'routes':
+                selected_items = self.scene.selectedItems()
+                for item in selected_items:
+                    if isinstance(item, RouteItem):
+                        route_data = item.get_route_data()
+                        reply = QMessageBox.question(
+                            self,
+                            "Delete Route",
+                            f"Delete route '{route_data.name}'?",
+                            QMessageBox.Yes | QMessageBox.No,
+                            QMessageBox.No
+                        )
+                        if reply == QMessageBox.Yes:
+                            self.remove_route(route_data.id)
+                        event.accept()
+                        return
+        super().keyPressEvent(event)
+    
     def update_window_title(self):
         """Update the window title with current file name."""
         if self.current_file_path:
@@ -798,6 +846,8 @@ class StarMapEditor(QMainWindow):
             self.status_label.setText("Template mode active: Click to select template, drag to move, Ctrl+wheel to scale.")
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
+        elif self.current_mode == 'routes':
+            self.status_label.setText("Routes mode: Click a start system, then an end system. Select routes to show/drag control points.")
         else:
             self.status_label.setText("Ready")
     
@@ -828,6 +878,11 @@ class StarMapEditor(QMainWindow):
         # Update view mode
         self.view.systems_mode_active = (mode == 'systems')
         self.view.template_mode_active = (mode == 'template')
+        self.view.routes_mode_active = (mode == 'routes')
+        
+        # Clear route creation state when leaving routes mode
+        if mode != 'routes':
+            self.cancel_route_creation()
         
         # Show/hide workspace toolbar
         if mode == 'template':
@@ -977,6 +1032,13 @@ class StarMapEditor(QMainWindow):
         self.selected_template = template_selected
         self.update_workspace_controls()
     
+    def on_item_modified(self):
+        """Handle item modification (movement, etc.)."""
+        # Mark project as having unsaved changes
+        self.mark_unsaved_changes()
+        # Update routes when systems are moved
+        self.update_routes_for_system_movement()
+    
     def update_workspace_controls(self):
         """Update workspace controls based on selection."""
         has_selection = self.selected_template is not None
@@ -1103,21 +1165,133 @@ class StarMapEditor(QMainWindow):
             del self.system_items[system_id]
             del self.project.systems[system_id]
     
-    # ===== Placeholder Mode Actions =====
+    # ===== Route Management =====
     
     def show_routes(self):
-        """Toggle routes mode (placeholder)."""
+        """Toggle routes mode."""
         if self.current_mode == 'routes':
             self.set_mode(None)
         else:
             self.set_mode('routes')
-            QMessageBox.information(
-                self,
-                "Routes",
-                "Routes editor coming soon!\n\n"
-                "This will allow you to create hyperlane routes between systems."
-            )
-            self.set_mode(None)
+    
+    def handle_route_click(self, scene_pos: QPointF):
+        """Handle clicks in routes mode for route creation.
+        
+        Args:
+            scene_pos: Position in scene coordinates
+        """
+        # Find system under click position (with snap radius)
+        clicked_system = self.find_system_at_position(scene_pos, snap_radius=20)
+        
+        if not clicked_system:
+            # Click on empty space - cancel current route creation
+            self.cancel_route_creation()
+            return
+        
+        if self.route_creation_start_system_id is None:
+            # First click - set start system
+            self.route_creation_start_system_id = clicked_system.get_system_data().id
+            self.status_label.setText(f"Routes mode: Start system selected. Click another system to complete route.")
+        else:
+            # Second click - create the route
+            start_system_id = self.route_creation_start_system_id
+            end_system_id = clicked_system.get_system_data().id
+            
+            # Don't allow route to same system
+            if start_system_id == end_system_id:
+                self.cancel_route_creation()
+                return
+            
+            # Check if route already exists between these systems
+            for route_data in self.project.routes.values():
+                if ((route_data.start_system_id == start_system_id and route_data.end_system_id == end_system_id) or
+                    (route_data.start_system_id == end_system_id and route_data.end_system_id == start_system_id)):
+                    QMessageBox.warning(
+                        self,
+                        "Route Exists",
+                        "A route already exists between these systems."
+                    )
+                    self.cancel_route_creation()
+                    return
+            
+            # Create new route
+            start_sys = self.project.systems[start_system_id]
+            end_sys = self.project.systems[end_system_id]
+            route_name = f"{start_sys.name} - {end_sys.name}"
+            
+            route_data = RouteData.create_new(route_name, start_system_id, end_system_id)
+            self.project.add_route(route_data)
+            
+            # Add to scene
+            self.add_route_to_scene(route_data)
+            
+            # Reset creation state
+            self.cancel_route_creation()
+            self.mark_unsaved_changes()
+    
+    def find_system_at_position(self, scene_pos: QPointF, snap_radius: float = 20) -> Optional[SystemItem]:
+        """Find a system near the given position.
+        
+        Args:
+            scene_pos: Position in scene coordinates
+            snap_radius: Radius within which to snap to a system
+            
+        Returns:
+            SystemItem if found within snap radius, None otherwise
+        """
+        for system_item in self.system_items.values():
+            system_pos = system_item.pos()
+            distance = ((system_pos.x() - scene_pos.x()) ** 2 + 
+                       (system_pos.y() - scene_pos.y()) ** 2) ** 0.5
+            if distance <= snap_radius:
+                return system_item
+        return None
+    
+    def cancel_route_creation(self):
+        """Cancel the current route creation process."""
+        self.route_creation_start_system_id = None
+        if self.route_preview_line:
+            self.scene.removeItem(self.route_preview_line)
+            self.route_preview_line = None
+        if self.current_mode == 'routes':
+            self.update_status_message()
+    
+    def add_route_to_scene(self, route_data: RouteData) -> RouteItem:
+        """Add a route to the scene.
+        
+        Args:
+            route_data: The RouteData to add
+            
+        Returns:
+            The created RouteItem
+        """
+        route_item = RouteItem(route_data, self.system_items)
+        self.scene.addItem(route_item)
+        self.route_items[route_data.id] = route_item
+        return route_item
+    
+    def remove_route(self, route_id: str):
+        """Remove a route from the map.
+        
+        Args:
+            route_id: The ID of the route to remove
+        """
+        if route_id in self.route_items:
+            # Remove from scene
+            route_item = self.route_items[route_id]
+            route_item.hide_handles()  # Clean up handles first
+            self.scene.removeItem(route_item)
+            # Remove from storage
+            del self.route_items[route_id]
+            self.project.remove_route(route_id)
+            self.mark_unsaved_changes()
+    
+    def update_routes_for_system_movement(self):
+        """Update all routes when systems have been moved."""
+        for route_item in self.route_items.values():
+            route_item.update_from_system_movement()
+    
+    # ===== Placeholder Mode Actions =====
     
     def show_zones(self):
         """Toggle zones mode (placeholder)."""
