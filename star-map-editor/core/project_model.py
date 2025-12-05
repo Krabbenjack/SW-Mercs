@@ -63,13 +63,13 @@ class MapProject:
     Attributes:
         templates: List of template image data
         systems: Dictionary mapping system ID to SystemData
-        routes: List of route data (future implementation)
+        routes: Dictionary mapping route ID to RouteData
         zones: List of zone data (future implementation)
         metadata: Optional project metadata (name, version, etc.)
     """
     templates: List[TemplateData] = field(default_factory=list)
     systems: Dict[str, 'SystemData'] = field(default_factory=dict)
-    routes: List = field(default_factory=list)
+    routes: Dict[str, 'RouteData'] = field(default_factory=dict)
     zones: List = field(default_factory=list)
     metadata: Dict = field(default_factory=dict)
     
@@ -111,6 +111,34 @@ class MapProject:
                 return template
         return None
     
+    def add_route(self, route: 'RouteData'):
+        """Add a route to the project.
+        
+        Args:
+            route: RouteData to add
+        """
+        self.routes[route.id] = route
+    
+    def remove_route(self, route_id: str):
+        """Remove a route from the project.
+        
+        Args:
+            route_id: ID of the route to remove
+        """
+        if route_id in self.routes:
+            del self.routes[route_id]
+    
+    def get_route(self, route_id: str) -> Optional['RouteData']:
+        """Get a route by ID.
+        
+        Args:
+            route_id: ID of the route to retrieve
+            
+        Returns:
+            RouteData if found, None otherwise
+        """
+        return self.routes.get(route_id)
+    
     def clear(self):
         """Clear all project data."""
         self.templates.clear()
@@ -122,7 +150,7 @@ class MapProject:
             "version": "1.0"
         }
 
-
-# Import SystemData here to avoid circular imports
-# This is defined in systems.py
+# Import SystemData and RouteData here to avoid circular imports
+# These are defined in systems.py and routes.py
 from .systems import SystemData
+from .routes import RouteData
