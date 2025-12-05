@@ -381,8 +381,8 @@ class MapView(QGraphicsView):
                 "Enter new name for route:",
                 text=route_data.name
             )
-            if ok and new_name:
-                route_item.update_name(new_name)
+            if ok and new_name and new_name.strip():
+                route_item.update_name(new_name.strip())
                 # Emit signal to mark unsaved changes
                 self.item_modified.emit()
     
@@ -1423,8 +1423,8 @@ class StarMapEditor(QMainWindow):
             f"Enter name for group ({len(self.routes_selected_for_group)} routes selected):"
         )
         
-        if ok and name:
-            route_group = RouteGroup.create_new(name, list(self.routes_selected_for_group))
+        if ok and name and name.strip():
+            route_group = RouteGroup.create_new(name.strip(), list(self.routes_selected_for_group))
             self.project.add_route_group(route_group)
             
             # Clear selection and highlight
@@ -1437,7 +1437,7 @@ class StarMapEditor(QMainWindow):
             QMessageBox.information(
                 self,
                 "Route Group Created",
-                f"Route group '{name}' created with {len(route_group.route_ids)} routes."
+                f"Route group '{route_group.name}' created with {len(route_group.route_ids)} routes."
             )
     
     # ===== Placeholder Mode Actions =====
