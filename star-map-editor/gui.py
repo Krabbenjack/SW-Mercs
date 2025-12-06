@@ -22,7 +22,7 @@ from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEven
 
 from core import (
     MapProject, TemplateData, SystemData, SystemItem, 
-    SystemDialog, TemplateItem, RouteData, RouteItem
+    SystemDialog, TemplateItem, RouteData, RouteItem, RouteHandleItem
 )
 from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
@@ -94,6 +94,9 @@ class MapView(QGraphicsView):
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
     
+    # Signal emitted when inserting a control point on a route
+    control_point_insert = Signal(object, QPointF)  # (route_item, position)
+    
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -134,6 +137,9 @@ class MapView(QGraphicsView):
         
         # Item drag tracking
         self.dragging_item = False
+        
+        # P key state for adding control points
+        self.p_key_pressed = False
 
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
@@ -204,6 +210,9 @@ class MapView(QGraphicsView):
         elif event.key() == Qt.Key_Space:
             self.space_pressed = True
             event.accept()
+        elif event.key() == Qt.Key_P:
+            self.p_key_pressed = True
+            event.accept()
         else:
             super().keyPressEvent(event)
     
@@ -220,6 +229,9 @@ class MapView(QGraphicsView):
             if self.is_panning:
                 self.is_panning = False
                 self.setCursor(Qt.ArrowCursor)
+            event.accept()
+        elif event.key() == Qt.Key_P:
+            self.p_key_pressed = False
             event.accept()
         else:
             super().keyReleaseEvent(event)
@@ -258,7 +270,16 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning, system placement, route creation, and template selection."""
+        """Handle mouse press for panning, system placement, route creation, and template selection.
+        
+        In routes mode:
+        - Click on RouteHandleItem: Allow dragging the control point
+        - P + Click on RouteItem: Insert a new control point at the click position
+        - Ctrl + Click on RouteItem: Toggle route for group selection
+        - Click on RouteItem: Select the route
+        - Click on SystemItem: Select system for route creation
+        - Click on empty space: Start new route from system
+        """
         # Middle mouse button or Space + left mouse button for panning
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.space_pressed):
@@ -266,20 +287,39 @@ class MapView(QGraphicsView):
             self.pan_start_pos = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
-        # In routes mode, handle clicks for route creation
+        # In routes mode, handle clicks for route creation and control point insertion
         elif self.routes_mode_active:
             if event.button() == Qt.LeftButton:
+                # Get item at click position
+                item = self.itemAt(event.pos())
+                
+                # If clicking on a RouteHandleItem, let it handle the event (for dragging)
+                if isinstance(item, RouteHandleItem):
+                    super().mousePressEvent(event)
+                    return
+                
+                # If P key is pressed and clicking on a RouteItem, insert control point
+                if self.p_key_pressed and isinstance(item, RouteItem):
+                    scene_pos = self.mapToScene(event.pos())
+                    self.insert_control_point_on_route(item, scene_pos)
+                    event.accept()
+                    return
+                
                 # Check if CTRL is pressed for group selection
                 if event.modifiers() & Qt.ControlModifier:
-                    item = self.itemAt(event.pos())
                     if isinstance(item, RouteItem):
                         # Toggle route for group selection
                         self.toggle_route_group_selection(item)
                         event.accept()
                         return
                 
+                # If clicking on a RouteItem (not for group selection), allow selection
+                if isinstance(item, RouteItem):
+                    super().mousePressEvent(event)
+                    return
+                
+                # Otherwise, emit signal for route click handling (system selection)
                 scene_pos = self.mapToScene(event.pos())
-                # Emit signal for route click handling (will be handled by main window)
                 self.route_click.emit(scene_pos)
                 event.accept()
             elif event.button() == Qt.RightButton:
@@ -395,6 +435,16 @@ class MapView(QGraphicsView):
         # Emit signal to let main window handle the logic
         route_id = route_item.get_route_data().id
         self.route_group_toggle.emit(route_id)
+    
+    def insert_control_point_on_route(self, route_item: RouteItem, scene_pos: QPointF):
+        """Insert a control point on a route at the given position.
+        
+        Args:
+            route_item: The RouteItem to insert a control point on
+            scene_pos: Position in scene coordinates
+        """
+        # Emit signal to let main window handle the logic
+        self.control_point_insert.emit(route_item, scene_pos)
     
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
@@ -547,6 +597,7 @@ class StarMapEditor(QMainWindow):
         self.view.system_click.connect(self.handle_system_click)
         self.view.route_click.connect(self.handle_route_click)
         self.view.route_group_toggle.connect(self.toggle_route_for_group)
+        self.view.control_point_insert.connect(self.insert_control_point_on_route)
         self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
@@ -703,21 +754,22 @@ class StarMapEditor(QMainWindow):
         
         toolbar_layout.addSpacing(20)
         
-        # Add Control Point button
-        self.add_control_point_btn = QPushButton('Add Control Point')
-        self.add_control_point_btn.clicked.connect(self.add_control_point_to_route)
-        self.add_control_point_btn.setEnabled(False)  # Disabled by default
-        toolbar_layout.addWidget(self.add_control_point_btn)
+        # Info label for control point creation
+        info_label = QLabel('Press P + Click on route to add control point')
+        info_label.setStyleSheet("color: #555; font-style: italic;")
+        toolbar_layout.addWidget(info_label)
+        
+        toolbar_layout.addSpacing(20)
         
         # Create Route Group button
         self.create_group_btn = QPushButton('Create Route Group')
         self.create_group_btn.clicked.connect(self.create_route_group_dialog)
         toolbar_layout.addWidget(self.create_group_btn)
         
-        # Info label
-        info_label = QLabel('CTRL+Click routes to select for grouping')
-        info_label.setStyleSheet("color: #555; font-style: italic;")
-        toolbar_layout.addWidget(info_label)
+        # Info label for grouping
+        group_info_label = QLabel('CTRL+Click routes to select for grouping')
+        group_info_label.setStyleSheet("color: #555; font-style: italic;")
+        toolbar_layout.addWidget(group_info_label)
         
         toolbar_layout.addStretch()
         
@@ -1055,7 +1107,7 @@ class StarMapEditor(QMainWindow):
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click a start system, then an end system. Select a route to show control points and edit the curve.")
+            self.status_label.setText("Routes mode: Click systems to create routes. Select route to edit. Press P + Click on route to add control point.")
         else:
             self.status_label.setText("Ready")
     
@@ -1299,53 +1351,7 @@ class StarMapEditor(QMainWindow):
                 self.current_route_label.setText(f'Current Route: {route_name}')
             else:
                 self.current_route_label.setText('Current Route: None')
-        
-        # Update Add Control Point button state
-        if hasattr(self, 'add_control_point_btn'):
-            self.add_control_point_btn.setEnabled(route_selected is not None)
     
-    def add_control_point_to_route(self):
-        """Add a new control point to the selected route."""
-        # Find the selected route
-        selected_items = self.scene.selectedItems()
-        route_item = None
-        for item in selected_items:
-            if isinstance(item, RouteItem):
-                route_item = item
-                break
-        
-        if not route_item:
-            return
-        
-        route_data = route_item.get_route_data()
-        
-        # Build list of all points: start -> control points -> end
-        start_pos = route_item.get_start_position()
-        end_pos = route_item.get_end_position()
-        
-        if start_pos is None or end_pos is None:
-            return
-        
-        # Strategy: Add new control point at midpoint of last segment
-        if not route_data.control_points:
-            # No control points yet - add at midpoint
-            new_x = (start_pos.x() + end_pos.x()) / 2.0
-            new_y = (start_pos.y() + end_pos.y()) / 2.0
-        else:
-            # Add between last control point and end
-            last_cp = route_data.control_points[-1]
-            new_x = (last_cp[0] + end_pos.x()) / 2.0
-            new_y = (last_cp[1] + end_pos.y()) / 2.0
-        
-        # Add the new control point
-        route_data.control_points.append((new_x, new_y))
-        
-        # Recompute path and handles
-        route_item.recompute_path()
-        if route_item.isSelected():
-            route_item.show_handles()
-        
-        self.mark_unsaved_changes()
     
     def add_route_group_label(self, route_group: RouteGroup):
         """Add a label for a route group on the map.
@@ -1600,14 +1606,9 @@ class StarMapEditor(QMainWindow):
             end_sys = self.project.systems[end_system_id]
             route_name = f"{start_sys.name} - {end_sys.name}"
             
-            # Auto-create a control point at midpoint
-            start_pos = self.system_items[start_system_id].pos()
-            end_pos = self.system_items[end_system_id].pos()
-            mid_x = (start_pos.x() + end_pos.x()) / 2.0
-            mid_y = (start_pos.y() + end_pos.y()) / 2.0
-            
+            # Create route with no control points initially
+            # Users can add control points using P + Click
             route_data = RouteData.create_new(route_name, start_system_id, end_system_id)
-            route_data.control_points.append((mid_x, mid_y))
             self.project.add_route(route_data)
             
             # Add to scene
@@ -1700,6 +1701,16 @@ class StarMapEditor(QMainWindow):
             self.routes_selected_for_group.add(route_id)
             if route_id in self.route_items:
                 self.route_items[route_id].set_group_selection(True)
+    
+    def insert_control_point_on_route(self, route_item: RouteItem, scene_pos: QPointF):
+        """Insert a control point on a route at the given position.
+        
+        Args:
+            route_item: The RouteItem to insert a control point on
+            scene_pos: Position in scene coordinates
+        """
+        route_item.insert_control_point(scene_pos)
+        self.mark_unsaved_changes()
     
     def create_route_group_dialog(self):
         """Show dialog to create a named route group from selected routes."""

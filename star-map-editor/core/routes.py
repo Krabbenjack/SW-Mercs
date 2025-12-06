@@ -79,6 +79,7 @@ class RouteHandleItem(QGraphicsEllipseItem):
         super().__init__(parent)
         self.control_point_index = index
         self.route_item = parent
+        self._is_being_dragged = False
         
         # Set up the circle
         self.setRect(-self.RADIUS, -self.RADIUS, 
@@ -121,8 +122,22 @@ class RouteHandleItem(QGraphicsEllipseItem):
         if change == QGraphicsEllipseItem.ItemPositionHasChanged:
             # Notify parent route that this handle moved
             self.route_item.handle_moved(self.control_point_index, self.pos())
+            self._is_being_dragged = True
         
         return super().itemChange(change, value)
+    
+    def mouseReleaseEvent(self, event):
+        """Handle mouse release to notify scene of modification."""
+        super().mouseReleaseEvent(event)
+        if self._is_being_dragged:
+            self._is_being_dragged = False
+            # Notify the scene that an item was modified
+            if self.scene():
+                # Find the view and emit item_modified signal
+                for view in self.scene().views():
+                    if hasattr(view, 'item_modified'):
+                        view.item_modified.emit()
+                        break
 
 
 class RouteItem(QGraphicsPathItem):
@@ -290,7 +305,8 @@ class RouteItem(QGraphicsPathItem):
     def hide_handles(self):
         """Hide control point handles."""
         for handle in self.handles:
-            self.scene().removeItem(handle)
+            if self.scene():
+                self.scene().removeItem(handle)
         self.handles.clear()
     
     def itemChange(self, change, value):
@@ -361,3 +377,84 @@ class RouteItem(QGraphicsPathItem):
             # Use normal color
             self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH,
                             Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+    
+    def insert_control_point(self, scene_pos: QPointF):
+        """Insert a new control point at the given scene position.
+        
+        Finds the best position in the control points list by determining
+        which segment the point is closest to.
+        
+        Args:
+            scene_pos: Position in scene coordinates where to insert the point
+        """
+        start_pos = self.get_start_position()
+        end_pos = self.get_end_position()
+        
+        if start_pos is None or end_pos is None:
+            return
+        
+        # Build list of all points: start -> control points -> end
+        all_points = [start_pos]
+        for cp in self.route_data.control_points:
+            all_points.append(QPointF(cp[0], cp[1]))
+        all_points.append(end_pos)
+        
+        # Find which segment the click is closest to
+        best_segment_index = 0
+        min_distance = float('inf')
+        
+        for i in range(len(all_points) - 1):
+            p1 = all_points[i]
+            p2 = all_points[i + 1]
+            
+            # Calculate distance from scene_pos to line segment p1-p2
+            distance = self._point_to_segment_distance(scene_pos, p1, p2)
+            
+            if distance < min_distance:
+                min_distance = distance
+                best_segment_index = i
+        
+        # Insert the control point at the appropriate position
+        # Segment 0 is between start and first control point (or end if no control points)
+        # So we insert at position best_segment_index in the control_points list
+        insert_index = best_segment_index
+        
+        self.route_data.control_points.insert(insert_index, (scene_pos.x(), scene_pos.y()))
+        
+        # Recompute path and handles
+        self.recompute_path()
+        if self.isSelected():
+            self.show_handles()
+    
+    def _point_to_segment_distance(self, point: QPointF, seg_start: QPointF, seg_end: QPointF) -> float:
+        """Calculate the distance from a point to a line segment.
+        
+        Args:
+            point: The point to measure from
+            seg_start: Start of the line segment
+            seg_end: End of the line segment
+            
+        Returns:
+            Distance from point to segment
+        """
+        # Vector from seg_start to seg_end
+        dx = seg_end.x() - seg_start.x()
+        dy = seg_end.y() - seg_start.y()
+        
+        # Length squared of the segment
+        length_sq = dx * dx + dy * dy
+        
+        if length_sq == 0:
+            # Segment is a point
+            return ((point.x() - seg_start.x()) ** 2 + (point.y() - seg_start.y()) ** 2) ** 0.5
+        
+        # Calculate parameter t for the projection of point onto the line
+        # t = 0 means projection is at seg_start, t = 1 means at seg_end
+        t = max(0, min(1, ((point.x() - seg_start.x()) * dx + (point.y() - seg_start.y()) * dy) / length_sq))
+        
+        # Calculate the projection point
+        proj_x = seg_start.x() + t * dx
+        proj_y = seg_start.y() + t * dy
+        
+        # Return distance from point to projection
+        return ((point.x() - proj_x) ** 2 + (point.y() - proj_y) ** 2) ** 0.5
