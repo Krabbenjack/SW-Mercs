@@ -162,18 +162,6 @@ class RouteItem(QGraphicsPathItem):
         # Lower z-value so routes are below systems but above templates
         self.setZValue(5)
         
-        # Create label for route name
-        self.label = QGraphicsTextItem(parent=self)
-        self.label.setPlainText(route_data.name)
-        self.label.setDefaultTextColor(QColor(200, 220, 255))  # Light blue-white
-        font = QFont()
-        font.setPointSize(9)
-        font.setBold(True)
-        self.label.setFont(font)
-        self.label.setFlag(QGraphicsTextItem.ItemIsMovable, False)
-        self.label.setFlag(QGraphicsTextItem.ItemIsSelectable, False)
-        self.label.setZValue(6)  # Above the route line
-        
         # Initial path computation
         self.recompute_path()
     
@@ -213,55 +201,69 @@ class RouteItem(QGraphicsPathItem):
         # If no control points, draw a straight line
         if not self.route_data.control_points:
             path.lineTo(end_pos)
+        elif len(self.route_data.control_points) == 1:
+            # With one control point, use quadratic curve
+            cp = self.route_data.control_points[0]
+            path.quadTo(QPointF(cp[0], cp[1]), end_pos)
         else:
-            # Draw a smooth curve through control points using cubic splines
-            # Convert control points to QPointF
-            control_qpoints = [QPointF(cp[0], cp[1]) for cp in self.route_data.control_points]
+            # With 2+ control points, create a smooth spline through all points
+            # Build list of all points: start -> control points -> end
+            all_points = [start_pos]
+            for cp in self.route_data.control_points:
+                all_points.append(QPointF(cp[0], cp[1]))
+            all_points.append(end_pos)
             
-            if len(control_qpoints) == 1:
-                # With one control point, use quadratic curve
-                path.quadTo(control_qpoints[0], end_pos)
-            else:
-                # With multiple control points, use cubic curves
-                # Create smooth path through all points
-                all_points = [start_pos] + control_qpoints + [end_pos]
+            # Use a simple Catmull-Rom-like spline that passes through all control points
+            # For each segment, use cubic bezier with control points derived from neighbors
+            for i in range(len(all_points) - 1):
+                p0 = all_points[i]
+                p1 = all_points[i + 1]
                 
-                # Use cubic bezier curves to create smooth path
-                for i in range(len(all_points) - 1):
-                    if i == 0:
-                        # First segment
-                        p0 = all_points[i]
-                        p1 = all_points[i + 1]
-                        # Control point 1/3 of the way
-                        c1 = QPointF(p0.x() + (p1.x() - p0.x()) / 3, 
-                                    p0.y() + (p1.y() - p0.y()) / 3)
-                        # Control point 2/3 of the way
-                        c2 = QPointF(p0.x() + 2 * (p1.x() - p0.x()) / 3,
-                                    p0.y() + 2 * (p1.y() - p0.y()) / 3)
-                        path.cubicTo(c1, c2, p1)
+                # Calculate tangent directions based on neighbors
+                if i == 0:
+                    # First segment: tangent from current to next
+                    if len(all_points) > 2:
+                        tangent_out = QPointF(
+                            (all_points[i + 1].x() - p0.x()) * 0.5,
+                            (all_points[i + 1].y() - p0.y()) * 0.5
+                        )
                     else:
-                        # Subsequent segments
-                        p1 = all_points[i + 1]
-                        path.lineTo(p1)
+                        tangent_out = QPointF(
+                            (p1.x() - p0.x()) * 0.3,
+                            (p1.y() - p0.y()) * 0.3
+                        )
+                else:
+                    # Use previous and next points for tangent
+                    tangent_out = QPointF(
+                        (p1.x() - all_points[i - 1].x()) * 0.3,
+                        (p1.y() - all_points[i - 1].y()) * 0.3
+                    )
+                
+                if i == len(all_points) - 2:
+                    # Last segment: tangent to endpoint
+                    if len(all_points) > 2:
+                        tangent_in = QPointF(
+                            (p1.x() - all_points[i].x()) * 0.5,
+                            (p1.y() - all_points[i].y()) * 0.5
+                        )
+                    else:
+                        tangent_in = QPointF(
+                            (p1.x() - p0.x()) * 0.3,
+                            (p1.y() - p0.y()) * 0.3
+                        )
+                else:
+                    # Use neighbors for smooth tangent
+                    tangent_in = QPointF(
+                        (all_points[i + 2].x() - p0.x()) * 0.3,
+                        (all_points[i + 2].y() - p0.y()) * 0.3
+                    )
+                
+                # Create cubic bezier curve
+                c1 = QPointF(p0.x() + tangent_out.x(), p0.y() + tangent_out.y())
+                c2 = QPointF(p1.x() - tangent_in.x(), p1.y() - tangent_in.y())
+                path.cubicTo(c1, c2, p1)
         
         self.setPath(path)
-        
-        # Update label position
-        # If there are control points, use the first one as reference for better positioning
-        # Otherwise use the midpoint between start and end
-        if self.route_data.control_points:
-            # Use first control point as label anchor
-            first_cp = self.route_data.control_points[0]
-            label_pos = QPointF(first_cp[0], first_cp[1])
-        else:
-            # Use simple midpoint for straight routes
-            label_pos = QPointF((start_pos.x() + end_pos.x()) / 2, 
-                               (start_pos.y() + end_pos.y()) / 2)
-        
-        # Offset label slightly above the position
-        label_bounds = self.label.boundingRect()
-        self.label.setPos(label_pos.x() - label_bounds.width() / 2, 
-                         label_pos.y() - label_bounds.height() - 5)
     
     def handle_moved(self, index: int, position: QPointF):
         """Called when a control point handle is moved.
@@ -329,15 +331,12 @@ class RouteItem(QGraphicsPathItem):
                 handle.setPos(QPointF(x, y))
     
     def update_name(self, name: str):
-        """Update the route name and label.
+        """Update the route name.
         
         Args:
             name: New name for the route
         """
         self.route_data.name = name
-        self.label.setPlainText(name)
-        # Recompute path to update label position
-        self.recompute_path()
     
     def set_group_selection(self, selected: bool):
         """Set group selection state and update visual appearance.
