@@ -185,13 +185,20 @@ Click the **"Systems Mode"** button in the mode bar. When active, the button tur
 
 ### Routes Mode
 
-Routes Mode allows you to create curved hyperlane routes between star systems with adjustable control points.
+Routes Mode allows you to create curved hyperlane routes between star systems with adjustable control points, name them, and organize them into groups.
 
 #### Activating Routes Mode
 
-Click the **"Routes"** button in the mode bar. When active, the button turns green.
+Click the **"Routes"** button in the mode bar. When active, the button turns green and a workspace toolbar appears below the mode buttons.
 
-**Status bar message**: *"Routes mode: Click a start system, then an end system. Select routes to show/drag control points."*
+**Status bar message**: *"Routes mode: Click a start system, then an end system. Select a route to show control points and edit the curve."*
+
+#### Workspace Toolbar
+
+The workspace toolbar provides the following controls (visible only in Routes Mode):
+
+- **Create Route Group**: Create a named group from currently selected routes (see Route Groups below)
+- **Info**: Instructions for using CTRL+click to select routes for grouping
 
 #### Creating Routes
 
@@ -203,21 +210,58 @@ Click the **"Routes"** button in the mode bar. When active, the button turns gre
    - Cannot create routes to the same system
    - Duplicate routes between the same systems are prevented
    - Route is automatically created and named (e.g., "System A - System B")
+   - **The route is automatically selected**, showing control handles immediately
+
+#### Route Labels
+
+Each route displays its name as a label near the midpoint of the route:
+
+- **Auto-generated names**: By default, routes are named "System A - System B"
+- **Label positioning**: Labels automatically update when systems move or routes change
+- **Rename routes**: Right-click on any route and select "Rename Route" to change its name
+- **Label visibility**: Labels are always visible and saved with your project
 
 #### Editing Routes
 
 - **Select Route**: Click on a route path to select it
   - Selected routes turn yellow
-  - Control point handles appear as draggable orange circles
+  - Control point handles appear as draggable bright orange circles (larger and more visible than before)
+  - Handles are now easier to see and grab for precise curve editing
 
 - **Adjust Curve**: Drag the orange control point handles to bend the route
   - Control points can be positioned anywhere
   - The spline path updates in real-time as you drag
   - Multiple control points create smooth curves through all points
+  - Route labels update position automatically
 
 - **Route Follows Systems**: When you move a system (in Systems Mode), all connected routes automatically update to follow the new position
   - Route endpoints remain attached to their systems
   - Control points maintain their positions
+  - Labels update to reflect new positions
+
+#### Route Groups
+
+Route Groups allow you to organize multiple route segments under a common name, useful for defining trade lanes, patrol routes, or strategic corridors.
+
+##### Creating Route Groups
+
+1. **Select Routes for Grouping**: In Routes Mode, hold **CTRL** and click on routes to toggle selection
+   - Selected routes turn magenta and become slightly thicker
+   - You can select as many routes as needed
+   - CTRL+click again on a selected route to deselect it
+
+2. **Create Group**: Click the **"Create Route Group"** button in the workspace toolbar
+   - A dialog appears asking for the group name
+   - Enter a meaningful name (e.g., "Corellian Trade Spine", "Outer Rim Patrol Route")
+   - The group is created with all selected routes
+   - Selection highlight is cleared after group creation
+
+##### Managing Route Groups
+
+- Route groups are saved with your project
+- Group data is stored in the `.swmproj` file and persists across sessions
+- View group count in the Stats dialog
+- Future updates will add visualization and management features for groups
 
 #### Deleting Routes
 
@@ -227,8 +271,10 @@ Click the **"Routes"** button in the mode bar. When active, the button turns gre
 
 #### Route Visualization
 
-- **Normal routes**: Light blue curved lines
+- **Normal routes**: Light blue curved lines with labels
 - **Selected routes**: Yellow curved lines with visible control handles
+- **Group-selected routes**: Magenta (pink) routes with thicker lines
+- **Control handles**: Bright orange circles (8 pixels radius) that light up on hover
 - **Routes layer below systems** but above templates
 
 #### Notes
@@ -237,7 +283,8 @@ Click the **"Routes"** button in the mode bar. When active, the button turns gre
 - Initial routes are straight lines (no control points)
 - Add curvature by selecting a route and dragging its handles
 - Routes can pass over/under each other freely
-- Route names can be customized (currently auto-generated from system names)
+- Route names and groups are fully customizable
+- Handle visibility and colors have been improved for better usability
 
 ### Zones Mode (Coming Soon)
 
@@ -248,8 +295,9 @@ Placeholder for defining territorial regions and special areas.
 View map statistics including:
 - Number of templates
 - Number of systems
-- Number of routes (future)
-- Number of zones (future)
+- Number of routes
+- Number of route groups
+- Number of zones
 
 ## Project File Format
 
@@ -287,6 +335,13 @@ Projects are saved as `.swmproj` files in JSON format, containing:
       "start_system_id": "system-uuid-1",
       "end_system_id": "system-uuid-2",
       "control_points": [[1500.0, 800.0], [2000.0, 900.0]]
+    }
+  ],
+  "route_groups": [
+    {
+      "id": "uuid-string",
+      "name": "Trade Lane Alpha",
+      "route_ids": ["route-uuid-1", "route-uuid-2"]
     }
   ],
   "zones": []
@@ -437,7 +492,9 @@ Planned features for expanded gameplay:
 - **WASD / Arrow Keys**: Pan the view
 - **Mouse Wheel**: Zoom in/out
 - **Ctrl+Mouse Wheel** (Template Mode): Scale selected template
+- **Ctrl+Click** (Routes Mode): Toggle route selection for grouping
 - **Space+Drag**: Pan the view
+- **Delete** (Routes Mode): Delete selected route
 
 ## Tips
 
@@ -452,7 +509,11 @@ Planned features for expanded gameplay:
 - Create systems first, then add routes between them
 - Routes automatically update when you move connected systems
 - Select a route and drag its control handles to create curved paths
+- Right-click routes to rename them with meaningful names
+- Use CTRL+click to select multiple routes for grouping
+- Create route groups to organize trade lanes, patrol routes, or strategic corridors
 - Use the Delete key to remove selected routes
+- Newly created routes are automatically selected, showing handles immediately for editing
 
 ## Troubleshooting
 
@@ -476,12 +537,25 @@ Planned features for expanded gameplay:
 ### Can't see route control handles
 - Make sure the route is selected (click on it)
 - Control handles only appear when a route is selected
-- Handles are small orange circles along the route path
+- Handles are now larger and brighter orange circles (8 pixels) for better visibility
+- Newly created routes are automatically selected with visible handles
+
+### Route labels not visible
+- Route labels are automatically displayed near the midpoint of each route
+- Labels update position when systems move or routes are edited
+- Right-click a route and select "Rename Route" to change the label text
+
+### Can't select routes with CTRL+click
+- Make sure you're in Routes Mode
+- CTRL+click directly on the route path (not on systems or empty space)
+- Selected routes turn magenta/pink with thicker lines
+- CTRL+click again to deselect
 
 ## Coming Soon
 
 - **Zones Mode**: Define territorial regions and special areas
-- **Route Properties**: Edit route names, colors, and types
+- **Route Group Management**: View, edit, and delete route groups
+- **Route Properties**: Edit route colors and visual styles
 - **Enhanced Export**: More export format options
 - **Undo/Redo**: Full undo/redo support
 - **Layers Panel**: Better template management

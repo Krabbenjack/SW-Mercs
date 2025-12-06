@@ -9,9 +9,9 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict
 from PySide6.QtCore import Qt, QPointF, QRectF
 from PySide6.QtWidgets import (
-    QGraphicsPathItem, QGraphicsEllipseItem, QGraphicsItem
+    QGraphicsPathItem, QGraphicsEllipseItem, QGraphicsItem, QGraphicsTextItem
 )
-from PySide6.QtGui import QPainterPath, QPen, QColor, QBrush, QPainter
+from PySide6.QtGui import QPainterPath, QPen, QColor, QBrush, QPainter, QFont
 
 
 @dataclass
@@ -64,9 +64,9 @@ class RouteHandleItem(QGraphicsEllipseItem):
     Displays as a small circle that can be dragged to adjust the route curve.
     """
     
-    RADIUS = 6  # Handle radius in scene units
-    NORMAL_COLOR = QColor(255, 200, 100)  # Orange for normal state
-    HOVER_COLOR = QColor(255, 150, 50)  # Brighter orange for hover
+    RADIUS = 8  # Handle radius in scene units (increased for better visibility)
+    NORMAL_COLOR = QColor(255, 180, 0)  # Bright orange for normal state
+    HOVER_COLOR = QColor(255, 100, 0)  # Vivid orange for hover
     
     def __init__(self, index: int, position: QPointF, parent: 'RouteItem'):
         """Initialize the handle item.
@@ -136,6 +136,7 @@ class RouteItem(QGraphicsPathItem):
     LINE_WIDTH = 3
     NORMAL_COLOR = QColor(100, 200, 255)  # Light blue for normal state
     SELECTED_COLOR = QColor(255, 255, 100)  # Yellow for selected state
+    GROUP_SELECTION_COLOR = QColor(255, 150, 255)  # Magenta for group selection
     
     def __init__(self, route_data: RouteData, system_items_dict: Dict[str, 'SystemItem']):
         """Initialize the route graphics item.
@@ -149,6 +150,7 @@ class RouteItem(QGraphicsPathItem):
         self.route_data = route_data
         self.system_items = system_items_dict
         self.handles: List[RouteHandleItem] = []
+        self.is_group_selected = False  # Track if selected for grouping
         
         # Configure appearance
         self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
@@ -199,36 +201,67 @@ class RouteItem(QGraphicsPathItem):
         # If no control points, draw a straight line
         if not self.route_data.control_points:
             path.lineTo(end_pos)
+        elif len(self.route_data.control_points) == 1:
+            # With one control point, use quadratic curve
+            cp = self.route_data.control_points[0]
+            path.quadTo(QPointF(cp[0], cp[1]), end_pos)
         else:
-            # Draw a smooth curve through control points using cubic splines
-            # Convert control points to QPointF
-            control_qpoints = [QPointF(cp[0], cp[1]) for cp in self.route_data.control_points]
+            # With 2+ control points, create a smooth spline through all points
+            # Build list of all points: start -> control points -> end
+            all_points = [start_pos]
+            for cp in self.route_data.control_points:
+                all_points.append(QPointF(cp[0], cp[1]))
+            all_points.append(end_pos)
             
-            if len(control_qpoints) == 1:
-                # With one control point, use quadratic curve
-                path.quadTo(control_qpoints[0], end_pos)
-            else:
-                # With multiple control points, use cubic curves
-                # Create smooth path through all points
-                all_points = [start_pos] + control_qpoints + [end_pos]
+            # Use a simple Catmull-Rom-like spline that passes through all control points
+            # For each segment, use cubic bezier with control points derived from neighbors
+            for i in range(len(all_points) - 1):
+                p0 = all_points[i]
+                p1 = all_points[i + 1]
                 
-                # Use cubic bezier curves to create smooth path
-                for i in range(len(all_points) - 1):
-                    if i == 0:
-                        # First segment
-                        p0 = all_points[i]
-                        p1 = all_points[i + 1]
-                        # Control point 1/3 of the way
-                        c1 = QPointF(p0.x() + (p1.x() - p0.x()) / 3, 
-                                    p0.y() + (p1.y() - p0.y()) / 3)
-                        # Control point 2/3 of the way
-                        c2 = QPointF(p0.x() + 2 * (p1.x() - p0.x()) / 3,
-                                    p0.y() + 2 * (p1.y() - p0.y()) / 3)
-                        path.cubicTo(c1, c2, p1)
+                # Calculate tangent directions based on neighbors
+                if i == 0:
+                    # First segment: tangent from current to next
+                    if len(all_points) > 2:
+                        tangent_out = QPointF(
+                            (all_points[i + 1].x() - p0.x()) * 0.5,
+                            (all_points[i + 1].y() - p0.y()) * 0.5
+                        )
                     else:
-                        # Subsequent segments
-                        p1 = all_points[i + 1]
-                        path.lineTo(p1)
+                        tangent_out = QPointF(
+                            (p1.x() - p0.x()) * 0.3,
+                            (p1.y() - p0.y()) * 0.3
+                        )
+                else:
+                    # Use previous and next points for tangent
+                    tangent_out = QPointF(
+                        (p1.x() - all_points[i - 1].x()) * 0.3,
+                        (p1.y() - all_points[i - 1].y()) * 0.3
+                    )
+                
+                if i == len(all_points) - 2:
+                    # Last segment: tangent to endpoint
+                    if len(all_points) > 2:
+                        tangent_in = QPointF(
+                            (p1.x() - all_points[i].x()) * 0.5,
+                            (p1.y() - all_points[i].y()) * 0.5
+                        )
+                    else:
+                        tangent_in = QPointF(
+                            (p1.x() - p0.x()) * 0.3,
+                            (p1.y() - p0.y()) * 0.3
+                        )
+                else:
+                    # Use neighbors for smooth tangent
+                    tangent_in = QPointF(
+                        (all_points[i + 2].x() - p0.x()) * 0.3,
+                        (all_points[i + 2].y() - p0.y()) * 0.3
+                    )
+                
+                # Create cubic bezier curve
+                c1 = QPointF(p0.x() + tangent_out.x(), p0.y() + tangent_out.y())
+                c2 = QPointF(p1.x() - tangent_in.x(), p1.y() - tangent_in.y())
+                path.cubicTo(c1, c2, p1)
         
         self.setPath(path)
     
@@ -272,13 +305,10 @@ class RouteItem(QGraphicsPathItem):
         """
         if change == QGraphicsPathItem.ItemSelectedHasChanged:
             # Update visual appearance when selection changes
+            self.update_visual_state()
             if self.isSelected():
-                self.setPen(QPen(self.SELECTED_COLOR, self.LINE_WIDTH, 
-                                Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
                 self.show_handles()
             else:
-                self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH,
-                                Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
                 self.hide_handles()
         
         return super().itemChange(change, value)
@@ -299,3 +329,35 @@ class RouteItem(QGraphicsPathItem):
             for i, handle in enumerate(self.handles):
                 x, y = self.route_data.control_points[i]
                 handle.setPos(QPointF(x, y))
+    
+    def update_name(self, name: str):
+        """Update the route name.
+        
+        Args:
+            name: New name for the route
+        """
+        self.route_data.name = name
+    
+    def set_group_selection(self, selected: bool):
+        """Set group selection state and update visual appearance.
+        
+        Args:
+            selected: Whether this route is selected for grouping
+        """
+        self.is_group_selected = selected
+        self.update_visual_state()
+    
+    def update_visual_state(self):
+        """Update visual appearance based on selection state."""
+        if self.is_group_selected:
+            # Use group selection color with thicker line
+            self.setPen(QPen(self.GROUP_SELECTION_COLOR, self.LINE_WIDTH + 1, 
+                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        elif self.isSelected():
+            # Use normal selected color
+            self.setPen(QPen(self.SELECTED_COLOR, self.LINE_WIDTH, 
+                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        else:
+            # Use normal color
+            self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH,
+                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))

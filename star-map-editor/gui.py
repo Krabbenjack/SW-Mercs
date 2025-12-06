@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
-    QGraphicsPathItem
+    QGraphicsPathItem, QInputDialog
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath
@@ -24,6 +24,7 @@ from core import (
     MapProject, TemplateData, SystemData, SystemItem, 
     SystemDialog, TemplateItem, RouteData, RouteItem
 )
+from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
 
 
@@ -86,6 +87,9 @@ class MapView(QGraphicsView):
     
     # Signal emitted when user clicks in routes mode
     route_click = Signal(QPointF)  # (position)
+    
+    # Signal emitted when a route is toggled for group selection
+    route_group_toggle = Signal(str)  # (route_id)
     
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
@@ -265,10 +269,27 @@ class MapView(QGraphicsView):
         # In routes mode, handle clicks for route creation
         elif self.routes_mode_active:
             if event.button() == Qt.LeftButton:
+                # Check if CTRL is pressed for group selection
+                if event.modifiers() & Qt.ControlModifier:
+                    item = self.itemAt(event.pos())
+                    if isinstance(item, RouteItem):
+                        # Toggle route for group selection
+                        self.toggle_route_group_selection(item)
+                        event.accept()
+                        return
+                
                 scene_pos = self.mapToScene(event.pos())
                 # Emit signal for route click handling (will be handled by main window)
                 self.route_click.emit(scene_pos)
                 event.accept()
+            elif event.button() == Qt.RightButton:
+                # Right click on route - show context menu
+                item = self.itemAt(event.pos())
+                if isinstance(item, RouteItem):
+                    self.show_route_context_menu(event.globalPos(), item)
+                    event.accept()
+                    return
+                super().mousePressEvent(event)
             else:
                 super().mousePressEvent(event)
         # In systems mode, handle clicks for placement/editing
@@ -340,6 +361,41 @@ class MapView(QGraphicsView):
                 self.dragging_item = False
             super().mouseReleaseEvent(event)
     
+    def show_route_context_menu(self, global_pos, route_item: RouteItem):
+        """Show context menu for a route.
+        
+        Args:
+            global_pos: Global position for the menu
+            route_item: The RouteItem to show menu for
+        """
+        menu = QMenu()
+        rename_action = menu.addAction("Rename Route")
+        
+        action = menu.exec(global_pos)
+        if action == rename_action:
+            # Show rename dialog
+            route_data = route_item.get_route_data()
+            new_name, ok = QInputDialog.getText(
+                self,
+                "Rename Route",
+                "Enter new name for route:",
+                text=route_data.name
+            )
+            if ok and new_name and new_name.strip():
+                route_item.update_name(new_name.strip())
+                # Emit signal to mark unsaved changes
+                self.item_modified.emit()
+    
+    def toggle_route_group_selection(self, route_item: RouteItem):
+        """Toggle a route's group selection state.
+        
+        Args:
+            route_item: The RouteItem to toggle
+        """
+        # Emit signal to let main window handle the logic
+        route_id = route_item.get_route_data().id
+        self.route_group_toggle.emit(route_id)
+    
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
         
@@ -375,6 +431,7 @@ class StarMapEditor(QMainWindow):
         self.template_items: Dict[str, TemplateItem] = {}  # id -> TemplateItem
         self.system_items: Dict[str, SystemItem] = {}  # id -> SystemItem
         self.route_items: Dict[str, RouteItem] = {}  # id -> RouteItem
+        self.route_group_labels: Dict[str, QGraphicsTextItem] = {}  # group_id -> label
         
         # Current mode
         self.current_mode = None  # None, 'template', 'systems', 'routes', 'zones'
@@ -388,6 +445,12 @@ class StarMapEditor(QMainWindow):
         # Route creation state
         self.route_creation_start_system_id: Optional[str] = None
         self.route_preview_line: Optional[QGraphicsPathItem] = None
+        
+        # Route group selection state
+        self.routes_selected_for_group: set[str] = set()  # Track route IDs selected for grouping
+        
+        # Theme state
+        self.is_dark_mode = True  # Default to dark mode
         
         self.init_ui()
     
@@ -466,6 +529,11 @@ class StarMapEditor(QMainWindow):
         main_layout.addWidget(self.workspace_toolbar)
         self.workspace_toolbar.hide()
         
+        # Create routes workspace toolbar (visible only in routes mode)
+        self.routes_toolbar = self.create_routes_toolbar()
+        main_layout.addWidget(self.routes_toolbar)
+        self.routes_toolbar.hide()
+        
         # Status label for mode indication
         self.status_label = QLabel()
         self.status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
@@ -478,12 +546,16 @@ class StarMapEditor(QMainWindow):
         self.view.setFocusPolicy(Qt.StrongFocus)
         self.view.system_click.connect(self.handle_system_click)
         self.view.route_click.connect(self.handle_route_click)
+        self.view.route_group_toggle.connect(self.toggle_route_for_group)
         self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
         
         main_layout.addWidget(self.view)
+        
+        # Apply dark mode by default
+        self.apply_dark_mode()
         
         self.show()
     
@@ -535,6 +607,23 @@ class StarMapEditor(QMainWindow):
         quit_action.setShortcut('Ctrl+Q')
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
+        
+        # View menu
+        view_menu = menubar.addMenu('&View')
+        
+        # Dark Mode action
+        self.dark_mode_action = QAction('&Dark Mode', self)
+        self.dark_mode_action.setCheckable(True)
+        self.dark_mode_action.setChecked(True)  # Default to dark mode
+        self.dark_mode_action.triggered.connect(self.apply_dark_mode)
+        view_menu.addAction(self.dark_mode_action)
+        
+        # Light Mode action
+        self.light_mode_action = QAction('&Light Mode', self)
+        self.light_mode_action.setCheckable(True)
+        self.light_mode_action.setChecked(False)
+        self.light_mode_action.triggered.connect(self.apply_light_mode)
+        view_menu.addAction(self.light_mode_action)
     
     def create_workspace_toolbar(self) -> QWidget:
         """Create the workspace toolbar for template mode."""
@@ -600,6 +689,120 @@ class StarMapEditor(QMainWindow):
         
         return toolbar_widget
     
+    def create_routes_toolbar(self) -> QWidget:
+        """Create the workspace toolbar for routes mode."""
+        toolbar_widget = QWidget()
+        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
+        toolbar_layout = QHBoxLayout(toolbar_widget)
+        toolbar_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Current Route label
+        self.current_route_label = QLabel('Current Route: None')
+        self.current_route_label.setStyleSheet("font-weight: bold; color: #333;")
+        toolbar_layout.addWidget(self.current_route_label)
+        
+        toolbar_layout.addSpacing(20)
+        
+        # Add Control Point button
+        self.add_control_point_btn = QPushButton('Add Control Point')
+        self.add_control_point_btn.clicked.connect(self.add_control_point_to_route)
+        self.add_control_point_btn.setEnabled(False)  # Disabled by default
+        toolbar_layout.addWidget(self.add_control_point_btn)
+        
+        # Create Route Group button
+        self.create_group_btn = QPushButton('Create Route Group')
+        self.create_group_btn.clicked.connect(self.create_route_group_dialog)
+        toolbar_layout.addWidget(self.create_group_btn)
+        
+        # Info label
+        info_label = QLabel('CTRL+Click routes to select for grouping')
+        info_label.setStyleSheet("color: #555; font-style: italic;")
+        toolbar_layout.addWidget(info_label)
+        
+        toolbar_layout.addStretch()
+        
+        return toolbar_widget
+    
+    # ===== Theme Management =====
+    
+    def apply_dark_mode(self):
+        """Apply dark mode theme to the application."""
+        if not self.dark_mode_action.isChecked():
+            # User unchecked dark mode, switch to light
+            self.light_mode_action.setChecked(True)
+            self.apply_light_mode()
+            return
+        
+        # Uncheck light mode
+        self.light_mode_action.setChecked(False)
+        self.is_dark_mode = True
+        
+        # Set dark background for the scene
+        self.scene.setBackgroundBrush(QColor(5, 8, 20))  # ≈ #050814
+        
+        # Update grid color for dark mode
+        self.scene.grid_color = QColor(144, 238, 144, 80)  # Lighter, more transparent green
+        
+        # Update route colors for better visibility on dark background
+        RouteItem.NORMAL_COLOR = QColor(100, 200, 255)  # Light blue
+        RouteItem.SELECTED_COLOR = QColor(255, 255, 100)  # Yellow
+        RouteItem.GROUP_SELECTION_COLOR = QColor(255, 150, 255)  # Magenta
+        
+        # Update all existing routes
+        for route_item in self.route_items.values():
+            route_item.update_visual_state()
+        
+        # Update system label colors
+        for system_item in self.system_items.values():
+            if hasattr(system_item, 'label'):
+                system_item.label.setDefaultTextColor(Qt.white)
+        
+        # Update route group label colors
+        for label in self.route_group_labels.values():
+            label.setDefaultTextColor(QColor(200, 220, 255))
+        
+        # Force scene update
+        self.scene.update()
+    
+    def apply_light_mode(self):
+        """Apply light mode theme to the application."""
+        if not self.light_mode_action.isChecked():
+            # User unchecked light mode, switch to dark
+            self.dark_mode_action.setChecked(True)
+            self.apply_dark_mode()
+            return
+        
+        # Uncheck dark mode
+        self.dark_mode_action.setChecked(False)
+        self.is_dark_mode = False
+        
+        # Set light background for the scene
+        self.scene.setBackgroundBrush(QColor(240, 240, 240))  # Light gray
+        
+        # Update grid color for light mode
+        self.scene.grid_color = QColor(100, 150, 100, 128)  # Darker green, more visible
+        
+        # Update route colors for better visibility on light background
+        RouteItem.NORMAL_COLOR = QColor(50, 100, 200)  # Darker blue
+        RouteItem.SELECTED_COLOR = QColor(200, 150, 0)  # Dark yellow/gold
+        RouteItem.GROUP_SELECTION_COLOR = QColor(200, 50, 200)  # Dark magenta
+        
+        # Update all existing routes
+        for route_item in self.route_items.values():
+            route_item.update_visual_state()
+        
+        # Update system label colors
+        for system_item in self.system_items.values():
+            if hasattr(system_item, 'label'):
+                system_item.label.setDefaultTextColor(Qt.black)
+        
+        # Update route group label colors
+        for label in self.route_group_labels.values():
+            label.setDefaultTextColor(QColor(0, 0, 100))
+        
+        # Force scene update
+        self.scene.update()
+    
     # ===== File Menu Actions =====
     
     def new_project(self):
@@ -613,6 +816,7 @@ class StarMapEditor(QMainWindow):
         self.template_items.clear()
         self.system_items.clear()
         self.route_items.clear()
+        self.route_group_labels.clear()
         self.current_file_path = None
         self.unsaved_changes = False
         
@@ -651,6 +855,7 @@ class StarMapEditor(QMainWindow):
                 self.template_items.clear()
                 self.system_items.clear()
                 self.route_items.clear()
+                self.route_group_labels.clear()
                 
                 # Load project
                 self.project = project
@@ -668,6 +873,9 @@ class StarMapEditor(QMainWindow):
                 # Restore routes
                 for route_data in self.project.routes.values():
                     self.add_route_to_scene(route_data)
+                
+                # Restore route group labels
+                self.rebuild_route_group_labels()
                 
                 # Enable grid if there are templates
                 if self.project.templates:
@@ -847,7 +1055,7 @@ class StarMapEditor(QMainWindow):
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click a start system, then an end system. Select routes to show/drag control points.")
+            self.status_label.setText("Routes mode: Click a start system, then an end system. Select a route to show control points and edit the curve.")
         else:
             self.status_label.setText("Ready")
     
@@ -883,12 +1091,22 @@ class StarMapEditor(QMainWindow):
         # Clear route creation state when leaving routes mode
         if mode != 'routes':
             self.cancel_route_creation()
+            # Clear group selection when leaving routes mode
+            for route_id in list(self.routes_selected_for_group):
+                if route_id in self.route_items:
+                    self.route_items[route_id].set_group_selection(False)
+            self.routes_selected_for_group.clear()
         
-        # Show/hide workspace toolbar
+        # Show/hide workspace toolbars
         if mode == 'template':
             self.workspace_toolbar.show()
+            self.routes_toolbar.hide()
+        elif mode == 'routes':
+            self.workspace_toolbar.hide()
+            self.routes_toolbar.show()
         else:
             self.workspace_toolbar.hide()
+            self.routes_toolbar.hide()
         
         # Update status
         self.update_status_message()
@@ -1023,14 +1241,17 @@ class StarMapEditor(QMainWindow):
         # Find selected template
         selected_items = self.scene.selectedItems()
         template_selected = None
+        route_selected = None
         
         for item in selected_items:
             if isinstance(item, TemplateItem):
                 template_selected = item
-                break
+            elif isinstance(item, RouteItem):
+                route_selected = item
         
         self.selected_template = template_selected
         self.update_workspace_controls()
+        self.update_route_workspace_controls(route_selected)
     
     def on_item_modified(self):
         """Handle item modification (movement, etc.)."""
@@ -1065,6 +1286,166 @@ class StarMapEditor(QMainWindow):
             self.lock_btn.setText('Lock Template')
             self.opacity_slider.setValue(100)
             self.opacity_label.setText('100%')
+    
+    def update_route_workspace_controls(self, route_selected: Optional[RouteItem]):
+        """Update route workspace controls based on selection.
+        
+        Args:
+            route_selected: The selected RouteItem, or None if no route selected
+        """
+        if hasattr(self, 'current_route_label'):
+            if route_selected:
+                route_name = route_selected.get_route_data().name
+                self.current_route_label.setText(f'Current Route: {route_name}')
+            else:
+                self.current_route_label.setText('Current Route: None')
+        
+        # Update Add Control Point button state
+        if hasattr(self, 'add_control_point_btn'):
+            self.add_control_point_btn.setEnabled(route_selected is not None)
+    
+    def add_control_point_to_route(self):
+        """Add a new control point to the selected route."""
+        # Find the selected route
+        selected_items = self.scene.selectedItems()
+        route_item = None
+        for item in selected_items:
+            if isinstance(item, RouteItem):
+                route_item = item
+                break
+        
+        if not route_item:
+            return
+        
+        route_data = route_item.get_route_data()
+        
+        # Build list of all points: start -> control points -> end
+        start_pos = route_item.get_start_position()
+        end_pos = route_item.get_end_position()
+        
+        if start_pos is None or end_pos is None:
+            return
+        
+        # Strategy: Add new control point at midpoint of last segment
+        if not route_data.control_points:
+            # No control points yet - add at midpoint
+            new_x = (start_pos.x() + end_pos.x()) / 2.0
+            new_y = (start_pos.y() + end_pos.y()) / 2.0
+        else:
+            # Add between last control point and end
+            last_cp = route_data.control_points[-1]
+            new_x = (last_cp[0] + end_pos.x()) / 2.0
+            new_y = (last_cp[1] + end_pos.y()) / 2.0
+        
+        # Add the new control point
+        route_data.control_points.append((new_x, new_y))
+        
+        # Recompute path and handles
+        route_item.recompute_path()
+        if route_item.isSelected():
+            route_item.show_handles()
+        
+        self.mark_unsaved_changes()
+    
+    def add_route_group_label(self, route_group: RouteGroup):
+        """Add a label for a route group on the map.
+        
+        Args:
+            route_group: The RouteGroup to create a label for
+        """
+        # Remove existing label if any
+        if route_group.id in self.route_group_labels:
+            self.scene.removeItem(self.route_group_labels[route_group.id])
+            del self.route_group_labels[route_group.id]
+        
+        # Calculate position (center of all routes in the group)
+        position = self.calculate_route_group_center(route_group)
+        if position is None:
+            return
+        
+        # Create label
+        label = QGraphicsTextItem()
+        label.setPlainText(route_group.name)
+        label.setDefaultTextColor(QColor(200, 220, 255) if self.is_dark_mode else QColor(0, 0, 100))
+        font = QFont()
+        font.setPointSize(11)
+        font.setBold(True)
+        label.setFont(font)
+        
+        # Make it non-selectable and non-movable
+        label.setFlag(QGraphicsTextItem.ItemIsSelectable, False)
+        label.setFlag(QGraphicsTextItem.ItemIsMovable, False)
+        
+        # Position the label (centered on the group center)
+        label_bounds = label.boundingRect()
+        label.setPos(position.x() - label_bounds.width() / 2,
+                    position.y() - label_bounds.height() / 2)
+        
+        # Set z-order above routes but below systems
+        label.setZValue(7)
+        
+        # Add to scene and store
+        self.scene.addItem(label)
+        self.route_group_labels[route_group.id] = label
+    
+    def calculate_route_group_center(self, route_group: RouteGroup) -> Optional[QPointF]:
+        """Calculate the center position for a route group label.
+        
+        Args:
+            route_group: The RouteGroup to calculate center for
+            
+        Returns:
+            Center position, or None if no valid routes
+        """
+        if not route_group.route_ids:
+            return None
+        
+        # Collect midpoints of all routes in the group
+        midpoints = []
+        for route_id in route_group.route_ids:
+            if route_id not in self.route_items:
+                continue
+            
+            route_item = self.route_items[route_id]
+            start_pos = route_item.get_start_position()
+            end_pos = route_item.get_end_position()
+            
+            if start_pos and end_pos:
+                mid_x = (start_pos.x() + end_pos.x()) / 2.0
+                mid_y = (start_pos.y() + end_pos.y()) / 2.0
+                midpoints.append((mid_x, mid_y))
+        
+        if not midpoints:
+            return None
+        
+        # Average all midpoints
+        avg_x = sum(p[0] for p in midpoints) / len(midpoints)
+        avg_y = sum(p[1] for p in midpoints) / len(midpoints)
+        
+        return QPointF(avg_x, avg_y)
+    
+    def update_route_group_labels(self):
+        """Update positions of all route group labels."""
+        for group_id, route_group in self.project.route_groups.items():
+            if group_id in self.route_group_labels:
+                # Recalculate position
+                position = self.calculate_route_group_center(route_group)
+                if position:
+                    label = self.route_group_labels[group_id]
+                    label_bounds = label.boundingRect()
+                    label.setPos(position.x() - label_bounds.width() / 2,
+                               position.y() - label_bounds.height() / 2)
+    
+    def rebuild_route_group_labels(self):
+        """Rebuild all route group labels from scratch."""
+        # Remove all existing labels
+        for label in self.route_group_labels.values():
+            self.scene.removeItem(label)
+        self.route_group_labels.clear()
+        
+        # Add labels for all groups
+        for route_group in self.project.route_groups.values():
+            self.add_route_group_label(route_group)
     
     # ===== System Management =====
     
@@ -1219,11 +1600,21 @@ class StarMapEditor(QMainWindow):
             end_sys = self.project.systems[end_system_id]
             route_name = f"{start_sys.name} - {end_sys.name}"
             
+            # Auto-create a control point at midpoint
+            start_pos = self.system_items[start_system_id].pos()
+            end_pos = self.system_items[end_system_id].pos()
+            mid_x = (start_pos.x() + end_pos.x()) / 2.0
+            mid_y = (start_pos.y() + end_pos.y()) / 2.0
+            
             route_data = RouteData.create_new(route_name, start_system_id, end_system_id)
+            route_data.control_points.append((mid_x, mid_y))
             self.project.add_route(route_data)
             
             # Add to scene
-            self.add_route_to_scene(route_data)
+            route_item = self.add_route_to_scene(route_data)
+            
+            # Auto-select the newly created route to show handles immediately
+            route_item.setSelected(True)
             
             # Reset creation state
             self.cancel_route_creation()
@@ -1290,6 +1681,61 @@ class StarMapEditor(QMainWindow):
         """Update all routes when systems have been moved."""
         for route_item in self.route_items.values():
             route_item.update_from_system_movement()
+        # Also update route group label positions
+        self.update_route_group_labels()
+    
+    def toggle_route_for_group(self, route_id: str):
+        """Toggle a route's selection for group creation.
+        
+        Args:
+            route_id: ID of the route to toggle
+        """
+        if route_id in self.routes_selected_for_group:
+            # Deselect
+            self.routes_selected_for_group.remove(route_id)
+            if route_id in self.route_items:
+                self.route_items[route_id].set_group_selection(False)
+        else:
+            # Select
+            self.routes_selected_for_group.add(route_id)
+            if route_id in self.route_items:
+                self.route_items[route_id].set_group_selection(True)
+    
+    def create_route_group_dialog(self):
+        """Show dialog to create a named route group from selected routes."""
+        if not self.routes_selected_for_group:
+            QMessageBox.warning(
+                self,
+                "No Routes Selected",
+                "Please select routes using CTRL+click before creating a group."
+            )
+            return
+        
+        name, ok = QInputDialog.getText(
+            self,
+            "Create Route Group",
+            f"Enter name for group ({len(self.routes_selected_for_group)} routes selected):"
+        )
+        
+        if ok and name and name.strip():
+            route_group = RouteGroup.create_new(name.strip(), list(self.routes_selected_for_group))
+            self.project.add_route_group(route_group)
+            
+            # Clear selection and highlight
+            for route_id in list(self.routes_selected_for_group):
+                if route_id in self.route_items:
+                    self.route_items[route_id].set_group_selection(False)
+            self.routes_selected_for_group.clear()
+            
+            # Add label for the new group
+            self.add_route_group_label(route_group)
+            
+            self.mark_unsaved_changes()
+            QMessageBox.information(
+                self,
+                "Route Group Created",
+                f"Route group '{route_group.name}' created with {len(route_group.route_ids)} routes."
+            )
     
     # ===== Placeholder Mode Actions =====
     
@@ -1314,6 +1760,7 @@ class StarMapEditor(QMainWindow):
 Templates: {len(self.project.templates)}
 Systems: {len(self.project.systems)}
 Routes: {len(self.project.routes)}
+Route Groups: {len(self.project.route_groups)}
 Zones: {len(self.project.zones)}
 """
         QMessageBox.information(
