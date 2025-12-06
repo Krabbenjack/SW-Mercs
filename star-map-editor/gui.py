@@ -22,7 +22,7 @@ from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEven
 
 from core import (
     MapProject, TemplateData, SystemData, SystemItem, 
-    SystemDialog, TemplateItem, RouteData, RouteItem, RouteHandleItem
+    SystemDialog, TemplateItem, RouteData, RouteItem
 )
 from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
@@ -94,9 +94,6 @@ class MapView(QGraphicsView):
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
     
-    # Signal emitted when inserting a control point on a route
-    control_point_insert = Signal(object, QPointF)  # (route_item, position)
-    
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -138,8 +135,11 @@ class MapView(QGraphicsView):
         # Item drag tracking
         self.dragging_item = False
         
-        # P key state for adding control points
-        self.p_key_pressed = False
+        # Ghost-line drawing state for routes
+        self.g_key_pressed = False  # G key for ghost-line drawing
+        self.drawing_ghost_line = False
+        self.ghost_line_stroke = []  # List of QPointF during ghost-line draw
+        self.ghost_line_route = None  # RouteItem being shaped
 
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
@@ -200,7 +200,7 @@ class MapView(QGraphicsView):
         self.scene().update()
         
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle key press for continuous WASD/Arrow panning and Space for mouse pan."""
+        """Handle key press for continuous WASD/Arrow panning, Space for mouse pan, and G for ghost-line."""
         if event.key() in (Qt.Key_W, Qt.Key_S, Qt.Key_A, Qt.Key_D,
                           Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right):
             self.keys_pressed.add(event.key())
@@ -210,8 +210,8 @@ class MapView(QGraphicsView):
         elif event.key() == Qt.Key_Space:
             self.space_pressed = True
             event.accept()
-        elif event.key() == Qt.Key_P:
-            self.p_key_pressed = True
+        elif event.key() == Qt.Key_G:
+            self.g_key_pressed = True
             event.accept()
         else:
             super().keyPressEvent(event)
@@ -230,8 +230,8 @@ class MapView(QGraphicsView):
                 self.is_panning = False
                 self.setCursor(Qt.ArrowCursor)
             event.accept()
-        elif event.key() == Qt.Key_P:
-            self.p_key_pressed = False
+        elif event.key() == Qt.Key_G:
+            self.g_key_pressed = False
             event.accept()
         else:
             super().keyReleaseEvent(event)
@@ -270,11 +270,10 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning, system placement, route creation, and template selection.
+        """Handle mouse press for panning, system placement, route creation, and ghost-line drawing.
         
         In routes mode:
-        - Click on RouteHandleItem: Allow dragging the control point
-        - P + Click on RouteItem: Insert a new control point at the click position
+        - G + Click and drag on route: Draw ghost-line to reshape route
         - Ctrl + Click on RouteItem: Toggle route for group selection
         - Click on RouteItem: Select the route
         - Click on SystemItem: Select system for route creation
@@ -287,21 +286,18 @@ class MapView(QGraphicsView):
             self.pan_start_pos = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
-        # In routes mode, handle clicks for route creation and control point insertion
+        # In routes mode, handle clicks for route creation and ghost-line drawing
         elif self.routes_mode_active:
             if event.button() == Qt.LeftButton:
                 # Get item at click position
                 item = self.itemAt(event.pos())
                 
-                # If clicking on a RouteHandleItem, let it handle the event (for dragging)
-                if isinstance(item, RouteHandleItem):
-                    super().mousePressEvent(event)
-                    return
-                
-                # If P key is pressed and clicking on a RouteItem, insert control point
-                if self.p_key_pressed and isinstance(item, RouteItem):
-                    scene_pos = self.mapToScene(event.pos())
-                    self.insert_control_point_on_route(item, scene_pos)
+                # If G key is pressed and clicking on a RouteItem, start ghost-line drawing
+                if self.g_key_pressed and isinstance(item, RouteItem):
+                    self.drawing_ghost_line = True
+                    self.ghost_line_route = item
+                    self.ghost_line_stroke = [self.mapToScene(event.pos())]
+                    self.setCursor(Qt.CrossCursor)
                     event.accept()
                     return
                 
@@ -366,7 +362,7 @@ class MapView(QGraphicsView):
             super().mousePressEvent(event)
     
     def mouseMoveEvent(self, event):
-        """Handle mouse move for panning."""
+        """Handle mouse move for panning and ghost-line drawing."""
         if self.is_panning and self.pan_start_pos is not None:
             # Calculate delta
             delta = event.pos() - self.pan_start_pos
@@ -383,15 +379,30 @@ class MapView(QGraphicsView):
             # Update the scene to refresh grid
             self.scene().update()
             event.accept()
+        elif self.drawing_ghost_line:
+            # Collect points during ghost-line drawing
+            scene_pos = self.mapToScene(event.pos())
+            self.ghost_line_stroke.append(scene_pos)
+            event.accept()
         else:
             super().mouseMoveEvent(event)
     
     def mouseReleaseEvent(self, event):
-        """Handle mouse release to stop panning and track item movements."""
+        """Handle mouse release to stop panning, track item movements, and finish ghost-line drawing."""
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.is_panning):
             self.is_panning = False
             self.pan_start_pos = None
+            self.setCursor(Qt.ArrowCursor)
+            event.accept()
+        elif self.drawing_ghost_line and event.button() == Qt.LeftButton:
+            # Finish ghost-line drawing
+            if self.ghost_line_route and len(self.ghost_line_stroke) > 1:
+                self.ghost_line_route.set_shape_from_stroke(self.ghost_line_stroke)
+                self.item_modified.emit()  # Mark project as modified
+            self.drawing_ghost_line = False
+            self.ghost_line_route = None
+            self.ghost_line_stroke = []
             self.setCursor(Qt.ArrowCursor)
             event.accept()
         else:
@@ -410,10 +421,26 @@ class MapView(QGraphicsView):
         """
         menu = QMenu()
         rename_action = menu.addAction("Rename Route")
+        reset_action = menu.addAction("Reset to Straight Line")
         
         action = menu.exec(global_pos)
         if action == rename_action:
             # Show rename dialog
+            route_data = route_item.get_route_data()
+            new_name, ok = QInputDialog.getText(
+                self,
+                "Rename Route",
+                "Enter new name for route:",
+                text=route_data.name
+            )
+            if ok and new_name and new_name.strip():
+                route_item.update_name(new_name.strip())
+                # Emit signal to mark unsaved changes
+                self.item_modified.emit()
+        elif action == reset_action:
+            # Reset route to straight line
+            route_item.reset_to_straight_line()
+            self.item_modified.emit()
             route_data = route_item.get_route_data()
             new_name, ok = QInputDialog.getText(
                 self,
@@ -435,16 +462,6 @@ class MapView(QGraphicsView):
         # Emit signal to let main window handle the logic
         route_id = route_item.get_route_data().id
         self.route_group_toggle.emit(route_id)
-    
-    def insert_control_point_on_route(self, route_item: RouteItem, scene_pos: QPointF):
-        """Insert a control point on a route at the given position.
-        
-        Args:
-            route_item: The RouteItem to insert a control point on
-            scene_pos: Position in scene coordinates
-        """
-        # Emit signal to let main window handle the logic
-        self.control_point_insert.emit(route_item, scene_pos)
     
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
@@ -597,7 +614,6 @@ class StarMapEditor(QMainWindow):
         self.view.system_click.connect(self.handle_system_click)
         self.view.route_click.connect(self.handle_route_click)
         self.view.route_group_toggle.connect(self.toggle_route_for_group)
-        self.view.control_point_insert.connect(self.insert_control_point_on_route)
         self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
@@ -754,8 +770,8 @@ class StarMapEditor(QMainWindow):
         
         toolbar_layout.addSpacing(20)
         
-        # Info label for control point creation and deletion
-        info_label = QLabel('Press P + Click on route to add control point | Select handle and press Delete/Backspace to remove')
+        # Info label for ghost-line drawing
+        info_label = QLabel('Hold G and drag on route to draw shape | Right-click route → Reset to Straight Line')
         info_label.setStyleSheet("color: #555; font-style: italic;")
         toolbar_layout.addWidget(info_label)
         
@@ -1107,7 +1123,7 @@ class StarMapEditor(QMainWindow):
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click systems to create routes. Select route to edit. Press P + Click to add control point. Select handle and press Delete/Backspace to remove.")
+            self.status_label.setText("Routes mode: Click systems to create routes. Hold G and drag on route to shape it. Right-click for options.")
         else:
             self.status_label.setText("Ready")
     
@@ -1606,15 +1622,15 @@ class StarMapEditor(QMainWindow):
             end_sys = self.project.systems[end_system_id]
             route_name = f"{start_sys.name} - {end_sys.name}"
             
-            # Create route with no control points initially
-            # Users can add control points using P + Click
+            # Create route (starts as straight line)
+            # Users can shape it using G + drag gesture
             route_data = RouteData.create_new(route_name, start_system_id, end_system_id)
             self.project.add_route(route_data)
             
             # Add to scene
             route_item = self.add_route_to_scene(route_data)
             
-            # Auto-select the newly created route to show handles immediately
+            # Auto-select the newly created route
             route_item.setSelected(True)
             
             # Reset creation state
@@ -1701,16 +1717,6 @@ class StarMapEditor(QMainWindow):
             self.routes_selected_for_group.add(route_id)
             if route_id in self.route_items:
                 self.route_items[route_id].set_group_selection(True)
-    
-    def insert_control_point_on_route(self, route_item: RouteItem, scene_pos: QPointF):
-        """Insert a control point on a route at the given position.
-        
-        Args:
-            route_item: The RouteItem to insert a control point on
-            scene_pos: Position in scene coordinates
-        """
-        route_item.insert_control_point(scene_pos)
-        self.mark_unsaved_changes()
     
     def create_route_group_dialog(self):
         """Show dialog to create a named route group from selected routes."""
