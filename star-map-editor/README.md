@@ -33,6 +33,22 @@ Run the application from the star-map-editor directory:
 python main.py
 ```
 
+## Testing
+
+The application currently uses manual testing procedures. To test the application:
+
+1. **Run the application**: `python main.py`
+2. **Follow test procedures**: See [TESTING.md](TESTING.md) for comprehensive test cases
+3. **Verify installation**: Run `python verify_installation.py` to check setup
+
+**Note**: Automated tests are planned for future development. Current testing focuses on:
+- File operations (New, Open, Save, Export)
+- Template management (Load, Move, Scale, Lock, Opacity)
+- System placement and editing
+- Route creation and editing
+- Navigation controls (Zoom, Pan)
+- Mode switching and UI interactions
+
 ## Project Structure
 
 ```
