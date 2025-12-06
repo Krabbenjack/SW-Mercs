@@ -305,7 +305,8 @@ class RouteItem(QGraphicsPathItem):
     def hide_handles(self):
         """Hide control point handles."""
         for handle in self.handles:
-            self.scene().removeItem(handle)
+            if self.scene():
+                self.scene().removeItem(handle)
         self.handles.clear()
     
     def itemChange(self, change, value):
