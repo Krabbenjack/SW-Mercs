@@ -62,11 +62,13 @@ class RouteHandleItem(QGraphicsEllipseItem):
     """Draggable control point handle for route editing.
     
     Displays as a small circle that can be dragged to adjust the route curve.
+    Can be deleted by selecting and pressing Delete/Backspace.
     """
     
     RADIUS = 8  # Handle radius in scene units (increased for better visibility)
     NORMAL_COLOR = QColor(255, 180, 0)  # Bright orange for normal state
     HOVER_COLOR = QColor(255, 100, 0)  # Vivid orange for hover
+    SELECTED_COLOR = QColor(255, 50, 50)  # Red for selected state
     
     def __init__(self, index: int, position: QPointF, parent: 'RouteItem'):
         """Initialize the handle item.
@@ -92,25 +94,28 @@ class RouteHandleItem(QGraphicsEllipseItem):
         
         # Enable interaction
         self.setFlag(QGraphicsEllipseItem.ItemIsMovable, True)
-        self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, False)
+        self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, True)  # Changed to True for deletion
         self.setFlag(QGraphicsEllipseItem.ItemSendsGeometryChanges, True)
         self.setAcceptHoverEvents(True)
+        self.setFlag(QGraphicsEllipseItem.ItemIsFocusable, True)  # Enable focus for key events
         
         # Higher z-value so handles are on top of the route
         self.setZValue(100)
     
     def hoverEnterEvent(self, event):
         """Handle mouse hover enter."""
-        self.setBrush(QBrush(self.HOVER_COLOR))
+        if not self.isSelected():
+            self.setBrush(QBrush(self.HOVER_COLOR))
         super().hoverEnterEvent(event)
     
     def hoverLeaveEvent(self, event):
         """Handle mouse hover leave."""
-        self.setBrush(QBrush(self.NORMAL_COLOR))
+        if not self.isSelected():
+            self.setBrush(QBrush(self.NORMAL_COLOR))
         super().hoverLeaveEvent(event)
     
     def itemChange(self, change, value):
-        """Handle item changes, particularly position updates.
+        """Handle item changes, particularly position and selection updates.
         
         Args:
             change: The type of change
@@ -123,8 +128,27 @@ class RouteHandleItem(QGraphicsEllipseItem):
             # Notify parent route that this handle moved
             self.route_item.handle_moved(self.control_point_index, self.pos())
             self._is_being_dragged = True
+        elif change == QGraphicsEllipseItem.ItemSelectedHasChanged:
+            # Update visual state when selection changes
+            if self.isSelected():
+                self.setBrush(QBrush(self.SELECTED_COLOR))
+            else:
+                self.setBrush(QBrush(self.NORMAL_COLOR))
         
         return super().itemChange(change, value)
+    
+    def keyPressEvent(self, event):
+        """Handle key press events for handle deletion.
+        
+        Args:
+            event: The key press event
+        """
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            # Request deletion from parent route
+            self.route_item.delete_control_point(self.control_point_index)
+            event.accept()
+        else:
+            super().keyPressEvent(event)
     
     def mouseReleaseEvent(self, event):
         """Handle mouse release to notify scene of modification."""
@@ -425,6 +449,33 @@ class RouteItem(QGraphicsPathItem):
         self.recompute_path()
         if self.isSelected():
             self.show_handles()
+    
+    def delete_control_point(self, index: int):
+        """Delete a control point at the given index.
+        
+        Args:
+            index: Index of the control point to delete
+        """
+        # Validate index
+        if index < 0 or index >= len(self.route_data.control_points):
+            return
+        
+        # Remove the control point from data
+        del self.route_data.control_points[index]
+        
+        # Recompute path
+        self.recompute_path()
+        
+        # Rebuild handles (this will remove the deleted handle and renumber the rest)
+        if self.isSelected():
+            self.show_handles()
+        
+        # Notify scene that item was modified
+        if self.scene():
+            for view in self.scene().views():
+                if hasattr(view, 'item_modified'):
+                    view.item_modified.emit()
+                    break
     
     def _point_to_segment_distance(self, point: QPointF, seg_start: QPointF, seg_end: QPointF) -> float:
         """Calculate the distance from a point to a line segment.

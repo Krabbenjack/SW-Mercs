@@ -754,8 +754,8 @@ class StarMapEditor(QMainWindow):
         
         toolbar_layout.addSpacing(20)
         
-        # Info label for control point creation
-        info_label = QLabel('Press P + Click on route to add control point')
+        # Info label for control point creation and deletion
+        info_label = QLabel('Press P + Click on route to add control point | Select handle and press Delete/Backspace to remove')
         info_label.setStyleSheet("color: #555; font-style: italic;")
         toolbar_layout.addWidget(info_label)
         
@@ -1107,7 +1107,7 @@ class StarMapEditor(QMainWindow):
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click systems to create routes. Select route to edit. Press P + Click on route to add control point.")
+            self.status_label.setText("Routes mode: Click systems to create routes. Select route to edit. Press P + Click to add control point. Select handle and press Delete/Backspace to remove.")
         else:
             self.status_label.setText("Ready")
     
