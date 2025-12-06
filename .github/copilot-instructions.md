@@ -4,10 +4,10 @@
 
 This repository contains **Star Map Editor**, a Python desktop application for creating and editing Star Wars-inspired galactic maps.
 
-- **Technology Stack**: Python 3.10+, PyQt5
+- **Technology Stack**: Python 3.10+, PySide6
 - **Application Type**: Desktop GUI application
-- **Main Entry Point**: `src/main.py`
-- **Primary GUI Module**: `src/gui.py`
+- **Main Entry Point**: `star-map-editor/main.py`
+- **Primary GUI Module**: `star-map-editor/gui.py`
 
 ## Project Vision
 
@@ -29,18 +29,22 @@ The Star Map Editor is a tool for creating 2D galactic maps with the following c
 
 Keep the codebase well-organized and maintainable:
 
-- **`src/main.py`**: Minimal application startup and window creation only
-- **`src/gui.py`**: All PyQt5 UI logic (windows, widgets, views, dialogs)
-- **`src/models.py`**: Data structures (systems, routes, zones, companies, etc.)
-- **`src/io.py`**: JSON import/export functionality
-- **`src/simulation/`**: Future economy and convoy simulation logic
+- **`star-map-editor/main.py`**: Minimal application startup and window creation only
+- **`star-map-editor/gui.py`**: All PySide6 UI logic (windows, widgets, views, dialogs)
+- **`star-map-editor/core/project_model.py`**: Core data structures (MapProject, TemplateData)
+- **`star-map-editor/core/systems.py`**: System data structures and graphics (SystemData, SystemItem, SystemDialog)
+- **`star-map-editor/core/routes.py`**: Route data structures and graphics (RouteData, RouteItem, RouteHandleItem)
+- **`star-map-editor/core/templates.py`**: Template graphics management (TemplateItem)
+- **`star-map-editor/core/project_io.py`**: Project save/load/export functionality
+- **`star-map-editor/core/__init__.py`**: Core module exports
 
 ### Separation of Concerns
 
 - Keep GUI code separate from business logic
-- Domain logic should not depend on PyQt5
+- Domain logic should not depend on PySide6 (except for Qt types like QPointF)
 - UI components should consume domain models, not define them
 - Use clear interfaces between layers
+- Graphics items (SystemItem, TemplateItem, RouteItem) are in core/ modules as they're tightly coupled with data models
 
 ## Coding Guidelines
 
@@ -68,15 +72,15 @@ Keep the codebase well-organized and maintainable:
 - Group related functionality in modules
 - Use `__init__.py` to expose public interfaces
 
-## PyQt5 Guidelines
+## PySide6 Guidelines
 
 ### Map View Architecture
 
 Use the Graphics View Framework for the map display:
 
-- **`QGraphicsView`**: Viewport for viewing the scene (subclass as `MapView`)
-- **`QGraphicsScene`**: Container for all graphical items
-- **Custom `QGraphicsItem`**: Implement grid overlay, systems, routes as items
+- **`QGraphicsView`**: Viewport for viewing the scene (subclassed as `MapView` in gui.py)
+- **`QGraphicsScene`**: Container for all graphical items (subclassed as `GridOverlay` in gui.py)
+- **Custom `QGraphicsItem`**: Grid overlay, systems, routes, templates as items
 
 ### Zoom and Pan Implementation
 
@@ -88,21 +92,21 @@ Implement in a custom `QGraphicsView` subclass (e.g., `MapView`):
 
 ### Grid Overlay
 
-- Implement as a custom `QGraphicsItem` overlay
-- Do NOT draw grid directly in the scene
-- Make grid semi-transparent
-- Update grid when view transforms change
+- Implemented as a custom `QGraphicsScene` subclass (`GridOverlay`) that draws in `drawForeground()`
+- Grid is drawn on top of all scene items
+- Grid is semi-transparent light green (144, 238, 144, 128)
+- Grid spacing is 100 scene units
+- Grid updates automatically when view transforms change
 
-### Loading Images
+### Loading Templates
 
-Follow this sequence when loading a background image:
+Follow this sequence when loading a template image:
 
-1. Clear the scene (`scene.clear()`)
-2. Add the pixmap to the scene (`scene.addPixmap()`)
-3. Add the grid overlay item
-4. Set scene rectangle to image bounds (`setSceneRect()`)
-5. Reset view transform
-6. Fit view to scene (`fitInView()`)
+1. Create `TemplateData` object with filepath
+2. Create `TemplateItem` from `TemplateData`
+3. Add item to scene (`scene.addItem()`)
+4. For first template: set scene rect, enable grid, fit view
+5. Store item in `template_items` dictionary by ID
 
 ### Best Practices
 
@@ -173,7 +177,8 @@ Use this structure for exporting/importing map data:
 
 - Avoid introducing external dependencies unless clearly justified
 - Document why new dependencies are needed
-- Prefer standard library and PyQt5 built-ins when possible
+- Prefer standard library and PySide6 built-ins when possible
+- Current dependencies: PySide6>=6.6 (see requirements.txt)
 
 ### File Handling
 
@@ -265,54 +270,67 @@ When requirements are unclear:
 ### Adding a New System to the Map
 
 ```python
-# In models.py
+# In core/systems.py
+from dataclasses import dataclass
+from PySide6.QtCore import QPointF
+
 @dataclass
-class System:
+class SystemData:
     id: str
     name: str
-    x: float
-    y: float
-    type: str = "standard"
-    population: int = 0
-    notes: str = ""
-
-# In gui.py (MapView)
-class SystemItem(QGraphicsItem):
-    def __init__(self, system: System):
-        super().__init__()
-        self.system = system
-        self.setPos(system.x, system.y)
+    position: QPointF
     
-    def paint(self, painter, option, widget):
-        # Draw system representation
-        pass
+    @classmethod
+    def create_new(cls, name: str, position: QPointF):
+        """Create a new system with a generated UUID."""
+        return cls(
+            id=str(uuid.uuid4()),
+            name=name,
+            position=position
+        )
+
+class SystemItem(QGraphicsEllipseItem):
+    """Graphics representation of a star system."""
+    def __init__(self, system_data: SystemData, parent=None):
+        super().__init__(parent)
+        self.system_data = system_data
+        self.setPos(system_data.position)
+        # ... configure appearance and interaction
 ```
 
 ### Handling File Operations
 
 ```python
-# In io.py
+# In core/project_io.py
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Optional
 
-def export_map(data: Dict[str, Any], file_path: Path) -> bool:
-    """Export map data to JSON file."""
+def save_project(project: MapProject, file_path: Path) -> bool:
+    """Save a map project to a .swmproj file."""
     try:
+        project_dict = {
+            "metadata": project.metadata,
+            "templates": [...],
+            "systems": [...],
+            "routes": [...]
+        }
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2)
+            json.dump(project_dict, f, indent=2)
         return True
     except Exception as e:
-        print(f"Error exporting map: {e}")
+        print(f"Error saving project: {e}")
         return False
 
-def import_map(file_path: Path) -> Dict[str, Any] | None:
-    """Import map data from JSON file."""
+def load_project(file_path: Path) -> Optional[MapProject]:
+    """Load a map project from a .swmproj file."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            project_dict = json.load(f)
+        # Reconstruct project from dict
+        return project
     except Exception as e:
-        print(f"Error importing map: {e}")
+        print(f"Error loading project: {e}")
         return None
 ```
 
@@ -330,13 +348,39 @@ Keep in mind these planned features when designing:
 
 Design with extensibility in mind, but don't over-engineer for features that don't exist yet.
 
+## Running the Application
+
+To run the Star Map Editor:
+
+```bash
+cd star-map-editor
+python main.py
+```
+
+To verify installation:
+
+```bash
+cd star-map-editor
+python verify_installation.py
+```
+
+## Testing
+
+Currently there are no automated tests. Testing is done manually:
+
+1. Run the application (`python main.py`)
+2. Follow test procedures in `star-map-editor/TESTING.md`
+3. Verify each feature works as documented
+
+Future improvement: Add automated tests for core data models and I/O operations.
+
 ## Summary
 
 When working on this project:
 
 - ✅ Make small, focused changes
 - ✅ Keep architecture clean (separate GUI from logic)
-- ✅ Use PyQt5 Graphics View Framework properly
+- ✅ Use PySide6 Graphics View Framework properly
 - ✅ Follow Python best practices
 - ✅ Maintain stable JSON schema
 - ✅ Test changes by running the application
