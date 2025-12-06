@@ -1,7 +1,7 @@
-"""Route management for the Star Map Editor - Ghost-Line System.
+"""Route management for the Star Map Editor - Polyline System.
 
 This module handles route data structures and graphics representation for
-creating curved routes between star systems using a ghost-line drawing approach.
+creating polyline routes between star systems by clicking control points.
 """
 
 import uuid
@@ -16,8 +16,8 @@ from PySide6.QtGui import QPainterPath, QPen, QColor
 class RouteData:
     """Data model for a hyperlane route between systems.
     
-    Routes are paths connecting two star systems. The shape is defined by
-    intermediate points that can be drawn freehand using a ghost-line gesture.
+    Routes are polyline paths connecting two star systems. The shape is defined by
+    intermediate control points that are clicked by the user during route creation.
     
     Attributes:
         id: Unique identifier for the route (UUID string)
@@ -26,7 +26,7 @@ class RouteData:
         end_system_id: ID of the ending system
         control_points: List of intermediate points defining the route's shape
                        (excluding start/end system positions which are added at render time)
-                       Renamed from old system but repurposed for ghost-line points
+                       These are the points clicked by user between start and end systems
     """
     id: str
     name: str
@@ -60,8 +60,8 @@ class RouteData:
 class RouteItem(QGraphicsPathItem):
     """Graphics representation of a route between systems.
     
-    Displays as a path (straight line or curved based on shape_points).
-    Shape can be modified by drawing a ghost-line with G/Shift + drag.
+    Displays as a polyline path through clicked control points.
+    Routes are NOT editable after creation - to modify, delete and redraw.
     """
     
     # Visual configuration
@@ -130,66 +130,6 @@ class RouteItem(QGraphicsPathItem):
             path.lineTo(end_pos)
         
         self.setPath(path)
-    
-    def set_shape_from_stroke(self, stroke_points: List[QPointF], decimate: bool = True, smooth: bool = True):
-        """Set the route's shape from a ghost-line stroke.
-        
-        Args:
-            stroke_points: Raw list of points from user's mouse drag
-            decimate: Whether to reduce the number of points
-            smooth: Whether to apply smoothing
-        """
-        if len(stroke_points) < 2:
-            # Not enough points, reset to straight line
-            self.route_data.control_points = []
-            self.recompute_path()
-            return
-        
-        # Start with the stroke points
-        points = stroke_points.copy()
-        
-        # Snap first and last to systems
-        start_pos = self.get_start_position()
-        end_pos = self.get_end_position()
-        if start_pos:
-            points[0] = start_pos
-        if end_pos:
-            points[-1] = end_pos
-        
-        # Decimate: keep every Nth point to reduce complexity
-        if decimate and len(points) > 10:
-            step = max(1, len(points) // 20)  # Keep ~20 points
-            decimated = [points[i] for i in range(0, len(points), step)]
-            # Always include the last point
-            if points[-1] not in decimated:
-                decimated.append(points[-1])
-            points = decimated
-        
-        # Simple smoothing: moving average
-        if smooth and len(points) > 3:
-            smoothed = [points[0]]  # Keep first point
-            for i in range(1, len(points) - 1):
-                # Average with neighbors
-                prev = points[i - 1]
-                curr = points[i]
-                next_p = points[i + 1]
-                avg_x = (prev.x() + curr.x() + next_p.x()) / 3.0
-                avg_y = (prev.y() + curr.y() + next_p.y()) / 3.0
-                smoothed.append(QPointF(avg_x, avg_y))
-            smoothed.append(points[-1])  # Keep last point
-            points = smoothed
-        
-        # Store as shape points (excluding start/end which come from systems)
-        # Skip first and last point since they're system positions
-        self.route_data.control_points = [(p.x(), p.y()) for p in points[1:-1]]
-        
-        # Recompute the visual path
-        self.recompute_path()
-    
-    def reset_to_straight_line(self):
-        """Reset the route to a straight line between systems."""
-        self.route_data.control_points = []
-        self.recompute_path()
     
     def itemChange(self, change, value):
         """Handle item changes, particularly selection."""
