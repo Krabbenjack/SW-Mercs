@@ -10,7 +10,7 @@ This package contains all non-GUI business logic including:
 from .project_model import MapProject, TemplateData
 from .systems import SystemData, SystemItem, SystemDialog
 from .templates import TemplateItem
-from .routes import RouteData, RouteItem, RouteHandleItem
+from .routes import RouteData, RouteItem
 
 __all__ = [
     'MapProject',
@@ -21,5 +21,4 @@ __all__ = [
     'TemplateItem',
     'RouteData',
     'RouteItem',
-    'RouteHandleItem',
 ]
