@@ -270,7 +270,16 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning, system placement, route creation, and template selection."""
+        """Handle mouse press for panning, system placement, route creation, and template selection.
+        
+        In routes mode:
+        - Click on RouteHandleItem: Allow dragging the control point
+        - P + Click on RouteItem: Insert a new control point at the click position
+        - Ctrl + Click on RouteItem: Toggle route for group selection
+        - Click on RouteItem: Select the route
+        - Click on SystemItem: Select system for route creation
+        - Click on empty space: Start new route from system
+        """
         # Middle mouse button or Space + left mouse button for panning
         if event.button() == Qt.MiddleButton or \
            (event.button() == Qt.LeftButton and self.space_pressed):
