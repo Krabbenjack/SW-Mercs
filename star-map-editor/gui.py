@@ -94,6 +94,9 @@ class MapView(QGraphicsView):
     # Signal emitted when a route is toggled for group selection
     route_group_toggle = Signal(str)  # (route_id)
     
+    # Signal emitted when requesting route deletion from context menu
+    route_delete_requested = Signal(str)  # (route_id)
+    
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
     
@@ -142,6 +145,7 @@ class MapView(QGraphicsView):
         self.route_drawing_active = False
         self.route_drawing_start_system_id: Optional[str] = None
         self.route_drawing_points: List[QPointF] = []  # Intermediate vertices
+        self.route_drawing_preview_item: Optional[QGraphicsPathItem] = None  # Visual preview during drawing
 
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
@@ -323,6 +327,19 @@ class MapView(QGraphicsView):
                     else:
                         # Clicking on empty space - add intermediate point
                         self.route_drawing_points.append(scene_pos)
+                        
+                        # Update visual preview
+                        # Find start system position
+                        start_system_item = None
+                        for item in self.scene().items():
+                            if isinstance(item, SystemItem):
+                                if item.get_system_data().id == self.route_drawing_start_system_id:
+                                    start_system_item = item
+                                    break
+                        
+                        if start_system_item:
+                            self.update_route_drawing_preview(start_system_item.pos())
+                        
                         event.accept()
                         return
                 
@@ -435,6 +452,7 @@ class MapView(QGraphicsView):
         """
         menu = QMenu()
         rename_action = menu.addAction("Rename Route")
+        delete_action = menu.addAction("Delete Route")
         
         action = menu.exec(global_pos)
         if action == rename_action:
@@ -450,10 +468,10 @@ class MapView(QGraphicsView):
                 route_item.update_name(new_name.strip())
                 # Emit signal to mark unsaved changes
                 self.item_modified.emit()
-            if ok and new_name and new_name.strip():
-                route_item.update_name(new_name.strip())
-                # Emit signal to mark unsaved changes
-                self.item_modified.emit()
+        elif action == delete_action:
+            # Emit signal to request route deletion
+            route_data = route_item.get_route_data()
+            self.route_delete_requested.emit(route_data.id)
     
     def toggle_route_group_selection(self, route_item: RouteItem):
         """Toggle a route's group selection state.
@@ -470,7 +488,43 @@ class MapView(QGraphicsView):
         self.route_drawing_active = False
         self.route_drawing_start_system_id = None
         self.route_drawing_points = []
+        
+        # Remove preview path if it exists
+        if self.route_drawing_preview_item:
+            self.scene().removeItem(self.route_drawing_preview_item)
+            self.route_drawing_preview_item = None
+        
         self.setCursor(Qt.ArrowCursor)
+    
+    def update_route_drawing_preview(self, start_pos: QPointF):
+        """Update the visual preview of the route being drawn.
+        
+        Args:
+            start_pos: Position of the start system
+        """
+        # Remove old preview if it exists
+        if self.route_drawing_preview_item:
+            self.scene().removeItem(self.route_drawing_preview_item)
+            self.route_drawing_preview_item = None
+        
+        # Create path for preview
+        if len(self.route_drawing_points) > 0:
+            from PySide6.QtGui import QPainterPath, QPen
+            from PySide6.QtCore import Qt
+            
+            path = QPainterPath()
+            path.moveTo(start_pos)
+            
+            # Draw through all intermediate points
+            for point in self.route_drawing_points:
+                path.lineTo(point)
+            
+            # Create preview item with dashed line style
+            self.route_drawing_preview_item = QGraphicsPathItem(path)
+            pen = QPen(QColor(100, 150, 255), 2, Qt.DashLine)  # Blue dashed line
+            self.route_drawing_preview_item.setPen(pen)
+            self.route_drawing_preview_item.setZValue(-1)  # Below other items
+            self.scene().addItem(self.route_drawing_preview_item)
     
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
@@ -624,6 +678,7 @@ class StarMapEditor(QMainWindow):
         self.view.start_route_drawing.connect(self.handle_start_route_drawing)
         self.view.finish_route_drawing.connect(self.handle_finish_route_drawing)
         self.view.route_group_toggle.connect(self.toggle_route_for_group)
+        self.view.route_delete_requested.connect(self.handle_route_delete_request)
         self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
@@ -1654,6 +1709,55 @@ class StarMapEditor(QMainWindow):
         
         self.mark_unsaved_changes()
         self.status_label.setText("Routes mode: Click system to start route.")
+    
+    def handle_route_delete_request(self, route_id: str):
+        """Handle route deletion request from context menu.
+        
+        Args:
+            route_id: ID of the route to delete
+        """
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Delete Route",
+            "Are you sure you want to delete this route?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Remove from scene
+            if route_id in self.route_items:
+                route_item = self.route_items[route_id]
+                self.scene.removeItem(route_item)
+                del self.route_items[route_id]
+            
+            # Remove from project
+            if route_id in self.project.routes:
+                del self.project.routes[route_id]
+            
+            # Update route groups to remove this route
+            groups_to_remove = []
+            for group_id, group in self.project.route_groups.items():
+                if route_id in group.route_ids:
+                    group.route_ids.remove(route_id)
+                    # Mark group for removal if empty
+                    if len(group.route_ids) == 0:
+                        groups_to_remove.append(group_id)
+            
+            # Remove empty groups
+            for group_id in groups_to_remove:
+                del self.project.route_groups[group_id]
+                # Remove group label if exists
+                if group_id in self.route_group_labels:
+                    self.scene.removeItem(self.route_group_labels[group_id])
+                    del self.route_group_labels[group_id]
+            
+            # Update remaining group labels
+            self.update_route_group_labels()
+            
+            self.mark_unsaved_changes()
+            self.status_label.setText("Route deleted.")
     
     def find_system_at_position(self, scene_pos: QPointF, snap_radius: float = 20) -> Optional[SystemItem]:
         """Find a system near the given position.
