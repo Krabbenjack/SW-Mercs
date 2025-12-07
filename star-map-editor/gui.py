@@ -297,6 +297,13 @@ class MapView(QGraphicsView):
                 item = self.itemAt(event.pos())
                 scene_pos = self.mapToScene(event.pos())
                 
+                # Check if item is a system or if parent is a system (for label clicks)
+                system_item = None
+                if isinstance(item, SystemItem):
+                    system_item = item
+                elif item and isinstance(item.parentItem(), SystemItem):
+                    system_item = item.parentItem()
+                
                 # Check if CTRL is pressed for group selection (not while drawing)
                 if not self.route_drawing_active and (event.modifiers() & Qt.ControlModifier):
                     if isinstance(item, RouteItem):
@@ -308,14 +315,9 @@ class MapView(QGraphicsView):
                 # If currently drawing a route
                 if self.route_drawing_active:
                     # Check if clicking on a system (to finish route)
-                    if isinstance(item, SystemItem):
-                        end_system_id = None
-                        for sys_id, sys_item in self.scene().items():
-                            if isinstance(sys_item, SystemItem) and sys_item == item:
-                                # Find the system ID
-                                pass
+                    if system_item:
                         # Emit signal to finish route creation with end system
-                        self.finish_route_drawing.emit(item)
+                        self.finish_route_drawing.emit(system_item)
                         event.accept()
                         return
                     else:
@@ -325,9 +327,9 @@ class MapView(QGraphicsView):
                         return
                 
                 # Not currently drawing - check what was clicked
-                if isinstance(item, SystemItem):
+                if system_item:
                     # Clicking on system - start route drawing
-                    self.start_route_drawing.emit(item)
+                    self.start_route_drawing.emit(system_item)
                     event.accept()
                     return
                 elif isinstance(item, RouteItem):
