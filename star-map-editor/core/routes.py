@@ -404,6 +404,11 @@ class RouteItem(QGraphicsPathItem):
     def get_segment_at_point(self, scene_pos: QPointF, threshold: float = 20.0) -> Optional[tuple[int, str, str]]:
         """Find which segment (pair of consecutive systems) is closest to the given point.
         
+        Performance note: For routes with many segments, this performs a linear search.
+        Could be optimized with spatial indexing or by comparing squared distances
+        to avoid sqrt operations, but current implementation is simple and fast
+        enough for typical route sizes (< 100 segments).
+        
         Args:
             scene_pos: Position in scene coordinates
             threshold: Maximum distance to consider a hit

@@ -1735,7 +1735,9 @@ class StarMapEditor(QMainWindow):
             for sys_id in system_chain:
                 if sys_id in self.project.systems:
                     sys_name = self.project.systems[sys_id].name
-                    self.route_system_list.addItem(f"{sys_name} ({sys_id[:8]}...)")
+                    # Show abbreviated ID with ellipsis only if longer than 8 chars
+                    id_display = f"{sys_id[:8]}{'...' if len(sys_id) > 8 else ''}"
+                    self.route_system_list.addItem(f"{sys_name} ({id_display})")
             
             # Enable/disable buttons based on context
             chain_length = len(system_chain)

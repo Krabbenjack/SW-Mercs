@@ -225,10 +225,10 @@ def test_system_queries():
     route.set_system_chain(["sys1", "sys2", "sys3", "sys4", "sys5"])
     
     # Test contains_system
-    assert route.contains_system("sys1") == True
-    assert route.contains_system("sys3") == True
-    assert route.contains_system("sys5") == True
-    assert route.contains_system("sys99") == False
+    assert route.contains_system("sys1")
+    assert route.contains_system("sys3")
+    assert route.contains_system("sys5")
+    assert not route.contains_system("sys99")
     print("✓ contains_system works")
     
     # Test get_system_index
