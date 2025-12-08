@@ -1026,7 +1026,6 @@ class StarMapEditor(QMainWindow):
         editing_layout.addSpacing(10)
         
         # System chain display (read-only list)
-        from PySide6.QtWidgets import QListWidget
         self.route_system_list = QListWidget()
         self.route_system_list.setMaximumHeight(60)
         self.route_system_list.setStyleSheet("QListWidget { background-color: white; }")
@@ -2283,7 +2282,6 @@ class StarMapEditor(QMainWindow):
         system_chain = route_data.get_system_chain()
         
         # Build menu of insertion points
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QDialogButtonBox
         dialog = QDialog(self)
         dialog.setWindowTitle("Insert System - Choose Position")
         layout = QVBoxLayout(dialog)
