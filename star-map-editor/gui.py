@@ -1520,8 +1520,6 @@ class StarMapEditor(QMainWindow):
             self.workspace_toolbar.show()
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
-            # Refresh route selector when entering routes mode
-            self.refresh_route_selector()
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
@@ -2187,7 +2185,7 @@ class StarMapEditor(QMainWindow):
         self.view.route_drawing_start_system_id = system_data.id
         self.view.route_drawing_points = []
         
-        self.status_label.setText(f"Route drawing: Click intermediate points, then click end system. Right-click or ESC to cancel.")
+        self.set_status_text(f"Route drawing: Click intermediate points, then click end system. Right-click or ESC to cancel.")
     
     def handle_finish_route_drawing(self, system_item):
         """Handle finishing route drawing by clicking on end system.
@@ -2207,7 +2205,7 @@ class StarMapEditor(QMainWindow):
         
         # Don't allow route to same system
         if start_system_id == end_system_id:
-            self.status_label.setText("Routes mode: Click system to start route.")
+            self.set_status_text("Routes mode: Click system to start route.")
             return
         
         # Check if route already exists between these systems
@@ -2219,7 +2217,7 @@ class StarMapEditor(QMainWindow):
                     "Route Exists",
                     "A route already exists between these systems."
                 )
-                self.status_label.setText("Routes mode: Click system to start route.")
+                self.set_status_text("Routes mode: Click system to start route.")
                 return
         
         # Create new route with intermediate control points
@@ -2244,7 +2242,7 @@ class StarMapEditor(QMainWindow):
         self.refresh_route_selector()
         
         self.mark_unsaved_changes()
-        self.status_label.setText("Routes mode: Click system to start route.")
+        self.set_status_text("Routes mode: Click system to start route.")
     
     def handle_route_delete_request(self, route_id: str):
         """Handle route deletion request from context menu.
@@ -2296,7 +2294,7 @@ class StarMapEditor(QMainWindow):
             self.refresh_route_selector()
             
             self.mark_unsaved_changes()
-            self.status_label.setText("Route deleted.")
+            self.set_status_text("Route deleted.")
     
     def find_system_at_position(self, scene_pos: QPointF, snap_radius: float = 20) -> Optional[SystemItem]:
         """Find a system near the given position.
