@@ -18,10 +18,16 @@ from PySide6.QtGui import QColor, QPen, QBrush, QFont
 class SystemData:
     """Data model for a star system.
     
+    WORLD SPACE: System positions are in HSU (Hyperspace Units) coordinates.
+    These coordinates are fixed and never affected by:
+    - View zoom level
+    - Template scaling
+    - Icon size changes
+    
     Attributes:
         id: Unique identifier for the system (UUID string)
         name: Display name of the system
-        position: Position in scene coordinates (QPointF)
+        position: Position in WORLD SPACE (HSU coordinates as QPointF)
     """
     id: str
     name: str
@@ -29,7 +35,12 @@ class SystemData:
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
-        """Create a new system with a generated UUID."""
+        """Create a new system with a generated UUID.
+        
+        Args:
+            name: Display name for the system
+            position: Position in WORLD SPACE (HSU coordinates)
+        """
         return cls(
             id=str(uuid.uuid4()),
             name=name,

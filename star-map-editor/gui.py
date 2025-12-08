@@ -93,6 +93,13 @@ class GridOverlay(QGraphicsScene):
 class MapView(QGraphicsView):
     """Custom QGraphicsView with zoom and pan controls.
     
+    VIEW SPACE ARCHITECTURE:
+    - View zoom is a CAMERA transformation only
+    - Zooming changes pixels-per-HSU ratio, not world coordinates
+    - All world objects (systems, routes) remain at fixed HSU positions
+    - Grid extends infinitely and dynamically with view
+    - Zoom indicator shows relationship between screen (pixels) and world (HSU)
+    
     Features:
     - Mouse wheel zoom centered on cursor position with min/max limits
     - Continuous WASD/Arrow key panning with zoom-scaled speed
@@ -100,7 +107,8 @@ class MapView(QGraphicsView):
     - Space + left mouse button drag panning
     - Automatic scene update to refresh grid overlay
     - System placement mode support
-    - Template mode support with Ctrl+wheel for template scaling
+    - Template mode support with Ctrl+wheel for template scaling (IMAGE LAYER)
+    - Zoom indicator overlay (bottom-right corner)
     """
     
     # Signal emitted when user clicks to place/edit a system
@@ -1123,14 +1131,45 @@ class StarMapEditor(QMainWindow):
                 # Restore route group labels
                 self.rebuild_route_group_labels()
                 
-                # Enable grid if there are templates
-                if self.project.templates:
+                # Enable grid if there are templates or systems
+                # Grid is now infinite and independent of template size
+                if self.project.templates or self.project.systems:
                     self.scene.show_grid = True
-                    # Fit view to first template
-                    if self.template_items:
-                        first_template = list(self.template_items.values())[0]
-                        self.scene.setSceneRect(first_template.boundingRect())
-                        self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+                    
+                # Set a reasonable initial scene rect for viewing
+                if self.template_items:
+                    first_template = list(self.template_items.values())[0]
+                    template_bounds = first_template.boundingRect()
+                    padding = 1000
+                    self.scene.setSceneRect(
+                        template_bounds.x() - padding,
+                        template_bounds.y() - padding,
+                        template_bounds.width() + 2 * padding,
+                        template_bounds.height() + 2 * padding
+                    )
+                    self.view.fitInView(first_template.boundingRect(), Qt.KeepAspectRatio)
+                    self.view.update_zoom_indicator()
+                elif self.project.systems:
+                    # No templates but has systems - set view based on systems
+                    # Calculate bounding box of all systems
+                    min_x = min_y = float('inf')
+                    max_x = max_y = float('-inf')
+                    for system_data in self.project.systems.values():
+                        pos = system_data.position
+                        min_x = min(min_x, pos.x())
+                        min_y = min(min_y, pos.y())
+                        max_x = max(max_x, pos.x())
+                        max_y = max(max_y, pos.y())
+                    
+                    padding = 500
+                    self.scene.setSceneRect(
+                        min_x - padding,
+                        min_y - padding,
+                        (max_x - min_x) + 2 * padding,
+                        (max_y - min_y) + 2 * padding
+                    )
+                    self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+                    self.view.update_zoom_indicator()
                 
                 self.update_window_title()
                 QMessageBox.information(
@@ -1383,20 +1422,31 @@ class StarMapEditor(QMainWindow):
         )
         
         if file_path:
-            # Create template data
+            # Create template data (IMAGE LAYER)
             template_data = TemplateData.create_new(file_path)
             self.project.add_template(template_data)
             
             # Add to scene
             template_item = self.add_template_to_scene(template_data)
             
-            # If this is the first template, set up the scene
+            # If this is the first template, enable grid and fit view
+            # Grid is now infinite and independent of template size
             if len(self.project.templates) == 1:
                 self.scene.show_grid = True
-                self.scene.setSceneRect(template_item.boundingRect())
+                # Set a large scene rect for infinite grid coverage
+                # This doesn't limit the grid, just provides a sensible initial view area
+                template_bounds = template_item.boundingRect()
+                padding = 1000  # Extra space around template
+                self.scene.setSceneRect(
+                    template_bounds.x() - padding,
+                    template_bounds.y() - padding,
+                    template_bounds.width() + 2 * padding,
+                    template_bounds.height() + 2 * padding
+                )
                 self.view.resetTransform()
                 self.view.current_zoom = 1.0
-                self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
+                self.view.fitInView(template_item.boundingRect(), Qt.KeepAspectRatio)
+                self.view.update_zoom_indicator()
             
             # Update scene
             self.scene.update()
