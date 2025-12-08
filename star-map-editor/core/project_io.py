@@ -55,7 +55,8 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                     "name": r.name,
                     "start_system_id": r.start_system_id,
                     "end_system_id": r.end_system_id,
-                    "control_points": r.control_points
+                    "control_points": r.control_points,
+                    "system_chain": r.system_chain
                 }
                 for r in project.routes.values()
             ],
@@ -132,7 +133,8 @@ def load_project(file_path: Path) -> Optional[MapProject]:
                     name=r_dict["name"],
                     start_system_id=r_dict["start_system_id"],
                     end_system_id=r_dict["end_system_id"],
-                    control_points=[tuple(cp) for cp in r_dict.get("control_points", [])]
+                    control_points=[tuple(cp) for cp in r_dict.get("control_points", [])],
+                    system_chain=r_dict.get("system_chain")  # Load system chain if present
                 )
                 project.routes[route.id] = route
         
@@ -186,7 +188,8 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
                     "name": r.name,
                     "start_system_id": r.start_system_id,
                     "end_system_id": r.end_system_id,
-                    "control_points": r.control_points
+                    "control_points": r.control_points,
+                    "system_chain": r.system_chain
                 }
                 for r in project.routes.values()
             ],
