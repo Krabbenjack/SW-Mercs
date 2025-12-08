@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
-    QGraphicsPathItem, QInputDialog, QGraphicsTextItem
+    QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
+    QDialog, QDialogButtonBox
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -129,6 +130,10 @@ class MapView(QGraphicsView):
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
     
+    # Signals for route editing context menus
+    system_context_menu_requested = Signal(object, object)  # (SystemItem, global_pos)
+    segment_context_menu_requested = Signal(object, object, object)  # (RouteItem, segment_info, global_pos)
+    
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -163,6 +168,7 @@ class MapView(QGraphicsView):
         self.systems_mode_active = False
         self.template_mode_active = False
         self.routes_mode_active = False
+        self.route_editing_mode_active = False  # Active when a route is selected
         
         # Template scaling sensitivity
         self.template_scale_sensitivity = 1.0  # Scale sensitivity multiplier
@@ -412,11 +418,40 @@ class MapView(QGraphicsView):
                     event.accept()
                     return
                 else:
-                    # Right click on route - show context menu
+                    scene_pos = self.mapToScene(event.pos())
                     item = self.itemAt(event.pos())
-                    if isinstance(item, RouteItem):
-                        self.show_route_context_menu(event.globalPos(), item)
-                        event.accept()
+                    
+                    # Check if we're in route editing mode
+                    if self.route_editing_mode_active:
+                        # Check if clicking on a system
+                        system_item = None
+                        if isinstance(item, SystemItem):
+                            system_item = item
+                        elif item and isinstance(item.parentItem(), SystemItem):
+                            system_item = item.parentItem()
+                        
+                        if system_item:
+                            # Show system context menu for route editing
+                            self.system_context_menu_requested.emit(system_item, event.globalPos())
+                            event.accept()
+                            return
+                        elif isinstance(item, RouteItem):
+                            # Check if clicking on a route segment
+                            segment_info = item.get_segment_at_point(scene_pos)
+                            if segment_info:
+                                self.segment_context_menu_requested.emit(item, segment_info, event.globalPos())
+                                event.accept()
+                                return
+                            else:
+                                # Clicked on route but not near a segment - show route context menu
+                                self.show_route_context_menu(event.globalPos(), item)
+                                event.accept()
+                                return
+                    else:
+                        # Not in editing mode - show normal route context menu
+                        if isinstance(item, RouteItem):
+                            self.show_route_context_menu(event.globalPos(), item)
+                            event.accept()
                         return
                     super().mousePressEvent(event)
             else:
@@ -654,6 +689,9 @@ class StarMapEditor(QMainWindow):
         # Selected template for workspace operations
         self.selected_template: Optional[TemplateItem] = None
         
+        # Selected route for editing operations
+        self.selected_route: Optional[RouteItem] = None
+        
         # Preview item for new system placement
         self.preview_system_item: Optional[SystemItem] = None
         
@@ -786,6 +824,8 @@ class StarMapEditor(QMainWindow):
         self.view.route_group_toggle.connect(self.toggle_route_for_group)
         self.view.route_delete_requested.connect(self.handle_route_delete_request)
         self.view.item_modified.connect(self.on_item_modified)
+        self.view.system_context_menu_requested.connect(self.show_system_route_context_menu)
+        self.view.segment_context_menu_requested.connect(self.show_segment_context_menu)
         
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
@@ -946,34 +986,85 @@ class StarMapEditor(QMainWindow):
         """Create the workspace toolbar for routes mode."""
         toolbar_widget = QWidget()
         toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
-        toolbar_layout = QHBoxLayout(toolbar_widget)
+        toolbar_layout = QVBoxLayout(toolbar_widget)
         toolbar_layout.setContentsMargins(5, 5, 5, 5)
         
-        # Current Route label
-        self.current_route_label = QLabel('Current Route: None')
-        self.current_route_label.setStyleSheet("font-weight: bold; color: #333;")
-        toolbar_layout.addWidget(self.current_route_label)
-        
-        toolbar_layout.addSpacing(20)
+        # === Top section: Route creation ===
+        creation_layout = QHBoxLayout()
         
         # Info label for polyline route creation
         info_label = QLabel('Click System A → Click intermediate points → Click System B | ESC or Right-click to cancel')
         info_label.setStyleSheet("color: #555; font-style: italic;")
-        toolbar_layout.addWidget(info_label)
+        creation_layout.addWidget(info_label)
         
-        toolbar_layout.addSpacing(20)
+        creation_layout.addSpacing(20)
         
         # Create Route Group button
         self.create_group_btn = QPushButton('Create Route Group')
         self.create_group_btn.clicked.connect(self.create_route_group_dialog)
-        toolbar_layout.addWidget(self.create_group_btn)
+        creation_layout.addWidget(self.create_group_btn)
         
         # Info label for grouping
         group_info_label = QLabel('CTRL+Click routes to select for grouping')
         group_info_label.setStyleSheet("color: #555; font-style: italic;")
-        toolbar_layout.addWidget(group_info_label)
+        creation_layout.addWidget(group_info_label)
         
-        toolbar_layout.addStretch()
+        creation_layout.addStretch()
+        toolbar_layout.addLayout(creation_layout)
+        
+        # === Bottom section: Route editing ===
+        editing_widget = QWidget()
+        editing_widget.setStyleSheet("QWidget { background-color: #d0d0d0; padding: 5px; border-top: 1px solid #aaa; }")
+        editing_layout = QHBoxLayout(editing_widget)
+        editing_layout.setContentsMargins(5, 5, 5, 5)
+        
+        # Current Route label
+        self.current_route_label = QLabel('Route Editing: No route selected')
+        self.current_route_label.setStyleSheet("font-weight: bold; color: #333;")
+        editing_layout.addWidget(self.current_route_label)
+        
+        editing_layout.addSpacing(10)
+        
+        # System chain display (read-only list)
+        from PySide6.QtWidgets import QListWidget
+        self.route_system_list = QListWidget()
+        self.route_system_list.setMaximumHeight(60)
+        self.route_system_list.setStyleSheet("QListWidget { background-color: white; }")
+        editing_layout.addWidget(self.route_system_list)
+        
+        editing_layout.addSpacing(10)
+        
+        # Action buttons for route editing
+        buttons_layout = QHBoxLayout()
+        
+        self.insert_system_btn = QPushButton('Insert System')
+        self.insert_system_btn.setToolTip('Insert a selected system into the route')
+        self.insert_system_btn.clicked.connect(self.insert_system_into_route)
+        self.insert_system_btn.setEnabled(False)
+        buttons_layout.addWidget(self.insert_system_btn)
+        
+        self.remove_system_btn = QPushButton('Remove System')
+        self.remove_system_btn.setToolTip('Remove selected system from route')
+        self.remove_system_btn.clicked.connect(self.remove_system_from_route)
+        self.remove_system_btn.setEnabled(False)
+        buttons_layout.addWidget(self.remove_system_btn)
+        
+        self.split_route_btn = QPushButton('Split Route')
+        self.split_route_btn.setToolTip('Split route at selected system')
+        self.split_route_btn.clicked.connect(self.split_route_at_system)
+        self.split_route_btn.setEnabled(False)
+        buttons_layout.addWidget(self.split_route_btn)
+        
+        self.merge_routes_btn = QPushButton('Merge Routes')
+        self.merge_routes_btn.setToolTip('Merge two selected routes')
+        self.merge_routes_btn.clicked.connect(self.merge_selected_routes)
+        self.merge_routes_btn.setEnabled(False)
+        buttons_layout.addWidget(self.merge_routes_btn)
+        
+        editing_layout.addLayout(buttons_layout)
+        editing_layout.addStretch()
+        
+        toolbar_layout.addWidget(editing_widget)
         
         return toolbar_widget
     
@@ -1564,6 +1655,12 @@ class StarMapEditor(QMainWindow):
         self.selected_template = template_selected
         self.update_workspace_controls()
         self.update_route_workspace_controls(route_selected)
+        
+        # Enable/disable route editing mode in the view
+        if self.current_mode == 'routes' and route_selected:
+            self.view.route_editing_mode_active = True
+        else:
+            self.view.route_editing_mode_active = False
     
     def on_item_modified(self):
         """Handle item modification (movement, etc.)."""
@@ -1615,12 +1712,67 @@ class StarMapEditor(QMainWindow):
         Args:
             route_selected: The selected RouteItem, or None if no route selected
         """
-        if hasattr(self, 'current_route_label'):
-            if route_selected:
-                route_name = route_selected.get_route_data().name
-                self.current_route_label.setText(f'Current Route: {route_name}')
-            else:
-                self.current_route_label.setText('Current Route: None')
+        if not hasattr(self, 'current_route_label'):
+            return
+        
+        # Store currently selected route
+        self.selected_route = route_selected
+        
+        # Get currently selected system (if any)
+        selected_system = None
+        for item in self.scene.selectedItems():
+            if isinstance(item, SystemItem):
+                selected_system = item
+                break
+        
+        if route_selected:
+            route_data = route_selected.get_route_data()
+            route_name = route_data.name
+            self.current_route_label.setText(f'Route Editing: {route_name}')
+            
+            # Populate system chain list
+            self.route_system_list.clear()
+            system_chain = route_data.get_system_chain()
+            for sys_id in system_chain:
+                if sys_id in self.project.systems:
+                    sys_name = self.project.systems[sys_id].name
+                    self.route_system_list.addItem(f"{sys_name} ({sys_id[:8]}...)")
+            
+            # Enable/disable buttons based on context
+            chain_length = len(system_chain)
+            
+            # Remove System: enabled if a system in the route is selected and route has >2 systems
+            can_remove = (selected_system is not None and 
+                         route_data.contains_system(selected_system.get_system_data().id) and
+                         chain_length > 2)
+            self.remove_system_btn.setEnabled(can_remove)
+            
+            # Split Route: enabled if a system in the route is selected and not at ends
+            can_split = False
+            if selected_system:
+                sys_id = selected_system.get_system_data().id
+                sys_index = route_data.get_system_index(sys_id)
+                can_split = (sys_index > 0 and sys_index < chain_length - 1)
+            self.split_route_btn.setEnabled(can_split)
+            
+            # Insert System: enabled if a system NOT in the route is selected
+            can_insert = (selected_system is not None and
+                         not route_data.contains_system(selected_system.get_system_data().id))
+            self.insert_system_btn.setEnabled(can_insert)
+            
+            # Merge Routes: enabled if exactly 2 routes are selected for grouping
+            can_merge = len(self.routes_selected_for_group) == 2
+            self.merge_routes_btn.setEnabled(can_merge)
+        else:
+            self.current_route_label.setText('Route Editing: No route selected')
+            self.route_system_list.clear()
+            self.insert_system_btn.setEnabled(False)
+            self.remove_system_btn.setEnabled(False)
+            self.split_route_btn.setEnabled(False)
+            
+            # Merge can still work with group selection
+            can_merge = len(self.routes_selected_for_group) == 2
+            self.merge_routes_btn.setEnabled(can_merge)
     
     def set_system_icon_size(self, size: str):
         """Set the system icon size (UI SPACE only).
@@ -2096,6 +2248,429 @@ class StarMapEditor(QMainWindow):
                 "Route Group Created",
                 f"Route group '{route_group.name}' created with {len(route_group.route_ids)} routes."
             )
+    
+    # ===== Route Editing Actions =====
+    
+    def insert_system_into_route(self):
+        """Insert a selected system into the selected route.
+        
+        Prompts user to select where to insert the system in the route chain.
+        """
+        if not self.selected_route:
+            QMessageBox.warning(self, "No Route Selected", "Please select a route first.")
+            return
+        
+        # Find selected system
+        selected_system = None
+        for item in self.scene.selectedItems():
+            if isinstance(item, SystemItem):
+                selected_system = item
+                break
+        
+        if not selected_system:
+            QMessageBox.warning(self, "No System Selected", "Please select a system to insert.")
+            return
+        
+        route_data = self.selected_route.get_route_data()
+        sys_id = selected_system.get_system_data().id
+        
+        # Check if system is already in route
+        if route_data.contains_system(sys_id):
+            QMessageBox.warning(self, "System Already in Route", 
+                              "This system is already part of the selected route.")
+            return
+        
+        # Get system chain and let user choose insertion point
+        system_chain = route_data.get_system_chain()
+        
+        # Build menu of insertion points
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QDialogButtonBox
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Insert System - Choose Position")
+        layout = QVBoxLayout(dialog)
+        
+        label = QLabel(f"Insert '{selected_system.get_system_data().name}' after:")
+        layout.addWidget(label)
+        
+        list_widget = QListWidget()
+        list_widget.addItem("(Start of route)")
+        for i, sys_id_in_chain in enumerate(system_chain):
+            sys_name = self.project.systems[sys_id_in_chain].name
+            list_widget.addItem(f"{i+1}. {sys_name}")
+        list_widget.setCurrentRow(0)
+        layout.addWidget(list_widget)
+        
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        layout.addWidget(buttons)
+        
+        if dialog.exec() == QDialog.Accepted:
+            insert_index = list_widget.currentRow()
+            route_data.insert_system_at(insert_index, sys_id)
+            self.selected_route.recompute_path()
+            self.mark_unsaved_changes()
+            self.update_route_workspace_controls(self.selected_route)
+    
+    def remove_system_from_route(self):
+        """Remove a selected system from the selected route."""
+        if not self.selected_route:
+            QMessageBox.warning(self, "No Route Selected", "Please select a route first.")
+            return
+        
+        # Find selected system
+        selected_system = None
+        for item in self.scene.selectedItems():
+            if isinstance(item, SystemItem):
+                selected_system = item
+                break
+        
+        if not selected_system:
+            QMessageBox.warning(self, "No System Selected", "Please select a system to remove.")
+            return
+        
+        route_data = self.selected_route.get_route_data()
+        sys_id = selected_system.get_system_data().id
+        
+        # Check if system is in route
+        if not route_data.contains_system(sys_id):
+            QMessageBox.warning(self, "System Not in Route", 
+                              "This system is not part of the selected route.")
+            return
+        
+        # Check if route would be too short
+        if len(route_data.get_system_chain()) <= 2:
+            QMessageBox.warning(self, "Cannot Remove System", 
+                              "Route must have at least 2 systems. Delete the route instead.")
+            return
+        
+        # Confirm removal
+        sys_name = selected_system.get_system_data().name
+        reply = QMessageBox.question(
+            self,
+            "Remove System from Route",
+            f"Remove '{sys_name}' from route '{route_data.name}'?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                route_data.remove_system_by_id(sys_id)
+                self.selected_route.recompute_path()
+                self.mark_unsaved_changes()
+                self.update_route_workspace_controls(self.selected_route)
+            except ValueError as e:
+                QMessageBox.critical(self, "Error", f"Failed to remove system: {e}")
+    
+    def split_route_at_system(self):
+        """Split the selected route at the selected system."""
+        if not self.selected_route:
+            QMessageBox.warning(self, "No Route Selected", "Please select a route first.")
+            return
+        
+        # Find selected system
+        selected_system = None
+        for item in self.scene.selectedItems():
+            if isinstance(item, SystemItem):
+                selected_system = item
+                break
+        
+        if not selected_system:
+            QMessageBox.warning(self, "No System Selected", "Please select a system to split at.")
+            return
+        
+        route_data = self.selected_route.get_route_data()
+        sys_id = selected_system.get_system_data().id
+        
+        # Check if system is in route and not at ends
+        sys_index = route_data.get_system_index(sys_id)
+        if sys_index < 0:
+            QMessageBox.warning(self, "System Not in Route", 
+                              "This system is not part of the selected route.")
+            return
+        
+        if sys_index == 0 or sys_index == len(route_data.get_system_chain()) - 1:
+            QMessageBox.warning(self, "Cannot Split at End", 
+                              "Cannot split route at the first or last system.")
+            return
+        
+        # Confirm split
+        sys_name = selected_system.get_system_data().name
+        reply = QMessageBox.question(
+            self,
+            "Split Route",
+            f"Split route '{route_data.name}' at '{sys_name}'?\n\n"
+            f"This will create two separate routes.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Perform split
+            new_route_data = route_data.split_at_system(sys_id)
+            
+            if new_route_data:
+                # Add new route to project and scene
+                self.project.add_route(new_route_data)
+                new_route_item = self.add_route_to_scene(new_route_data)
+                
+                # Update existing route rendering
+                self.selected_route.recompute_path()
+                
+                # Select the new route
+                self.selected_route.setSelected(False)
+                new_route_item.setSelected(True)
+                
+                self.mark_unsaved_changes()
+                QMessageBox.information(
+                    self,
+                    "Route Split",
+                    f"Route split successfully into:\n"
+                    f"- {route_data.name}\n"
+                    f"- {new_route_data.name}"
+                )
+            else:
+                QMessageBox.critical(self, "Error", "Failed to split route.")
+    
+    def merge_selected_routes(self):
+        """Merge two routes that are selected for grouping."""
+        if len(self.routes_selected_for_group) != 2:
+            QMessageBox.warning(
+                self,
+                "Invalid Selection",
+                "Please select exactly 2 routes (CTRL+click) to merge."
+            )
+            return
+        
+        # Get the two routes
+        route_ids = list(self.routes_selected_for_group)
+        route_data_1 = self.project.get_route(route_ids[0])
+        route_data_2 = self.project.get_route(route_ids[1])
+        
+        if not route_data_1 or not route_data_2:
+            QMessageBox.critical(self, "Error", "Could not find selected routes.")
+            return
+        
+        # Try to merge
+        merged_route = RouteData.merge_routes(route_data_1, route_data_2)
+        
+        if not merged_route:
+            QMessageBox.warning(
+                self,
+                "Cannot Merge",
+                "These routes cannot be merged.\n\n"
+                "Routes must share a common endpoint:\n"
+                "- End of route 1 connects to start of route 2\n"
+                "- End of route 1 connects to end of route 2\n"
+                "- Start of route 1 connects to end of route 2\n"
+                "- Start of route 1 connects to start of route 2"
+            )
+            return
+        
+        # Confirm merge
+        reply = QMessageBox.question(
+            self,
+            "Merge Routes",
+            f"Merge these routes?\n\n"
+            f"Route 1: {route_data_1.name}\n"
+            f"Route 2: {route_data_2.name}\n\n"
+            f"New route: {merged_route.name}",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Remove old routes
+            self.remove_route(route_ids[0])
+            self.remove_route(route_ids[1])
+            
+            # Clear group selection
+            self.routes_selected_for_group.clear()
+            
+            # Add merged route
+            self.project.add_route(merged_route)
+            merged_item = self.add_route_to_scene(merged_route)
+            merged_item.setSelected(True)
+            
+            self.mark_unsaved_changes()
+            QMessageBox.information(
+                self,
+                "Routes Merged",
+                f"Routes merged successfully into:\n{merged_route.name}"
+            )
+    
+    def show_system_route_context_menu(self, system_item: SystemItem, global_pos):
+        """Show context menu for a system in route editing mode.
+        
+        Args:
+            system_item: The SystemItem that was right-clicked
+            global_pos: Global position for the menu
+        """
+        if not self.selected_route:
+            return
+        
+        route_data = self.selected_route.get_route_data()
+        sys_id = system_item.get_system_data().id
+        sys_name = system_item.get_system_data().name
+        
+        menu = QMenu()
+        
+        # Check if system is in the selected route
+        if route_data.contains_system(sys_id):
+            # System is in route - offer removal and splitting
+            remove_action = menu.addAction(f"Remove '{sys_name}' from Route")
+            
+            # Only allow split if not at ends
+            sys_index = route_data.get_system_index(sys_id)
+            split_action = None
+            if sys_index > 0 and sys_index < len(route_data.get_system_chain()) - 1:
+                split_action = menu.addAction(f"Split Route at '{sys_name}'")
+        else:
+            # System is not in route - offer insertion
+            insert_action = menu.addAction(f"Insert '{sys_name}' into Route")
+        
+        action = menu.exec(global_pos)
+        
+        if action:
+            action_text = action.text()
+            if "Remove" in action_text:
+                # Programmatically trigger remove
+                self.remove_system_from_route_by_id(sys_id)
+            elif "Split" in action_text:
+                # Programmatically trigger split
+                self.split_route_at_system_by_id(sys_id)
+            elif "Insert" in action_text:
+                # Select the system and trigger insert dialog
+                system_item.setSelected(True)
+                self.insert_system_into_route()
+    
+    def show_segment_context_menu(self, route_item: RouteItem, segment_info: tuple, global_pos):
+        """Show context menu for a route segment in route editing mode.
+        
+        Args:
+            route_item: The RouteItem that was right-clicked
+            segment_info: Tuple of (segment_index, system_id_1, system_id_2)
+            global_pos: Global position for the menu
+        """
+        segment_index, sys_id_1, sys_id_2 = segment_info
+        route_data = route_item.get_route_data()
+        
+        sys_name_1 = self.project.systems[sys_id_1].name if sys_id_1 in self.project.systems else sys_id_1
+        sys_name_2 = self.project.systems[sys_id_2].name if sys_id_2 in self.project.systems else sys_id_2
+        
+        menu = QMenu()
+        insert_action = menu.addAction(f"Insert System into Route Here")
+        split_action = menu.addAction(f"Split Route between '{sys_name_1}' and '{sys_name_2}'")
+        
+        action = menu.exec(global_pos)
+        
+        if action == insert_action:
+            # Find a selected system to insert
+            selected_system = None
+            for item in self.scene.selectedItems():
+                if isinstance(item, SystemItem):
+                    selected_system = item
+                    break
+            
+            if not selected_system:
+                QMessageBox.warning(
+                    self,
+                    "No System Selected",
+                    "Please select a system to insert into the route."
+                )
+                return
+            
+            sys_id = selected_system.get_system_data().id
+            
+            # Check if system is already in route
+            if route_data.contains_system(sys_id):
+                QMessageBox.warning(
+                    self,
+                    "System Already in Route",
+                    "This system is already part of the route."
+                )
+                return
+            
+            # Insert after sys_id_1 (at segment_index + 1)
+            route_data.insert_system_at(segment_index + 1, sys_id)
+            route_item.recompute_path()
+            self.mark_unsaved_changes()
+            self.update_route_workspace_controls(route_item)
+            
+        elif action == split_action:
+            # Split at the second system of the segment
+            self.selected_route = route_item
+            self.split_route_at_system_by_id(sys_id_2)
+    
+    def remove_system_from_route_by_id(self, sys_id: str):
+        """Remove a system from the selected route by ID.
+        
+        Args:
+            sys_id: ID of the system to remove
+        """
+        if not self.selected_route:
+            return
+        
+        route_data = self.selected_route.get_route_data()
+        
+        # Check if route would be too short
+        if len(route_data.get_system_chain()) <= 2:
+            QMessageBox.warning(
+                self,
+                "Cannot Remove System",
+                "Route must have at least 2 systems. Delete the route instead."
+            )
+            return
+        
+        try:
+            route_data.remove_system_by_id(sys_id)
+            self.selected_route.recompute_path()
+            self.mark_unsaved_changes()
+            self.update_route_workspace_controls(self.selected_route)
+        except ValueError as e:
+            QMessageBox.critical(self, "Error", f"Failed to remove system: {e}")
+    
+    def split_route_at_system_by_id(self, sys_id: str):
+        """Split the selected route at a system by ID.
+        
+        Args:
+            sys_id: ID of the system to split at
+        """
+        if not self.selected_route:
+            return
+        
+        route_data = self.selected_route.get_route_data()
+        
+        # Check if system is in route and not at ends
+        sys_index = route_data.get_system_index(sys_id)
+        if sys_index < 0:
+            return
+        
+        if sys_index == 0 or sys_index == len(route_data.get_system_chain()) - 1:
+            QMessageBox.warning(
+                self,
+                "Cannot Split at End",
+                "Cannot split route at the first or last system."
+            )
+            return
+        
+        # Perform split
+        new_route_data = route_data.split_at_system(sys_id)
+        
+        if new_route_data:
+            # Add new route to project and scene
+            self.project.add_route(new_route_data)
+            new_route_item = self.add_route_to_scene(new_route_data)
+            
+            # Update existing route rendering
+            self.selected_route.recompute_path()
+            
+            # Select the new route
+            self.selected_route.setSelected(False)
+            new_route_item.setSelected(True)
+            
+            self.mark_unsaved_changes()
     
     # ===== Placeholder Mode Actions =====
     
