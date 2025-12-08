@@ -6,7 +6,7 @@ map view, and workspace controls.
 
 import sys
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 # Add current directory to path for core imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -31,39 +31,60 @@ from core.project_io import save_project, load_project, export_map_data
 class GridOverlay(QGraphicsScene):
     """Custom QGraphicsScene to draw a semi-transparent grid overlay.
     
+    WORLD SPACE ARCHITECTURE:
+    - Grid spacing represents Hyperspace Units (HSU)
+    - 1 grid cell = 1 HSU (or configured HSU size)
+    - Grid is infinite and extends dynamically with view
+    - Grid is independent of template size/position
+    - Only visual rendering occurs in View space, coordinates stay in HSU
+    
     The grid is drawn in the foreground, on top of all scene items,
     and scales/moves with the view transformations.
     """
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.grid_spacing = 100  # Grid spacing in scene coordinates
+        # WORLD SPACE: Grid spacing in HSU (Hyperspace Units)
+        self.grid_spacing = 100  # 1 grid cell = 100 scene units (customizable HSU size)
         self.grid_color = QColor(144, 238, 144, 128)  # Semi-transparent light green
         self.show_grid = False
+        self.major_grid_interval = 5  # Draw major grid lines every N cells (for low zoom levels)
         
     def drawForeground(self, painter, rect):
-        """Draw the grid overlay on top of scene items."""
+        """Draw infinite grid overlay on top of scene items.
+        
+        Grid extends dynamically based on visible view rectangle,
+        independent of any template boundaries.
+        
+        Args:
+            painter: QPainter for drawing
+            rect: Visible rectangle in scene coordinates
+        """
         if not self.show_grid:
             return
             
         painter.save()
-        painter.setPen(QPen(self.grid_color, 1))
         
-        # Get scene bounds
-        scene_rect = self.sceneRect()
-        left = int(scene_rect.left() / self.grid_spacing) * self.grid_spacing
-        top = int(scene_rect.top() / self.grid_spacing) * self.grid_spacing
+        # UI SPACE: Grid line thickness (1 pixel regardless of zoom)
+        painter.setPen(QPen(self.grid_color, 0))  # 0 = cosmetic pen (always 1px)
         
-        # Draw vertical lines
+        # WORLD SPACE: Calculate grid bounds from visible rect
+        # Extend beyond visible area to ensure complete coverage
+        left = int(rect.left() / self.grid_spacing) * self.grid_spacing
+        top = int(rect.top() / self.grid_spacing) * self.grid_spacing
+        right = rect.right()
+        bottom = rect.bottom()
+        
+        # Draw vertical lines (WORLD SPACE: HSU coordinates)
         x = left
-        while x <= scene_rect.right():
-            painter.drawLine(int(x), int(scene_rect.top()), int(x), int(scene_rect.bottom()))
+        while x <= right:
+            painter.drawLine(int(x), int(top), int(x), int(bottom))
             x += self.grid_spacing
             
-        # Draw horizontal lines
+        # Draw horizontal lines (WORLD SPACE: HSU coordinates)
         y = top
-        while y <= scene_rect.bottom():
-            painter.drawLine(int(scene_rect.left()), int(y), int(scene_rect.right()), int(y))
+        while y <= bottom:
+            painter.drawLine(int(left), int(y), int(right), int(y))
             y += self.grid_spacing
             
         painter.restore()
@@ -146,6 +167,21 @@ class MapView(QGraphicsView):
         self.route_drawing_start_system_id: Optional[str] = None
         self.route_drawing_points: List[QPointF] = []  # Intermediate vertices
         self.route_drawing_preview_item: Optional[QGraphicsPathItem] = None  # Visual preview during drawing
+        
+        # Zoom indicator overlay (UI SPACE: always visible in corner)
+        self.zoom_indicator = QLabel(self)
+        self.zoom_indicator.setStyleSheet("""
+            QLabel {
+                background-color: rgba(0, 0, 0, 180);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-family: monospace;
+                font-size: 11px;
+            }
+        """)
+        self.zoom_indicator.setAlignment(Qt.AlignLeft)
+        self.update_zoom_indicator()
 
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
@@ -191,7 +227,7 @@ class MapView(QGraphicsView):
         # Get the position of the mouse in scene coordinates before zoom
         old_pos = self.mapToScene(event.position().toPoint())
         
-        # Apply zoom
+        # Apply zoom (VIEW SPACE: only affects how many pixels per HSU)
         self.scale(zoom, zoom)
         self.current_zoom = new_zoom
         
@@ -201,6 +237,9 @@ class MapView(QGraphicsView):
         # Calculate the difference and adjust view to keep it under the mouse
         delta = new_pos - old_pos
         self.translate(delta.x(), delta.y())
+        
+        # Update zoom indicator
+        self.update_zoom_indicator()
         
         # Update the scene to refresh grid
         self.scene().update()
@@ -541,6 +580,44 @@ class MapView(QGraphicsView):
             sensitivity: Scale sensitivity value (0.1 - 3.0)
         """
         self.template_scale_sensitivity = max(0.1, min(3.0, sensitivity))
+    
+    def update_zoom_indicator(self):
+        """Update the zoom indicator display.
+        
+        Shows current zoom percentage and pixels-per-HSU ratio.
+        This helps users understand the relationship between screen space (pixels)
+        and world space (HSU).
+        """
+        zoom_percent = int(self.current_zoom * 100)
+        # Calculate pixels per HSU: base is 1 HSU = 1 pixel at 100% zoom
+        # At current zoom, 1 HSU = current_zoom pixels
+        pixels_per_hsu = self.current_zoom
+        
+        self.zoom_indicator.setText(
+            f"Zoom: {zoom_percent}%\n"
+            f"1 HSU = {pixels_per_hsu:.1f} px"
+        )
+        self.position_zoom_indicator()
+    
+    def position_zoom_indicator(self):
+        """Position the zoom indicator in the bottom-right corner."""
+        margin = 10
+        indicator_width = self.zoom_indicator.sizeHint().width()
+        indicator_height = self.zoom_indicator.sizeHint().height()
+        
+        x = self.width() - indicator_width - margin
+        y = self.height() - indicator_height - margin
+        
+        self.zoom_indicator.move(x, y)
+    
+    def resizeEvent(self, event):
+        """Handle widget resize to reposition overlay elements.
+        
+        Args:
+            event: QResizeEvent
+        """
+        super().resizeEvent(event)
+        self.position_zoom_indicator()
 
 
 class StarMapEditor(QMainWindow):
@@ -629,6 +706,27 @@ class StarMapEditor(QMainWindow):
         self.stats_btn = QPushButton('Stats')
         self.stats_btn.clicked.connect(self.show_stats)
         mode_layout.addWidget(self.stats_btn)
+        
+        # Add separator
+        mode_layout.addSpacing(20)
+        
+        # System Icon Size control (UI SPACE: affects visual size only)
+        mode_layout.addWidget(QLabel('System Icon Size:'))
+        self.icon_size_small_btn = QPushButton('Small')
+        self.icon_size_small_btn.setCheckable(True)
+        self.icon_size_small_btn.clicked.connect(lambda: self.set_system_icon_size('small'))
+        mode_layout.addWidget(self.icon_size_small_btn)
+        
+        self.icon_size_medium_btn = QPushButton('Medium')
+        self.icon_size_medium_btn.setCheckable(True)
+        self.icon_size_medium_btn.setChecked(True)  # Default
+        self.icon_size_medium_btn.clicked.connect(lambda: self.set_system_icon_size('medium'))
+        mode_layout.addWidget(self.icon_size_medium_btn)
+        
+        self.icon_size_large_btn = QPushButton('Large')
+        self.icon_size_large_btn.setCheckable(True)
+        self.icon_size_large_btn.clicked.connect(lambda: self.set_system_icon_size('large'))
+        mode_layout.addWidget(self.icon_size_large_btn)
         
         mode_layout.addStretch()
         
@@ -802,6 +900,21 @@ class StarMapEditor(QMainWindow):
         self.opacity_label = QLabel('100%')
         self.opacity_label.setMinimumWidth(40)
         toolbar_layout.addWidget(self.opacity_label)
+        
+        # Template Scale controls (IMAGE LAYER: affects pixmap rendering only)
+        toolbar_layout.addWidget(QLabel('Template Scale:'))
+        self.template_scale_slider = QSlider(Qt.Horizontal)
+        self.template_scale_slider.setMinimum(10)  # 10% = 0.1x
+        self.template_scale_slider.setMaximum(500)  # 500% = 5.0x
+        self.template_scale_slider.setValue(100)  # 100% = 1.0x
+        self.template_scale_slider.setMaximumWidth(150)
+        self.template_scale_slider.valueChanged.connect(self.on_template_scale_changed)
+        self.template_scale_slider.setEnabled(False)
+        toolbar_layout.addWidget(self.template_scale_slider)
+        
+        self.template_scale_label = QLabel('100%')
+        self.template_scale_label.setMinimumWidth(50)
+        toolbar_layout.addWidget(self.template_scale_label)
         
         # Scale Sensitivity controls
         toolbar_layout.addWidget(QLabel('Scale Sensitivity:'))
@@ -1349,6 +1462,22 @@ class StarMapEditor(QMainWindow):
             self.opacity_label.setText(f'{value}%')
             self.mark_unsaved_changes()
     
+    def on_template_scale_changed(self, value: int):
+        """Handle template scale slider change.
+        
+        IMAGE LAYER: This only affects pixmap rendering, not world coordinates.
+        
+        Args:
+            value: Scale percentage (10-500 = 0.1x to 5.0x)
+        """
+        if self.selected_template:
+            scale = value / 100.0
+            # Set the scale directly (affects pixmap rendering only)
+            self.selected_template.setScale(scale)
+            self.selected_template.template_data.scale = scale
+            self.template_scale_label.setText(f'{value}%')
+            self.mark_unsaved_changes()
+    
     def on_scale_sensitivity_changed(self, value: int):
         """Handle scale sensitivity slider change.
         
@@ -1401,6 +1530,7 @@ class StarMapEditor(QMainWindow):
         self.reset_transform_btn.setEnabled(has_selection)
         self.lock_btn.setEnabled(has_selection)
         self.opacity_slider.setEnabled(has_selection)
+        self.template_scale_slider.setEnabled(has_selection)
         
         if has_selection:
             # Update lock button
@@ -1414,11 +1544,20 @@ class StarMapEditor(QMainWindow):
             self.opacity_slider.setValue(opacity_value)
             self.opacity_slider.blockSignals(False)
             self.opacity_label.setText(f'{opacity_value}%')
+            
+            # Update template scale slider
+            scale_value = int(self.selected_template.get_template_data().scale * 100)
+            self.template_scale_slider.blockSignals(True)
+            self.template_scale_slider.setValue(scale_value)
+            self.template_scale_slider.blockSignals(False)
+            self.template_scale_label.setText(f'{scale_value}%')
         else:
             self.lock_btn.setChecked(False)
             self.lock_btn.setText('Lock Template')
             self.opacity_slider.setValue(100)
             self.opacity_label.setText('100%')
+            self.template_scale_slider.setValue(100)
+            self.template_scale_label.setText('100%')
     
     def update_route_workspace_controls(self, route_selected: Optional[RouteItem]):
         """Update route workspace controls based on selection.
@@ -1432,6 +1571,38 @@ class StarMapEditor(QMainWindow):
                 self.current_route_label.setText(f'Current Route: {route_name}')
             else:
                 self.current_route_label.setText('Current Route: None')
+    
+    def set_system_icon_size(self, size: str):
+        """Set the system icon size (UI SPACE only).
+        
+        Changes visual appearance of all system icons without affecting
+        their world coordinates.
+        
+        Args:
+            size: Icon size ('small', 'medium', or 'large')
+        """
+        # Update button states
+        self.icon_size_small_btn.setChecked(size == 'small')
+        self.icon_size_medium_btn.setChecked(size == 'medium')
+        self.icon_size_large_btn.setChecked(size == 'large')
+        
+        # Determine radius (UI SPACE)
+        if size == 'small':
+            radius = SystemItem.ICON_SIZE_SMALL
+        elif size == 'large':
+            radius = SystemItem.ICON_SIZE_LARGE
+        else:  # medium
+            radius = SystemItem.ICON_SIZE_MEDIUM
+        
+        # Update class variable so new systems use this size
+        SystemItem.RADIUS = radius
+        
+        # Update all existing system items (UI SPACE: visual only)
+        for system_item in self.system_items.values():
+            system_item.set_icon_size(radius)
+        
+        # Mark as unsaved since this affects the visual state
+        self.mark_unsaved_changes()
     
     
     def add_route_group_label(self, route_group: RouteGroup):
