@@ -13,8 +13,15 @@ from .project_model import TemplateData
 class TemplateItem(QGraphicsPixmapItem):
     """Graphics representation of a template image.
     
+    IMAGE LAYER ARCHITECTURE:
+    - Templates are visual overlays that do NOT define world scale
+    - Template scaling affects only pixmap rendering (IMAGE LAYER)
+    - Systems placed on templates use WORLD SPACE (HSU) coordinates
+    - Template position/scale does NOT affect system coordinates
+    - Grid spacing is independent of template size
+    
     Displays a template image with support for:
-    - Position and scale transformations
+    - Position and scale transformations (visual only)
     - Opacity adjustment
     - Lock state (prevents movement/scaling)
     - Selection for editing
@@ -30,7 +37,7 @@ class TemplateItem(QGraphicsPixmapItem):
         super().__init__(parent)
         self.template_data = template_data
         
-        # Load the pixmap
+        # Load the pixmap (IMAGE LAYER)
         pixmap = QPixmap(template_data.filepath)
         if pixmap.isNull():
             # Create a placeholder if image can't be loaded
@@ -39,9 +46,9 @@ class TemplateItem(QGraphicsPixmapItem):
         
         self.setPixmap(pixmap)
         
-        # Apply stored transformations
+        # Apply stored transformations (IMAGE LAYER: visual only)
         self.setPos(template_data.position[0], template_data.position[1])
-        self.setScale(template_data.scale)
+        self.setScale(template_data.scale)  # Affects pixmap rendering only
         self.setOpacity(template_data.opacity)
         self.setZValue(template_data.z_order)
         

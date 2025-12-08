@@ -16,6 +16,9 @@ from PySide6.QtGui import QPainterPath, QPen, QColor
 class RouteData:
     """Data model for a hyperlane route between systems.
     
+    WORLD SPACE: Control points are stored in HSU coordinates.
+    Route geometry is defined by system positions (HSU) and intermediate control points (HSU).
+    
     Routes are polyline paths connecting two star systems. The shape is defined by
     intermediate control points that are clicked by the user during route creation.
     
@@ -24,9 +27,10 @@ class RouteData:
         name: Display name of the route
         start_system_id: ID of the starting system
         end_system_id: ID of the ending system
-        control_points: List of intermediate points defining the route's shape
-                       (excluding start/end system positions which are added at render time)
-                       These are the points clicked by user between start and end systems
+        control_points: List of intermediate points in WORLD SPACE (HSU coordinates)
+                       defining the route's shape (excluding start/end system positions
+                       which are added at render time). These are the points clicked by
+                       user between start and end systems.
     """
     id: str
     name: str
@@ -43,7 +47,7 @@ class RouteData:
             name: Display name for the route
             start_system_id: ID of the starting system
             end_system_id: ID of the ending system
-            control_points: Optional list of intermediate shape points
+            control_points: Optional list of intermediate shape points (WORLD SPACE: HSU coordinates)
             
         Returns:
             New RouteData instance
@@ -60,11 +64,17 @@ class RouteData:
 class RouteItem(QGraphicsPathItem):
     """Graphics representation of a route between systems.
     
+    WORLD SPACE ARCHITECTURE:
+    - Route control points are stored in WORLD SPACE (HSU coordinates)
+    - Routes connect systems at their HSU positions
+    - Visual rendering (line width) is in UI SPACE
+    - Routes automatically update when systems move (HSU positions change)
+    
     Displays as a polyline path through clicked control points.
     Routes are NOT editable after creation - to modify, delete and redraw.
     """
     
-    # Visual configuration
+    # Visual configuration (UI SPACE)
     LINE_WIDTH = 3
     NORMAL_COLOR = QColor(100, 200, 255)  # Light blue
     SELECTED_COLOR = QColor(255, 255, 100)  # Yellow
@@ -74,7 +84,7 @@ class RouteItem(QGraphicsPathItem):
         """Initialize the route graphics item.
         
         Args:
-            route_data: The RouteData object this item represents
+            route_data: The RouteData object this item represents (WORLD SPACE coordinates)
             system_items_dict: Dictionary mapping system IDs to SystemItem instances
         """
         super().__init__()
@@ -82,7 +92,7 @@ class RouteItem(QGraphicsPathItem):
         self.system_items = system_items_dict
         self.is_group_selected = False
         
-        # Configure appearance
+        # Configure appearance (UI SPACE)
         self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         
         # Enable interaction
@@ -92,7 +102,7 @@ class RouteItem(QGraphicsPathItem):
         # Z-order: routes below systems but above templates
         self.setZValue(5)
         
-        # Initial path computation
+        # Initial path computation (WORLD SPACE coordinates)
         self.recompute_path()
     
     def get_start_position(self) -> Optional[QPointF]:

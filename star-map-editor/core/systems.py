@@ -18,10 +18,16 @@ from PySide6.QtGui import QColor, QPen, QBrush, QFont
 class SystemData:
     """Data model for a star system.
     
+    WORLD SPACE: System positions are in HSU (Hyperspace Units) coordinates.
+    These coordinates are fixed and never affected by:
+    - View zoom level
+    - Template scaling
+    - Icon size changes
+    
     Attributes:
         id: Unique identifier for the system (UUID string)
         name: Display name of the system
-        position: Position in scene coordinates (QPointF)
+        position: Position in WORLD SPACE (HSU coordinates as QPointF)
     """
     id: str
     name: str
@@ -29,7 +35,12 @@ class SystemData:
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
-        """Create a new system with a generated UUID."""
+        """Create a new system with a generated UUID.
+        
+        Args:
+            name: Display name for the system
+            position: Position in WORLD SPACE (HSU coordinates)
+        """
         return cls(
             id=str(uuid.uuid4()),
             name=name,
@@ -40,12 +51,23 @@ class SystemData:
 class SystemItem(QGraphicsEllipseItem):
     """Graphics representation of a star system.
     
+    UI SPACE ARCHITECTURE:
+    - Icon radius is a visual property in UI space
+    - Changing icon size does NOT affect system position (WORLD SPACE)
+    - Hitboxes scale with icon size for consistent interaction
+    - Label positioning adjusts to icon size
+    
     Displays as a colored circle with the system name as a label.
     Supports selection, dragging, and position updates.
     """
     
-    # Visual configuration
-    RADIUS = 10  # Circle radius in scene units
+    # Visual configuration (UI SPACE)
+    # Class variable for global icon size setting
+    RADIUS = 10  # Default circle radius in scene units
+    ICON_SIZE_SMALL = 8
+    ICON_SIZE_MEDIUM = 10
+    ICON_SIZE_LARGE = 15
+    
     NORMAL_COLOR = QColor(100, 150, 255)  # Blue for normal state
     SELECTED_COLOR = QColor(255, 200, 100)  # Orange for selected state
     BORDER_WIDTH = 2
@@ -60,9 +82,13 @@ class SystemItem(QGraphicsEllipseItem):
         super().__init__(parent)
         self.system_data = system_data
         
-        # Set up the circle
-        self.setRect(-self.RADIUS, -self.RADIUS, 
-                     self.RADIUS * 2, self.RADIUS * 2)
+        # Use current global radius setting
+        self.current_radius = SystemItem.RADIUS
+        
+        # Set up the circle (UI SPACE: visual size only)
+        self.setRect(-self.current_radius, -self.current_radius, 
+                     self.current_radius * 2, self.current_radius * 2)
+        # WORLD SPACE: position stays in HSU coordinates
         self.setPos(system_data.position)
         
         # Configure appearance
@@ -84,11 +110,29 @@ class SystemItem(QGraphicsEllipseItem):
         font.setPointSize(10)
         font.setBold(True)
         self.label.setFont(font)
-        self.label.setPos(self.RADIUS + 5, -self.RADIUS)
+        self.update_label_position()
         
         # Make label non-interactive
         self.label.setFlag(QGraphicsTextItem.ItemIsMovable, False)
         self.label.setFlag(QGraphicsTextItem.ItemIsSelectable, False)
+    
+    def set_icon_size(self, radius: float):
+        """Update the icon size (UI SPACE only).
+        
+        Changes visual appearance without affecting world coordinates.
+        
+        Args:
+            radius: New radius for the icon
+        """
+        self.current_radius = radius
+        # Update the ellipse rect (UI SPACE)
+        self.setRect(-radius, -radius, radius * 2, radius * 2)
+        # Update label position to match new size
+        self.update_label_position()
+    
+    def update_label_position(self):
+        """Update label position based on current icon size."""
+        self.label.setPos(self.current_radius + 5, -self.current_radius)
     
     def update_name(self, name: str):
         """Update the system name and label.
