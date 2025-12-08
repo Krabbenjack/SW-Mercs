@@ -469,5 +469,3 @@ class RouteItem(QGraphicsPathItem):
         
         # Distance from point to closest point
         return ((point.x() - closest_x) ** 2 + (point.y() - closest_y) ** 2) ** 0.5
-            self.setPen(QPen(self.NORMAL_COLOR, self.LINE_WIDTH,
-                            Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))

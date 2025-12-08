@@ -2182,7 +2182,6 @@ class StarMapEditor(QMainWindow):
         if route_id in self.route_items:
             # Remove from scene
             route_item = self.route_items[route_id]
-            route_item.hide_handles()  # Clean up handles first
             self.scene.removeItem(route_item)
             # Remove from storage
             del self.route_items[route_id]
