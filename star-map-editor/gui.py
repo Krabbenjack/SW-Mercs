@@ -15,14 +15,14 @@ from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
-    QGraphicsPathItem, QInputDialog
+    QGraphicsPathItem, QInputDialog, QGraphicsTextItem
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
-from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath
+from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
 
 from core import (
     MapProject, TemplateData, SystemData, SystemItem, 
-    SystemDialog, TemplateItem, RouteData, RouteItem, RouteHandleItem
+    SystemDialog, TemplateItem, RouteData, RouteItem
 )
 from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
@@ -85,17 +85,20 @@ class MapView(QGraphicsView):
     # Signal emitted when user clicks to place/edit a system
     system_click = Signal(QPointF, bool)  # (position, is_right_click)
     
-    # Signal emitted when user clicks in routes mode
-    route_click = Signal(QPointF)  # (position)
+    # Signal emitted when starting route drawing
+    start_route_drawing = Signal(object)  # (SystemItem)
+    
+    # Signal emitted when finishing route drawing
+    finish_route_drawing = Signal(object)  # (SystemItem)
     
     # Signal emitted when a route is toggled for group selection
     route_group_toggle = Signal(str)  # (route_id)
     
+    # Signal emitted when requesting route deletion from context menu
+    route_delete_requested = Signal(str)  # (route_id)
+    
     # Signal emitted when an item is moved/modified
     item_modified = Signal()  # Emitted when items are moved
-    
-    # Signal emitted when inserting a control point on a route
-    control_point_insert = Signal(object, QPointF)  # (route_item, position)
     
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
@@ -138,8 +141,11 @@ class MapView(QGraphicsView):
         # Item drag tracking
         self.dragging_item = False
         
-        # P key state for adding control points
-        self.p_key_pressed = False
+        # Route drawing state (click-to-add polyline)
+        self.route_drawing_active = False
+        self.route_drawing_start_system_id: Optional[str] = None
+        self.route_drawing_points: List[QPointF] = []  # Intermediate vertices
+        self.route_drawing_preview_item: Optional[QGraphicsPathItem] = None  # Visual preview during drawing
 
     def wheelEvent(self, event: QWheelEvent):
         """Handle mouse wheel for zooming or template scaling.
@@ -200,7 +206,7 @@ class MapView(QGraphicsView):
         self.scene().update()
         
     def keyPressEvent(self, event: QKeyEvent):
-        """Handle key press for continuous WASD/Arrow panning and Space for mouse pan."""
+        """Handle key press for continuous WASD/Arrow panning, Space for mouse pan, and ESC for cancel."""
         if event.key() in (Qt.Key_W, Qt.Key_S, Qt.Key_A, Qt.Key_D,
                           Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right):
             self.keys_pressed.add(event.key())
@@ -210,9 +216,13 @@ class MapView(QGraphicsView):
         elif event.key() == Qt.Key_Space:
             self.space_pressed = True
             event.accept()
-        elif event.key() == Qt.Key_P:
-            self.p_key_pressed = True
-            event.accept()
+        elif event.key() == Qt.Key_Escape:
+            # Cancel route drawing if active
+            if self.route_drawing_active:
+                self.cancel_route_drawing()
+                event.accept()
+            else:
+                super().keyPressEvent(event)
         else:
             super().keyPressEvent(event)
     
@@ -229,9 +239,6 @@ class MapView(QGraphicsView):
             if self.is_panning:
                 self.is_panning = False
                 self.setCursor(Qt.ArrowCursor)
-            event.accept()
-        elif event.key() == Qt.Key_P:
-            self.p_key_pressed = False
             event.accept()
         else:
             super().keyReleaseEvent(event)
@@ -270,15 +277,15 @@ class MapView(QGraphicsView):
         self.scene().update()
     
     def mousePressEvent(self, event):
-        """Handle mouse press for panning, system placement, route creation, and template selection.
+        """Handle mouse press for panning, system placement, and route creation.
         
         In routes mode:
-        - Click on RouteHandleItem: Allow dragging the control point
-        - P + Click on RouteItem: Insert a new control point at the click position
+        - Click System A: Start route drawing
+        - Click empty space: Add intermediate control point
+        - Click System B: Finish route
+        - Right-click or ESC: Cancel route drawing
         - Ctrl + Click on RouteItem: Toggle route for group selection
         - Click on RouteItem: Select the route
-        - Click on SystemItem: Select system for route creation
-        - Click on empty space: Start new route from system
         """
         # Middle mouse button or Space + left mouse button for panning
         if event.button() == Qt.MiddleButton or \
@@ -287,49 +294,84 @@ class MapView(QGraphicsView):
             self.pan_start_pos = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
             event.accept()
-        # In routes mode, handle clicks for route creation and control point insertion
+        # In routes mode, handle clicks for polyline route creation
         elif self.routes_mode_active:
             if event.button() == Qt.LeftButton:
                 # Get item at click position
                 item = self.itemAt(event.pos())
+                scene_pos = self.mapToScene(event.pos())
                 
-                # If clicking on a RouteHandleItem, let it handle the event (for dragging)
-                if isinstance(item, RouteHandleItem):
-                    super().mousePressEvent(event)
-                    return
+                # Check if item is a system or if parent is a system (for label clicks)
+                system_item = None
+                if isinstance(item, SystemItem):
+                    system_item = item
+                elif item and isinstance(item.parentItem(), SystemItem):
+                    system_item = item.parentItem()
                 
-                # If P key is pressed and clicking on a RouteItem, insert control point
-                if self.p_key_pressed and isinstance(item, RouteItem):
-                    scene_pos = self.mapToScene(event.pos())
-                    self.insert_control_point_on_route(item, scene_pos)
-                    event.accept()
-                    return
-                
-                # Check if CTRL is pressed for group selection
-                if event.modifiers() & Qt.ControlModifier:
+                # Check if CTRL is pressed for group selection (not while drawing)
+                if not self.route_drawing_active and (event.modifiers() & Qt.ControlModifier):
                     if isinstance(item, RouteItem):
                         # Toggle route for group selection
                         self.toggle_route_group_selection(item)
                         event.accept()
                         return
                 
-                # If clicking on a RouteItem (not for group selection), allow selection
-                if isinstance(item, RouteItem):
-                    super().mousePressEvent(event)
-                    return
+                # If currently drawing a route
+                if self.route_drawing_active:
+                    # Check if clicking on a system (to finish route)
+                    if system_item:
+                        # Emit signal to finish route creation with end system
+                        self.finish_route_drawing.emit(system_item)
+                        event.accept()
+                        return
+                    else:
+                        # Clicking on empty space - add intermediate point
+                        self.route_drawing_points.append(scene_pos)
+                        
+                        # Update visual preview
+                        # Find start system position
+                        start_system_item = None
+                        for item in self.scene().items():
+                            if isinstance(item, SystemItem):
+                                if item.get_system_data().id == self.route_drawing_start_system_id:
+                                    start_system_item = item
+                                    break
+                        
+                        if start_system_item:
+                            self.update_route_drawing_preview(start_system_item.pos())
+                        
+                        event.accept()
+                        return
                 
-                # Otherwise, emit signal for route click handling (system selection)
-                scene_pos = self.mapToScene(event.pos())
-                self.route_click.emit(scene_pos)
-                event.accept()
-            elif event.button() == Qt.RightButton:
-                # Right click on route - show context menu
-                item = self.itemAt(event.pos())
-                if isinstance(item, RouteItem):
-                    self.show_route_context_menu(event.globalPos(), item)
+                # Not currently drawing - check what was clicked
+                if system_item:
+                    # Clicking on system - start route drawing
+                    self.start_route_drawing.emit(system_item)
                     event.accept()
                     return
-                super().mousePressEvent(event)
+                elif isinstance(item, RouteItem):
+                    # Just select the route (no more ghost-line editing)
+                    super().mousePressEvent(event)
+                    return
+                else:
+                    # Clicking on empty space - do nothing in routes mode when not drawing
+                    event.accept()
+                    return
+                    
+            elif event.button() == Qt.RightButton:
+                # Right click - cancel drawing or show context menu
+                if self.route_drawing_active:
+                    self.cancel_route_drawing()
+                    event.accept()
+                    return
+                else:
+                    # Right click on route - show context menu
+                    item = self.itemAt(event.pos())
+                    if isinstance(item, RouteItem):
+                        self.show_route_context_menu(event.globalPos(), item)
+                        event.accept()
+                        return
+                    super().mousePressEvent(event)
             else:
                 super().mousePressEvent(event)
         # In systems mode, handle clicks for placement/editing
@@ -410,6 +452,7 @@ class MapView(QGraphicsView):
         """
         menu = QMenu()
         rename_action = menu.addAction("Rename Route")
+        delete_action = menu.addAction("Delete Route")
         
         action = menu.exec(global_pos)
         if action == rename_action:
@@ -425,6 +468,10 @@ class MapView(QGraphicsView):
                 route_item.update_name(new_name.strip())
                 # Emit signal to mark unsaved changes
                 self.item_modified.emit()
+        elif action == delete_action:
+            # Emit signal to request route deletion
+            route_data = route_item.get_route_data()
+            self.route_delete_requested.emit(route_data.id)
     
     def toggle_route_group_selection(self, route_item: RouteItem):
         """Toggle a route's group selection state.
@@ -436,15 +483,48 @@ class MapView(QGraphicsView):
         route_id = route_item.get_route_data().id
         self.route_group_toggle.emit(route_id)
     
-    def insert_control_point_on_route(self, route_item: RouteItem, scene_pos: QPointF):
-        """Insert a control point on a route at the given position.
+    def cancel_route_drawing(self):
+        """Cancel the current route drawing operation."""
+        self.route_drawing_active = False
+        self.route_drawing_start_system_id = None
+        self.route_drawing_points = []
+        
+        # Remove preview path if it exists
+        if self.route_drawing_preview_item:
+            self.scene().removeItem(self.route_drawing_preview_item)
+            self.route_drawing_preview_item = None
+        
+        self.setCursor(Qt.ArrowCursor)
+    
+    def update_route_drawing_preview(self, start_pos: QPointF):
+        """Update the visual preview of the route being drawn.
         
         Args:
-            route_item: The RouteItem to insert a control point on
-            scene_pos: Position in scene coordinates
+            start_pos: Position of the start system
         """
-        # Emit signal to let main window handle the logic
-        self.control_point_insert.emit(route_item, scene_pos)
+        # Remove old preview if it exists
+        if self.route_drawing_preview_item:
+            self.scene().removeItem(self.route_drawing_preview_item)
+            self.route_drawing_preview_item = None
+        
+        # Create path for preview
+        if len(self.route_drawing_points) > 0:
+            from PySide6.QtGui import QPainterPath, QPen
+            from PySide6.QtCore import Qt
+            
+            path = QPainterPath()
+            path.moveTo(start_pos)
+            
+            # Draw through all intermediate points
+            for point in self.route_drawing_points:
+                path.lineTo(point)
+            
+            # Create preview item with dashed line style
+            self.route_drawing_preview_item = QGraphicsPathItem(path)
+            pen = QPen(QColor(100, 150, 255), 2, Qt.DashLine)  # Blue dashed line
+            self.route_drawing_preview_item.setPen(pen)
+            self.route_drawing_preview_item.setZValue(-1)  # Below other items
+            self.scene().addItem(self.route_drawing_preview_item)
     
     def set_pan_sensitivity(self, sensitivity: float):
         """Set the pan sensitivity multiplier.
@@ -595,9 +675,10 @@ class StarMapEditor(QMainWindow):
         self.view = MapView(self.scene)
         self.view.setFocusPolicy(Qt.StrongFocus)
         self.view.system_click.connect(self.handle_system_click)
-        self.view.route_click.connect(self.handle_route_click)
+        self.view.start_route_drawing.connect(self.handle_start_route_drawing)
+        self.view.finish_route_drawing.connect(self.handle_finish_route_drawing)
         self.view.route_group_toggle.connect(self.toggle_route_for_group)
-        self.view.control_point_insert.connect(self.insert_control_point_on_route)
+        self.view.route_delete_requested.connect(self.handle_route_delete_request)
         self.view.item_modified.connect(self.on_item_modified)
         
         # Connect scene selection changed signal
@@ -754,8 +835,8 @@ class StarMapEditor(QMainWindow):
         
         toolbar_layout.addSpacing(20)
         
-        # Info label for control point creation
-        info_label = QLabel('Press P + Click on route to add control point')
+        # Info label for polyline route creation
+        info_label = QLabel('Click System A → Click intermediate points → Click System B | ESC or Right-click to cancel')
         info_label.setStyleSheet("color: #555; font-style: italic;")
         toolbar_layout.addWidget(info_label)
         
@@ -1107,7 +1188,7 @@ class StarMapEditor(QMainWindow):
         elif self.current_mode == 'systems':
             self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click systems to create routes. Select route to edit. Press P + Click on route to add control point.")
+            self.status_label.setText("Routes mode: Click system A → click intermediate points → click system B. ESC or right-click to cancel.")
         else:
             self.status_label.setText("Ready")
     
@@ -1561,65 +1642,122 @@ class StarMapEditor(QMainWindow):
         else:
             self.set_mode('routes')
     
-    def handle_route_click(self, scene_pos: QPointF):
-        """Handle clicks in routes mode for route creation.
+    def handle_start_route_drawing(self, system_item):
+        """Handle starting route drawing by clicking on a system.
         
         Args:
-            scene_pos: Position in scene coordinates
+            system_item: SystemItem that was clicked
         """
-        # Find system under click position (with snap radius)
-        clicked_system = self.find_system_at_position(scene_pos, snap_radius=20)
+        # Start route drawing mode
+        system_data = system_item.get_system_data()
+        self.view.route_drawing_active = True
+        self.view.route_drawing_start_system_id = system_data.id
+        self.view.route_drawing_points = []
         
-        if not clicked_system:
-            # Click on empty space - cancel current route creation
-            self.cancel_route_creation()
+        self.status_label.setText(f"Route drawing: Click intermediate points, then click end system. Right-click or ESC to cancel.")
+    
+    def handle_finish_route_drawing(self, system_item):
+        """Handle finishing route drawing by clicking on end system.
+        
+        Args:
+            system_item: SystemItem that was clicked as end system
+        """
+        if not self.view.route_drawing_active:
             return
         
-        if self.route_creation_start_system_id is None:
-            # First click - set start system
-            self.route_creation_start_system_id = clicked_system.get_system_data().id
-            self.status_label.setText(f"Routes mode: Start system selected. Click another system to complete route.")
-        else:
-            # Second click - create the route
-            start_system_id = self.route_creation_start_system_id
-            end_system_id = clicked_system.get_system_data().id
-            
-            # Don't allow route to same system
-            if start_system_id == end_system_id:
-                self.cancel_route_creation()
+        start_system_id = self.view.route_drawing_start_system_id
+        end_system_id = system_item.get_system_data().id
+        intermediate_points = self.view.route_drawing_points.copy()
+        
+        # Reset drawing state
+        self.view.cancel_route_drawing()
+        
+        # Don't allow route to same system
+        if start_system_id == end_system_id:
+            self.status_label.setText("Routes mode: Click system to start route.")
+            return
+        
+        # Check if route already exists between these systems
+        for route_data in self.project.routes.values():
+            if ((route_data.start_system_id == start_system_id and route_data.end_system_id == end_system_id) or
+                (route_data.start_system_id == end_system_id and route_data.end_system_id == start_system_id)):
+                QMessageBox.warning(
+                    self,
+                    "Route Exists",
+                    "A route already exists between these systems."
+                )
+                self.status_label.setText("Routes mode: Click system to start route.")
                 return
+        
+        # Create new route with intermediate control points
+        start_sys = self.project.systems[start_system_id]
+        end_sys = self.project.systems[end_system_id]
+        route_name = f"{start_sys.name} - {end_sys.name}"
+        
+        # Convert intermediate points to tuples
+        control_points = [(p.x(), p.y()) for p in intermediate_points]
+        
+        # Create route with control points
+        route_data = RouteData.create_new(route_name, start_system_id, end_system_id, control_points)
+        self.project.add_route(route_data)
+        
+        # Add to scene
+        route_item = self.add_route_to_scene(route_data)
+        
+        # Auto-select the newly created route
+        route_item.setSelected(True)
+        
+        self.mark_unsaved_changes()
+        self.status_label.setText("Routes mode: Click system to start route.")
+    
+    def handle_route_delete_request(self, route_id: str):
+        """Handle route deletion request from context menu.
+        
+        Args:
+            route_id: ID of the route to delete
+        """
+        # Confirm deletion
+        reply = QMessageBox.question(
+            self,
+            "Delete Route",
+            "Are you sure you want to delete this route?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Remove from scene
+            if route_id in self.route_items:
+                route_item = self.route_items[route_id]
+                self.scene.removeItem(route_item)
+                del self.route_items[route_id]
             
-            # Check if route already exists between these systems
-            for route_data in self.project.routes.values():
-                if ((route_data.start_system_id == start_system_id and route_data.end_system_id == end_system_id) or
-                    (route_data.start_system_id == end_system_id and route_data.end_system_id == start_system_id)):
-                    QMessageBox.warning(
-                        self,
-                        "Route Exists",
-                        "A route already exists between these systems."
-                    )
-                    self.cancel_route_creation()
-                    return
+            # Remove from project
+            if route_id in self.project.routes:
+                del self.project.routes[route_id]
             
-            # Create new route
-            start_sys = self.project.systems[start_system_id]
-            end_sys = self.project.systems[end_system_id]
-            route_name = f"{start_sys.name} - {end_sys.name}"
+            # Update route groups to remove this route
+            groups_to_remove = []
+            for group_id, group in self.project.route_groups.items():
+                if route_id in group.route_ids:
+                    group.route_ids.remove(route_id)
+                    # Mark group for removal if empty
+                    if len(group.route_ids) == 0:
+                        groups_to_remove.append(group_id)
             
-            # Create route with no control points initially
-            # Users can add control points using P + Click
-            route_data = RouteData.create_new(route_name, start_system_id, end_system_id)
-            self.project.add_route(route_data)
+            # Remove empty groups
+            for group_id in groups_to_remove:
+                del self.project.route_groups[group_id]
+                # Remove group label if exists
+                if group_id in self.route_group_labels:
+                    self.scene.removeItem(self.route_group_labels[group_id])
+                    del self.route_group_labels[group_id]
             
-            # Add to scene
-            route_item = self.add_route_to_scene(route_data)
+            # Update remaining group labels
+            self.update_route_group_labels()
             
-            # Auto-select the newly created route to show handles immediately
-            route_item.setSelected(True)
-            
-            # Reset creation state
-            self.cancel_route_creation()
             self.mark_unsaved_changes()
+            self.status_label.setText("Route deleted.")
     
     def find_system_at_position(self, scene_pos: QPointF, snap_radius: float = 20) -> Optional[SystemItem]:
         """Find a system near the given position.
@@ -1701,16 +1839,6 @@ class StarMapEditor(QMainWindow):
             self.routes_selected_for_group.add(route_id)
             if route_id in self.route_items:
                 self.route_items[route_id].set_group_selection(True)
-    
-    def insert_control_point_on_route(self, route_item: RouteItem, scene_pos: QPointF):
-        """Insert a control point on a route at the given position.
-        
-        Args:
-            route_item: The RouteItem to insert a control point on
-            scene_pos: Position in scene coordinates
-        """
-        route_item.insert_control_point(scene_pos)
-        self.mark_unsaved_changes()
     
     def create_route_group_dialog(self):
         """Show dialog to create a named route group from selected routes."""

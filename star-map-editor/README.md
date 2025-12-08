@@ -191,14 +191,18 @@ Routes Mode allows you to create curved hyperlane routes between star systems wi
 
 Click the **"Routes"** button in the mode bar. When active, the button turns green and a workspace toolbar appears below the mode buttons.
 
-**Status bar message**: *"Routes mode: Click a start system, then an end system. Select a route to show control points and edit the curve."*
+**Status bar message**: *"Routes mode: Click systems to create routes. Select route to edit. Press P + Click to add control point. Select handle and press Delete/Backspace to remove."*
 
 #### Workspace Toolbar
 
 The workspace toolbar provides the following controls (visible only in Routes Mode):
 
+- **Current Route**: Display of the currently selected route name
+- **Info**: Instructions for adding and deleting control points
+  - "Press P + Click on route to add control point"
+  - "Select handle and press Delete/Backspace to remove"
 - **Create Route Group**: Create a named group from currently selected routes (see Route Groups below)
-- **Info**: Instructions for using CTRL+click to select routes for grouping
+- **Group Info**: Instructions for using CTRL+click to select routes for grouping
 
 #### Creating Routes
 
@@ -225,14 +229,32 @@ Each route displays its name as a label near the midpoint of the route:
 
 - **Select Route**: Click on a route path to select it
   - Selected routes turn yellow
-  - Control point handles appear as draggable bright orange circles (larger and more visible than before)
-  - Handles are now easier to see and grab for precise curve editing
+  - Control point handles appear as draggable bright orange circles (8 pixel radius, highly visible)
+  - Handles are positioned at each control point along the route
 
-- **Adjust Curve**: Drag the orange control point handles to bend the route
-  - Control points can be positioned anywhere
+- **Add Control Points**: Press and hold **P** key, then click on the route where you want to add a control point
+  - Control point is inserted at the closest segment to your click
+  - New handle appears immediately (orange circle)
+  - Route curves through the new control point
+  - Release P key when done
+
+- **Move Control Points**: Drag the orange control point handles to adjust the curve
+  - Click and drag any handle to reposition it
   - The spline path updates in real-time as you drag
   - Multiple control points create smooth curves through all points
   - Route labels update position automatically
+
+- **Delete Control Points**: Select a control point handle, then press **Delete** or **Backspace**
+  - Click on a handle to select it (turns red)
+  - Press Delete or Backspace key
+  - Control point is removed
+  - Route recalculates with remaining control points
+  - If all control points are removed, route returns to straight line
+
+- **Handle Visual States**:
+  - **Orange**: Normal state (can be dragged)
+  - **Vivid Orange**: Mouse hovering over handle
+  - **Red**: Handle selected (ready for deletion)
 
 - **Route Follows Systems**: When you move a system (in Systems Mode), all connected routes automatically update to follow the new position
   - Route endpoints remain attached to their systems
@@ -493,8 +515,9 @@ Planned features for expanded gameplay:
 - **Mouse Wheel**: Zoom in/out
 - **Ctrl+Mouse Wheel** (Template Mode): Scale selected template
 - **Ctrl+Click** (Routes Mode): Toggle route selection for grouping
+- **P+Click** (Routes Mode): Add control point to route at clicked position
 - **Space+Drag**: Pan the view
-- **Delete** (Routes Mode): Delete selected route
+- **Delete** (Routes Mode): Delete selected route or control point handle
 
 ## Tips
 
@@ -508,7 +531,11 @@ Planned features for expanded gameplay:
 - Adjust sensitivity sliders to match your workflow preference and input device characteristics
 - Create systems first, then add routes between them
 - Routes automatically update when you move connected systems
-- Select a route and drag its control handles to create curved paths
+- Hold P and click on a route to add control points for curves
+- Select a route to show its control point handles (orange circles)
+- Drag handles to adjust the curve shape
+- Select a handle (turns red) and press Delete/Backspace to remove it
+- Routes without control points display as straight lines
 - Right-click routes to rename them with meaningful names
 - Use CTRL+click to select multiple routes for grouping
 - Create route groups to organize trade lanes, patrol routes, or strategic corridors
@@ -537,8 +564,21 @@ Planned features for expanded gameplay:
 ### Can't see route control handles
 - Make sure the route is selected (click on it)
 - Control handles only appear when a route is selected
-- Handles are now larger and brighter orange circles (8 pixels) for better visibility
+- Handles are large bright orange circles (8 pixels) for better visibility
 - Newly created routes are automatically selected with visible handles
+- Hover over a handle to see it turn vivid orange
+
+### Can't add control points to routes
+- Make sure you're in Routes Mode
+- Hold the P key while clicking on the route
+- P + Click adds a control point at the closest segment
+- Release P key after adding the point
+
+### Can't delete control points
+- First, click on a control point handle to select it (turns red)
+- Then press Delete or Backspace key
+- Make sure the route is selected first to see handles
+- If you delete the route itself (not a handle), a confirmation dialog appears
 
 ### Route labels not visible
 - Route labels are automatically displayed near the midpoint of each route
