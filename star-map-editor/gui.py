@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
-    QDialog, QDialogButtonBox
+    QDialog, QDialogButtonBox, QComboBox
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -798,6 +798,10 @@ class StarMapEditor(QMainWindow):
         pan_sensitivity_layout.addStretch()
         main_layout.addLayout(pan_sensitivity_layout)
         
+        # Create status label for mode indication (before toolbars, so we can embed it)
+        self.status_label = QLabel()
+        self.status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
+        
         # Create workspace toolbar (visible only in template mode)
         self.workspace_toolbar = self.create_workspace_toolbar()
         main_layout.addWidget(self.workspace_toolbar)
@@ -808,11 +812,21 @@ class StarMapEditor(QMainWindow):
         main_layout.addWidget(self.routes_toolbar)
         self.routes_toolbar.hide()
         
-        # Status label for mode indication
-        self.status_label = QLabel()
-        self.status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
+        # Create fallback status bar (visible when no toolbar with status is shown)
+        self.fallback_status_widget = QWidget()
+        self.fallback_status_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
+        fallback_status_layout = QHBoxLayout(self.fallback_status_widget)
+        fallback_status_layout.setContentsMargins(5, 5, 5, 5)
+        fallback_status_layout.addStretch()
+        # Create a second status label for fallback (when no toolbar is visible)
+        self.fallback_status_label = QLabel()
+        self.fallback_status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
+        fallback_status_layout.addWidget(self.fallback_status_label)
+        main_layout.addWidget(self.fallback_status_widget)
+        self.fallback_status_widget.hide()  # Hidden by default
+        
+        # Update status message after toolbars are created
         self.update_status_message()
-        main_layout.addWidget(self.status_label)
         
         # Create graphics scene and view
         self.scene = GridOverlay()
@@ -980,90 +994,122 @@ class StarMapEditor(QMainWindow):
         
         toolbar_layout.addStretch()
         
+        # Add status label (right-aligned)
+        toolbar_layout.addWidget(self.status_label)
+        
         return toolbar_widget
     
     def create_routes_toolbar(self) -> QWidget:
-        """Create the workspace toolbar for routes mode."""
+        """Create the workspace toolbar for routes mode - compact 3-row design."""
         toolbar_widget = QWidget()
-        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
+        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 3px; }")
         toolbar_layout = QVBoxLayout(toolbar_widget)
-        toolbar_layout.setContentsMargins(5, 5, 5, 5)
+        toolbar_layout.setContentsMargins(3, 3, 3, 3)
+        toolbar_layout.setSpacing(2)  # Minimal spacing between rows
         
-        # === Top section: Route creation ===
-        creation_layout = QHBoxLayout()
+        # === Row 1: Route creation instructions ===
+        row1_layout = QHBoxLayout()
+        row1_layout.setSpacing(5)
         
-        # Info label for polyline route creation
-        info_label = QLabel('Click System A → Click intermediate points → Click System B | ESC or Right-click to cancel')
-        info_label.setStyleSheet("color: #555; font-style: italic;")
-        creation_layout.addWidget(info_label)
+        # Info label for polyline route creation (smaller font)
+        info_label = QLabel('Click System A → intermediate points → System B | ESC/Right-click to cancel')
+        info_label.setStyleSheet("color: #555; font-style: italic; font-size: 9pt;")
+        row1_layout.addWidget(info_label)
         
-        creation_layout.addSpacing(20)
+        row1_layout.addStretch()
         
-        # Create Route Group button
-        self.create_group_btn = QPushButton('Create Route Group')
+        # Add status label (right-aligned, smaller)
+        self.status_label.setStyleSheet("QLabel { padding: 2px; background-color: #f0f0f0; font-size: 9pt; }")
+        row1_layout.addWidget(self.status_label)
+        
+        toolbar_layout.addLayout(row1_layout)
+        
+        # === Row 2: Route selection and grouping ===
+        row2_layout = QHBoxLayout()
+        row2_layout.setSpacing(5)
+        
+        # Current Route label and dropdown
+        route_label = QLabel('Route:')
+        route_label.setStyleSheet("font-size: 9pt;")
+        row2_layout.addWidget(route_label)
+        
+        # Route selection dropdown (more compact)
+        self.route_selector = QComboBox()
+        self.route_selector.setMinimumWidth(150)
+        self.route_selector.setMaximumWidth(250)
+        self.route_selector.setStyleSheet("QComboBox { font-size: 9pt; }")
+        self.route_selector.currentIndexChanged.connect(self.on_route_selector_changed)
+        row2_layout.addWidget(self.route_selector)
+        
+        row2_layout.addSpacing(10)
+        
+        # Create Route Group button (smaller)
+        self.create_group_btn = QPushButton('Create Group')
+        self.create_group_btn.setStyleSheet("QPushButton { font-size: 9pt; padding: 2px 8px; }")
+        self.create_group_btn.setToolTip('Create a route group from selected routes (CTRL+Click to select)')
         self.create_group_btn.clicked.connect(self.create_route_group_dialog)
-        creation_layout.addWidget(self.create_group_btn)
+        row2_layout.addWidget(self.create_group_btn)
         
-        # Info label for grouping
-        group_info_label = QLabel('CTRL+Click routes to select for grouping')
-        group_info_label.setStyleSheet("color: #555; font-style: italic;")
-        creation_layout.addWidget(group_info_label)
+        # Info label for grouping (smaller)
+        group_info_label = QLabel('CTRL+Click routes to select')
+        group_info_label.setStyleSheet("color: #555; font-style: italic; font-size: 8pt;")
+        row2_layout.addWidget(group_info_label)
         
-        creation_layout.addStretch()
-        toolbar_layout.addLayout(creation_layout)
+        row2_layout.addStretch()
         
-        # === Bottom section: Route editing ===
-        editing_widget = QWidget()
-        editing_widget.setStyleSheet("QWidget { background-color: #d0d0d0; padding: 5px; border-top: 1px solid #aaa; }")
-        editing_layout = QHBoxLayout(editing_widget)
-        editing_layout.setContentsMargins(5, 5, 5, 5)
+        toolbar_layout.addLayout(row2_layout)
         
-        # Current Route label
-        self.current_route_label = QLabel('Route Editing: No route selected')
-        self.current_route_label.setStyleSheet("font-weight: bold; color: #333;")
-        editing_layout.addWidget(self.current_route_label)
+        # === Row 3: Route editing buttons ===
+        row3_layout = QHBoxLayout()
+        row3_layout.setSpacing(5)
         
-        editing_layout.addSpacing(10)
+        # Compact system chain display (inline text instead of list widget)
+        chain_label = QLabel('Systems:')
+        chain_label.setStyleSheet("font-size: 9pt;")
+        row3_layout.addWidget(chain_label)
         
-        # System chain display (read-only list)
-        self.route_system_list = QListWidget()
-        self.route_system_list.setMaximumHeight(60)
-        self.route_system_list.setStyleSheet("QListWidget { background-color: white; }")
-        editing_layout.addWidget(self.route_system_list)
+        # Use a label instead of QListWidget for compact display
+        self.route_system_chain_label = QLabel('(No route selected)')
+        self.route_system_chain_label.setStyleSheet("QLabel { background-color: white; padding: 2px 5px; border: 1px solid #aaa; font-size: 9pt; }")
+        self.route_system_chain_label.setMinimumWidth(150)
+        row3_layout.addWidget(self.route_system_chain_label)
         
-        editing_layout.addSpacing(10)
+        row3_layout.addSpacing(10)
         
-        # Action buttons for route editing
-        buttons_layout = QHBoxLayout()
+        # Action buttons for route editing (smaller, compact)
+        button_style = "QPushButton { font-size: 9pt; padding: 2px 6px; }"
         
-        self.insert_system_btn = QPushButton('Insert System')
-        self.insert_system_btn.setToolTip('Insert a selected system into the route')
+        self.insert_system_btn = QPushButton('Insert')
+        self.insert_system_btn.setStyleSheet(button_style)
+        self.insert_system_btn.setToolTip('Insert selected system into route')
         self.insert_system_btn.clicked.connect(self.insert_system_into_route)
         self.insert_system_btn.setEnabled(False)
-        buttons_layout.addWidget(self.insert_system_btn)
+        row3_layout.addWidget(self.insert_system_btn)
         
-        self.remove_system_btn = QPushButton('Remove System')
+        self.remove_system_btn = QPushButton('Remove')
+        self.remove_system_btn.setStyleSheet(button_style)
         self.remove_system_btn.setToolTip('Remove selected system from route')
         self.remove_system_btn.clicked.connect(self.remove_system_from_route)
         self.remove_system_btn.setEnabled(False)
-        buttons_layout.addWidget(self.remove_system_btn)
+        row3_layout.addWidget(self.remove_system_btn)
         
-        self.split_route_btn = QPushButton('Split Route')
+        self.split_route_btn = QPushButton('Split')
+        self.split_route_btn.setStyleSheet(button_style)
         self.split_route_btn.setToolTip('Split route at selected system')
         self.split_route_btn.clicked.connect(self.split_route_at_system)
         self.split_route_btn.setEnabled(False)
-        buttons_layout.addWidget(self.split_route_btn)
+        row3_layout.addWidget(self.split_route_btn)
         
-        self.merge_routes_btn = QPushButton('Merge Routes')
-        self.merge_routes_btn.setToolTip('Merge two selected routes')
+        self.merge_routes_btn = QPushButton('Merge')
+        self.merge_routes_btn.setStyleSheet(button_style)
+        self.merge_routes_btn.setToolTip('Merge two routes (CTRL+Click to select)')
         self.merge_routes_btn.clicked.connect(self.merge_selected_routes)
         self.merge_routes_btn.setEnabled(False)
-        buttons_layout.addWidget(self.merge_routes_btn)
+        row3_layout.addWidget(self.merge_routes_btn)
         
-        editing_layout.addLayout(buttons_layout)
-        editing_layout.addStretch()
+        row3_layout.addStretch()
         
-        toolbar_layout.addWidget(editing_widget)
+        toolbar_layout.addLayout(row3_layout)
         
         return toolbar_widget
     
@@ -1164,6 +1210,9 @@ class StarMapEditor(QMainWindow):
         self.current_file_path = None
         self.unsaved_changes = False
         
+        # Refresh route selector (should be empty now)
+        self.refresh_route_selector()
+        
         # Reset view
         self.view.resetTransform()
         self.view.current_zoom = 1.0
@@ -1220,6 +1269,9 @@ class StarMapEditor(QMainWindow):
                 
                 # Restore route group labels
                 self.rebuild_route_group_labels()
+                
+                # Refresh route selector with loaded routes and groups
+                self.refresh_route_selector()
                 
                 # Enable grid if there are templates or systems
                 # Grid is now infinite and independent of template size
@@ -1280,7 +1332,7 @@ class StarMapEditor(QMainWindow):
             if save_project(self.project, self.current_file_path):
                 self.unsaved_changes = False
                 self.update_window_title()
-                self.status_label.setText("Project saved successfully")
+                self.set_status_text("Project saved successfully")
             else:
                 QMessageBox.critical(
                     self,
@@ -1428,11 +1480,22 @@ class StarMapEditor(QMainWindow):
         if self.current_mode == 'template':
             self.status_label.setText("Template mode active: Click to select template, drag to move, Ctrl+wheel to scale.")
         elif self.current_mode == 'systems':
-            self.status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
+            self.fallback_status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
             self.status_label.setText("Routes mode: Click system A → click intermediate points → click system B. ESC or right-click to cancel.")
         else:
-            self.status_label.setText("Ready")
+            self.fallback_status_label.setText("Ready")
+    
+    def set_status_text(self, text: str):
+        """Set status text in the appropriate label based on current mode.
+        
+        Args:
+            text: The status text to display
+        """
+        if self.current_mode in ('template', 'routes'):
+            self.status_label.setText(text)
+        else:
+            self.fallback_status_label.setText(text)
     
     def set_mode(self, mode: Optional[str]):
         """Set the current editor mode.
@@ -1476,12 +1539,17 @@ class StarMapEditor(QMainWindow):
         if mode == 'template':
             self.workspace_toolbar.show()
             self.routes_toolbar.hide()
+            self.fallback_status_widget.hide()
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
+            self.fallback_status_widget.hide()
+            # Refresh route selector when entering routes mode
+            self.refresh_route_selector()
         else:
             self.workspace_toolbar.hide()
             self.routes_toolbar.hide()
+            self.fallback_status_widget.show()
         
         # Update status
         self.update_status_message()
@@ -1711,7 +1779,7 @@ class StarMapEditor(QMainWindow):
         Args:
             route_selected: The selected RouteItem, or None if no route selected
         """
-        if not hasattr(self, 'current_route_label'):
+        if not hasattr(self, 'route_selector'):
             return
         
         # Store currently selected route
@@ -1726,18 +1794,45 @@ class StarMapEditor(QMainWindow):
         
         if route_selected:
             route_data = route_selected.get_route_data()
-            route_name = route_data.name
-            self.current_route_label.setText(f'Route Editing: {route_name}')
             
-            # Populate system chain list
-            self.route_system_list.clear()
+            # Update the route selector to match the selected route
+            self.refresh_route_selector()
+            
+            # Set the selector to the current route (without triggering signal)
+            for i in range(self.route_selector.count()):
+                item_data = self.route_selector.itemData(i)
+                if item_data and item_data.get('type') == 'route' and item_data.get('id') == route_data.id:
+                    self.route_selector.blockSignals(True)
+                    self.route_selector.setCurrentIndex(i)
+                    self.route_selector.blockSignals(False)
+                    break
+            
+            # Update system chain display (compact inline format)
             system_chain = route_data.get_system_chain()
-            for sys_id in system_chain:
-                if sys_id in self.project.systems:
-                    sys_name = self.project.systems[sys_id].name
-                    # Show abbreviated ID with ellipsis only if longer than 8 chars
-                    id_display = f"{sys_id[:8]}{'...' if len(sys_id) > 8 else ''}"
-                    self.route_system_list.addItem(f"{sys_name} ({id_display})")
+            if hasattr(self, 'route_system_chain_label'):
+                # Create compact system chain text
+                system_names = []
+                for sys_id in system_chain:
+                    if sys_id in self.project.systems:
+                        sys_name = self.project.systems[sys_id].name
+                        system_names.append(sys_name)
+                
+                if system_names:
+                    chain_text = ' → '.join(system_names)
+                    # Truncate if too long
+                    if len(chain_text) > 60:
+                        chain_text = chain_text[:57] + '...'
+                    self.route_system_chain_label.setText(chain_text)
+                else:
+                    self.route_system_chain_label.setText('(Empty route)')
+            elif hasattr(self, 'route_system_list'):
+                # Legacy support for QListWidget if it exists
+                self.route_system_list.clear()
+                for sys_id in system_chain:
+                    if sys_id in self.project.systems:
+                        sys_name = self.project.systems[sys_id].name
+                        id_display = f"{sys_id[:8]}{'...' if len(sys_id) > 8 else ''}"
+                        self.route_system_list.addItem(f"{sys_name} ({id_display})")
             
             # Enable/disable buttons based on context
             chain_length = len(system_chain)
@@ -1765,8 +1860,20 @@ class StarMapEditor(QMainWindow):
             can_merge = len(self.routes_selected_for_group) == 2
             self.merge_routes_btn.setEnabled(can_merge)
         else:
-            self.current_route_label.setText('Route Editing: No route selected')
-            self.route_system_list.clear()
+            # Refresh selector to show all routes/groups
+            self.refresh_route_selector()
+            
+            # Reset selector to default
+            self.route_selector.blockSignals(True)
+            self.route_selector.setCurrentIndex(0)  # Select first item or empty
+            self.route_selector.blockSignals(False)
+            
+            # Clear system chain display
+            if hasattr(self, 'route_system_chain_label'):
+                self.route_system_chain_label.setText('(No route selected)')
+            elif hasattr(self, 'route_system_list'):
+                self.route_system_list.clear()
+            
             self.insert_system_btn.setEnabled(False)
             self.remove_system_btn.setEnabled(False)
             self.split_route_btn.setEnabled(False)
@@ -1774,6 +1881,98 @@ class StarMapEditor(QMainWindow):
             # Merge can still work with group selection
             can_merge = len(self.routes_selected_for_group) == 2
             self.merge_routes_btn.setEnabled(can_merge)
+    
+    def refresh_route_selector(self):
+        """Refresh the route selector dropdown with current routes and groups.
+        
+        Populates the dropdown with:
+        - Route Groups (bold font)
+        - Individual Routes (italic font)
+        """
+        if not hasattr(self, 'route_selector'):
+            return
+        
+        # Block signals during refresh
+        self.route_selector.blockSignals(True)
+        
+        # Store currently selected item
+        current_index = self.route_selector.currentIndex()
+        current_data = self.route_selector.itemData(current_index) if current_index >= 0 else None
+        
+        # Clear existing items
+        self.route_selector.clear()
+        
+        # Add default "No selection" item
+        self.route_selector.addItem("(No route selected)", {"type": "none"})
+        
+        # Add route groups with bold font
+        for group_id, group in self.project.route_groups.items():
+            self.route_selector.addItem(group.name, {"type": "group", "id": group_id})
+            index = self.route_selector.count() - 1
+            # Set bold font for groups
+            font = QFont()
+            font.setBold(True)
+            self.route_selector.setItemData(index, font, Qt.FontRole)
+        
+        # Add individual routes with italic font
+        for route_id, route in self.project.routes.items():
+            self.route_selector.addItem(route.name, {"type": "route", "id": route_id})
+            index = self.route_selector.count() - 1
+            # Set italic font for routes
+            font = QFont()
+            font.setItalic(True)
+            self.route_selector.setItemData(index, font, Qt.FontRole)
+        
+        # Try to restore previous selection
+        if current_data:
+            for i in range(self.route_selector.count()):
+                item_data = self.route_selector.itemData(i)
+                if item_data == current_data:
+                    self.route_selector.setCurrentIndex(i)
+                    break
+        else:
+            self.route_selector.setCurrentIndex(0)
+        
+        # Unblock signals
+        self.route_selector.blockSignals(False)
+    
+    def on_route_selector_changed(self, index: int):
+        """Handle route selector dropdown change.
+        
+        Args:
+            index: The new index in the dropdown
+        """
+        if index < 0:
+            return
+        
+        item_data = self.route_selector.itemData(index)
+        if not item_data:
+            return
+        
+        item_type = item_data.get('type')
+        item_id = item_data.get('id')
+        
+        if item_type == 'route' and item_id:
+            # Select the route in the scene
+            if item_id in self.route_items:
+                route_item = self.route_items[item_id]
+                # Clear existing selection
+                self.scene.clearSelection()
+                # Select this route
+                route_item.setSelected(True)
+                # The selection change will trigger update_route_workspace_controls
+        elif item_type == 'group' and item_id:
+            # For groups, we could highlight all routes in the group
+            # For now, just select all routes in the group
+            if item_id in self.project.route_groups:
+                group = self.project.route_groups[item_id]
+                self.scene.clearSelection()
+                for route_id in group.route_ids:
+                    if route_id in self.route_items:
+                        self.route_items[route_id].setSelected(True)
+        elif item_type == 'none':
+            # Clear selection
+            self.scene.clearSelection()
     
     def set_system_icon_size(self, size: str):
         """Set the system icon size (UI SPACE only).
@@ -2028,7 +2227,7 @@ class StarMapEditor(QMainWindow):
         self.view.route_drawing_start_system_id = system_data.id
         self.view.route_drawing_points = []
         
-        self.status_label.setText(f"Route drawing: Click intermediate points, then click end system. Right-click or ESC to cancel.")
+        self.set_status_text(f"Route drawing: Click intermediate points, then click end system. Right-click or ESC to cancel.")
     
     def handle_finish_route_drawing(self, system_item):
         """Handle finishing route drawing by clicking on end system.
@@ -2048,7 +2247,7 @@ class StarMapEditor(QMainWindow):
         
         # Don't allow route to same system
         if start_system_id == end_system_id:
-            self.status_label.setText("Routes mode: Click system to start route.")
+            self.set_status_text("Routes mode: Click system to start route.")
             return
         
         # Check if route already exists between these systems
@@ -2060,7 +2259,7 @@ class StarMapEditor(QMainWindow):
                     "Route Exists",
                     "A route already exists between these systems."
                 )
-                self.status_label.setText("Routes mode: Click system to start route.")
+                self.set_status_text("Routes mode: Click system to start route.")
                 return
         
         # Create new route with intermediate control points
@@ -2081,8 +2280,11 @@ class StarMapEditor(QMainWindow):
         # Auto-select the newly created route
         route_item.setSelected(True)
         
+        # Refresh route selector to include new route
+        self.refresh_route_selector()
+        
         self.mark_unsaved_changes()
-        self.status_label.setText("Routes mode: Click system to start route.")
+        self.set_status_text("Routes mode: Click system to start route.")
     
     def handle_route_delete_request(self, route_id: str):
         """Handle route deletion request from context menu.
@@ -2130,8 +2332,11 @@ class StarMapEditor(QMainWindow):
             # Update remaining group labels
             self.update_route_group_labels()
             
+            # Refresh route selector after deletion
+            self.refresh_route_selector()
+            
             self.mark_unsaved_changes()
-            self.status_label.setText("Route deleted.")
+            self.set_status_text("Route deleted.")
     
     def find_system_at_position(self, scene_pos: QPointF, snap_radius: float = 20) -> Optional[SystemItem]:
         """Find a system near the given position.
@@ -2241,6 +2446,9 @@ class StarMapEditor(QMainWindow):
             
             # Add label for the new group
             self.add_route_group_label(route_group)
+            
+            # Refresh route selector to include new group
+            self.refresh_route_selector()
             
             self.mark_unsaved_changes()
             QMessageBox.information(
@@ -2421,6 +2629,9 @@ class StarMapEditor(QMainWindow):
                 self.selected_route.setSelected(False)
                 new_route_item.setSelected(True)
                 
+                # Refresh route selector after split
+                self.refresh_route_selector()
+                
                 self.mark_unsaved_changes()
                 QMessageBox.information(
                     self,
@@ -2491,6 +2702,9 @@ class StarMapEditor(QMainWindow):
             self.project.add_route(merged_route)
             merged_item = self.add_route_to_scene(merged_route)
             merged_item.setSelected(True)
+            
+            # Refresh route selector after merge
+            self.refresh_route_selector()
             
             self.mark_unsaved_changes()
             QMessageBox.information(
