@@ -3,7 +3,7 @@
 import sys
 from PySide6.QtWidgets import QApplication
 
-from gui import StarMapEditor
+from core.gui import StarMapEditor
 
 
 def main():

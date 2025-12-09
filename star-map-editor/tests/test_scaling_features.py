@@ -7,8 +7,8 @@ This script tests the core functionality without requiring a GUI display.
 import sys
 from pathlib import Path
 
-# Add current directory to path for core imports
-sys.path.insert(0, str(Path(__file__).parent))
+# Add parent directory to path for core imports (star-map-editor/)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from PySide6.QtCore import QPointF
 from core.systems import SystemData, SystemItem
