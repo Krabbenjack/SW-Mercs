@@ -1157,8 +1157,12 @@ class StarMapEditor(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(5, 5, 5, 5)
         
-        # Create mode button bar
-        mode_layout = QHBoxLayout()
+        # Create mode button bar (wrapped in widget with fixed height)
+        self.mode_toolbar_widget = QWidget()
+        self.mode_toolbar_widget.setFixedHeight(40)
+        mode_layout = QHBoxLayout(self.mode_toolbar_widget)
+        mode_layout.setContentsMargins(4, 2, 4, 2)
+        mode_layout.setSpacing(4)
         
         # Template mode button
         self.template_btn = QPushButton('Template Mode')
@@ -1213,11 +1217,14 @@ class StarMapEditor(QMainWindow):
         
         mode_layout.addStretch()
         
-        main_layout.addLayout(mode_layout)
+        main_layout.addWidget(self.mode_toolbar_widget)
         
-        # Create pan sensitivity controls (always visible)
-        pan_sensitivity_layout = QHBoxLayout()
-        pan_sensitivity_layout.setContentsMargins(5, 5, 5, 5)
+        # Create pan sensitivity controls (always visible, wrapped in widget with fixed height)
+        self.pan_sensitivity_widget = QWidget()
+        self.pan_sensitivity_widget.setFixedHeight(28)
+        pan_sensitivity_layout = QHBoxLayout(self.pan_sensitivity_widget)
+        pan_sensitivity_layout.setContentsMargins(4, 2, 4, 2)
+        pan_sensitivity_layout.setSpacing(4)
         
         pan_sensitivity_layout.addWidget(QLabel('Pan Sensitivity:'))
         self.pan_sensitivity_slider = QSlider(Qt.Horizontal)
@@ -1233,7 +1240,7 @@ class StarMapEditor(QMainWindow):
         pan_sensitivity_layout.addWidget(self.pan_sensitivity_label)
         
         pan_sensitivity_layout.addStretch()
-        main_layout.addLayout(pan_sensitivity_layout)
+        main_layout.addWidget(self.pan_sensitivity_widget)
         
         # Create status label for mode indication (before toolbars, so we can embed it)
         self.status_label = QLabel()
@@ -1251,9 +1258,11 @@ class StarMapEditor(QMainWindow):
         
         # Create fallback status bar (visible when no toolbar with status is shown)
         self.fallback_status_widget = QWidget()
+        self.fallback_status_widget.setFixedHeight(24)
         self.fallback_status_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
         fallback_status_layout = QHBoxLayout(self.fallback_status_widget)
-        fallback_status_layout.setContentsMargins(5, 5, 5, 5)
+        fallback_status_layout.setContentsMargins(4, 2, 4, 2)
+        fallback_status_layout.setSpacing(4)
         fallback_status_layout.addStretch()
         # Create a second status label for fallback (when no toolbar is visible)
         self.fallback_status_label = QLabel()
@@ -1362,9 +1371,11 @@ class StarMapEditor(QMainWindow):
     def create_workspace_toolbar(self) -> QWidget:
         """Create the workspace toolbar for template mode."""
         toolbar_widget = QWidget()
+        toolbar_widget.setFixedHeight(32)
         toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
         toolbar_layout = QHBoxLayout(toolbar_widget)
-        toolbar_layout.setContentsMargins(5, 5, 5, 5)
+        toolbar_layout.setContentsMargins(4, 2, 4, 2)
+        toolbar_layout.setSpacing(4)
         
         # Load Template button
         self.load_template_btn = QPushButton('Load Template')
@@ -1444,9 +1455,10 @@ class StarMapEditor(QMainWindow):
     def create_routes_toolbar(self) -> QWidget:
         """Create the workspace toolbar for routes mode - compact 3-row design."""
         toolbar_widget = QWidget()
+        toolbar_widget.setFixedHeight(80)
         toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 3px; }")
         toolbar_layout = QVBoxLayout(toolbar_widget)
-        toolbar_layout.setContentsMargins(3, 3, 3, 3)
+        toolbar_layout.setContentsMargins(4, 2, 4, 2)
         toolbar_layout.setSpacing(2)  # Minimal spacing between rows
         
         # === Row 1: Route creation instructions ===
