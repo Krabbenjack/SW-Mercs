@@ -9,8 +9,8 @@ It creates mock objects and tests the core logic.
 import sys
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add parent directory to path (star-map-editor/)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_imports():
     """Test that all required imports work correctly."""

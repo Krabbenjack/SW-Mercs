@@ -7,8 +7,8 @@ Tests the core logic without GUI dependencies.
 import sys
 from pathlib import Path
 
-# Add current directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add parent directory to path (star-map-editor/)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Mock PySide6 modules for testing - must be done before any imports
 class MockQPointF:

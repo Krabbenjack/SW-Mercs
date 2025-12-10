@@ -35,13 +35,46 @@ python main.py
 
 ## Testing
 
-The application currently uses manual testing procedures. To test the application:
+The application includes both manual and automated testing procedures.
+
+### Automated Tests
+
+Run individual test files from the star-map-editor directory:
+
+```bash
+# Test scaling logic (no GUI dependencies)
+python -m tests.test_scaling_logic
+
+# Test scaling features
+python -m tests.test_scaling_features
+
+# Test route control points
+python -m tests.test_route_control_points
+
+# Test route editing
+python -m tests.test_route_editing
+```
+
+### Verify Installation
+
+Check that your installation is set up correctly:
+
+```bash
+python tools/verify_installation.py
+```
+
+This script checks:
+- Required directory structure
+- Python files exist
+- Core modules can be imported
+- Python syntax is valid
+
+### Manual Testing
 
 1. **Run the application**: `python main.py`
 2. **Follow test procedures**: See [TESTING.md](TESTING.md) for comprehensive test cases
-3. **Verify installation**: Run `python verify_installation.py` to check setup
 
-**Note**: Automated tests are planned for future development. Current testing focuses on:
+**Manual testing focuses on**:
 - File operations (New, Open, Save, Export)
 - Template management (Load, Move, Scale, Lock, Opacity)
 - System placement and editing
@@ -55,21 +88,41 @@ The application currently uses manual testing procedures. To test the applicatio
 star-map-editor/
 │
 ├─ main.py              # Application entry point
-├─ gui.py               # PySide6 GUI implementation
 │
-├─ core/                # Non-GUI business logic
+├─ core/                # Core application logic
+│   ├─ gui.py           # PySide6 GUI implementation
 │   ├─ project_model.py # MapProject and TemplateData data structures
 │   ├─ project_io.py    # Save/load/export functionality
 │   ├─ systems.py       # System data and graphics
+│   ├─ routes.py        # Route data and graphics
 │   ├─ templates.py     # Template graphics management
+│   └─ __init__.py      # Core module exports
+│
+├─ tests/               # Automated test suite
+│   ├─ test_scaling_logic.py
+│   ├─ test_scaling_features.py
+│   ├─ test_route_control_points.py
+│   ├─ test_route_editing.py
 │   └─ __init__.py
+│
+├─ tools/               # Utility scripts
+│   └─ verify_installation.py
+│
+├─ docs/                # Documentation
+│   ├─ SCALING_IMPLEMENTATION.md
+│   ├─ ROUTE_EDITING_GUIDE.md
+│   ├─ ROUTE_EDITING_IMPLEMENTATION_SUMMARY.md
+│   ├─ ROUTE_IMPLEMENTATION_SUMMARY.md
+│   └─ ROUTE_SYSTEM_TESTING.md
+│
+├─ resources/           # Application resources
+│   ├─ icons/           # Toolbar and UI icons
+│   └─ example_templates/  # Sample template images
 │
 ├─ Saves/               # Default location for .swmproj project files
 ├─ Exports/             # Default location for exported map data
 │
-└─ resources/           # Application resources
-    ├─ icons/           # Toolbar and UI icons
-    └─ example_templates/  # Sample template images
+└─ README.md            # This file
 ```
 
 ## Features
@@ -480,20 +533,24 @@ Planned features for expanded gameplay:
 
 ### Architecture
 
-- **Separation of Concerns**: GUI code (`gui.py`) is separate from business logic (`core/`)
+- **Separation of Concerns**: GUI code (`core/gui.py`) is separate from business logic in other core modules
 - **Data Models**: All data structures are in `core/project_model.py`
-- **Graphics Items**: `TemplateItem` and `SystemItem` handle visual representation
+- **Graphics Items**: `TemplateItem`, `SystemItem`, and `RouteItem` handle visual representation
 - **I/O Operations**: `core/project_io.py` handles all file operations
 
 ### Code Organization
 
 - **`main.py`**: Minimal application startup
-- **`gui.py`**: All PySide6 UI components
-- **`core/`**: Non-GUI logic
+- **`core/`**: All application logic
+  - `gui.py`: All PySide6 UI components
   - `project_model.py`: Data structures
   - `systems.py`: System data and graphics
+  - `routes.py`: Route data and graphics
   - `templates.py`: Template graphics
   - `project_io.py`: File I/O
+- **`tests/`**: Automated test suite
+- **`tools/`**: Utility scripts
+- **`docs/`**: Documentation files
 
 ### Design Principles
 

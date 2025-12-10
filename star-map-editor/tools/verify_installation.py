@@ -17,9 +17,13 @@ def check_directories():
     """Check that all required directories exist."""
     print("🔍 Checking directory structure...")
     
-    base_dir = Path(__file__).parent
+    # Base dir is parent of tools/ (star-map-editor/)
+    base_dir = Path(__file__).parent.parent
     required_dirs = [
         "core",
+        "tests",
+        "tools",
+        "docs",
         "Saves",
         "Exports",
         "resources",
@@ -42,15 +46,17 @@ def check_files():
     """Check that all required Python files exist."""
     print("\n🔍 Checking Python files...")
     
-    base_dir = Path(__file__).parent
+    # Base dir is parent of tools/ (star-map-editor/)
+    base_dir = Path(__file__).parent.parent
     required_files = [
         "main.py",
-        "gui.py",
+        "core/gui.py",
         "core/__init__.py",
         "core/project_model.py",
         "core/project_io.py",
         "core/systems.py",
-        "core/templates.py"
+        "core/templates.py",
+        "core/routes.py"
     ]
     
     all_exist = True
@@ -80,7 +86,8 @@ def check_imports():
     
     try:
         print("  📦 Importing core modules...", end=" ")
-        sys.path.insert(0, str(Path(__file__).parent))
+        # Add parent directory to path (star-map-editor/)
+        sys.path.insert(0, str(Path(__file__).parent.parent))
         from core import (
             MapProject, TemplateData, SystemData, 
             SystemItem, SystemDialog, TemplateItem
@@ -99,15 +106,17 @@ def check_syntax():
     
     import py_compile
     
-    base_dir = Path(__file__).parent
+    # Base dir is parent of tools/ (star-map-editor/)
+    base_dir = Path(__file__).parent.parent
     python_files = [
         "main.py",
-        "gui.py",
+        "core/gui.py",
         "core/__init__.py",
         "core/project_model.py",
         "core/project_io.py",
         "core/systems.py",
-        "core/templates.py"
+        "core/templates.py",
+        "core/routes.py"
     ]
     
     all_valid = True
