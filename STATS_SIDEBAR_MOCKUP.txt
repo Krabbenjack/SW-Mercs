@@ -1,0 +1,73 @@
+Stats Sidebar Layout - Visual Mockup
+=====================================
+
+STATS MODE INACTIVE (sidebar hidden, map uses full width):
+┌──────────────────────────────────────────────────────────────────────┐
+│ Star Map Editor                                          [_][□][X]    │
+├──────────────────────────────────────────────────────────────────────┤
+│ File                                                                  │
+├──────────────────────────────────────────────────────────────────────┤
+│ [Template] [Systems] [Routes] [Zones] [Stats]  Sensitivity: [======] │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                       │
+│                                                                       │
+│                                                                       │
+│                         MAP VIEW                                      │
+│                    (Full Width & Height)                              │
+│                                                                       │
+│                     [Galaxy Background]                               │
+│                                                                       │
+│                        • Systems                                      │
+│                        ─ Routes                                       │
+│                                                                       │
+│                                                                       │
+└──────────────────────────────────────────────────────────────────────┘
+
+STATS MODE ACTIVE (sidebar visible on right):
+┌──────────────────────────────────────────────────────────────────────┐
+│ Star Map Editor                                          [_][□][X]    │
+├──────────────────────────────────────────────────────────────────────┤
+│ File                                                                  │
+├──────────────────────────────────────────────────────────────────────┤
+│ [Template] [Systems] [Routes] [Zones] [Stats*] Sensitivity: [======] │
+├────────────────────────────────────────────────┬─────────────────────┤
+│                                                │ System Statistics   │
+│                                                │                     │
+│                      MAP VIEW                  │ System: Coruscant   │
+│                 (Full Vertical Height)         │                     │
+│                                                │ Population:         │
+│                  [Galaxy Background]           │ [Etabliert (1B-5B)▼]│
+│                                                │                     │
+│                     • Systems                  │ Statistics:         │
+│                     ─ Routes                   │ [Facilities...]     │
+│                                                │ [Imports...]        │
+│                                                │ [Exports...]        │
+│                                                │                     │
+│                                                │ 2 facilities        │
+│                                                │ 5 goods  3 goods    │
+│                                                │                     │
+│                                                │                     │
+└────────────────────────────────────────────────┴─────────────────────┘
+          75% width (stretch=3)              ║   25% width (stretch=1)
+                                             ║
+                                   Resizable Splitter Handle
+                                   (250px min, 400px max)
+
+KEY FEATURES:
+─────────────
+
+✓ Map View: Uses full vertical height in both modes
+✓ Stats Sidebar: Appears on right when Stats mode is active
+✓ Width Control: Sidebar constrained to 250-400px width
+✓ Resizable: User can drag splitter handle to adjust widths
+✓ Auto-collapse: Sidebar disappears when exiting Stats mode
+✓ Stretch Ratio: Map gets 3x more space than sidebar (75%/25%)
+
+IMPLEMENTATION:
+───────────────
+
+• Used QSplitter(Qt.Horizontal) instead of vertical layout
+• Stats widget moved from above map to beside map
+• Splitter automatically handles show/hide behavior
+• No changes to Stats widget internal logic
+• No changes to other modes or set_mode() function
