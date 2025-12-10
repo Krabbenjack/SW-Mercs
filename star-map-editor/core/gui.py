@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
-    QDialog, QDialogButtonBox, QComboBox
+    QDialog, QDialogButtonBox, QComboBox, QSplitter
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -1271,11 +1271,6 @@ class StarMapEditor(QMainWindow):
         main_layout.addWidget(self.fallback_status_widget)
         self.fallback_status_widget.hide()  # Hidden by default
         
-        # Create stats widget (visible only in stats mode)
-        self.stats_widget = StatsWidget()
-        main_layout.addWidget(self.stats_widget)
-        self.stats_widget.hide()
-        
         # Update status message after toolbars are created
         self.update_status_message()
         
@@ -1295,7 +1290,23 @@ class StarMapEditor(QMainWindow):
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
         
-        main_layout.addWidget(self.view)
+        # Create stats widget (visible only in stats mode)
+        self.stats_widget = StatsWidget()
+        self.stats_widget.hide()  # Hidden by default
+        self.stats_widget.setMinimumWidth(250)
+        self.stats_widget.setMaximumWidth(400)
+        
+        # Create a horizontal splitter for main content (map + stats sidebar)
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.addWidget(self.view)
+        self.main_splitter.addWidget(self.stats_widget)
+        
+        # Give more weight to the map view (3:1 ratio)
+        self.main_splitter.setStretchFactor(0, 3)
+        self.main_splitter.setStretchFactor(1, 1)
+        
+        # Add splitter to main layout
+        main_layout.addWidget(self.main_splitter)
         
         # Apply dark mode by default
         self.apply_dark_mode()
