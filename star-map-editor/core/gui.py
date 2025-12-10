@@ -919,71 +919,65 @@ class StatsWidget(QWidget):
         
         content_layout.addSpacing(10)
         
-        # Population section
+        # Population section - horizontal layout with label and combo
+        pop_row = QHBoxLayout()
         pop_label = QLabel("Population:")
         pop_label.setStyleSheet("font-weight: bold;")
-        content_layout.addWidget(pop_label)
+        pop_row.addWidget(pop_label)
         
         self.population_combo = QComboBox()
+        self.population_combo.setMaximumWidth(400)  # Limit combo width
         self.population_combo.currentIndexChanged.connect(self.on_population_changed)
-        content_layout.addWidget(self.population_combo)
+        pop_row.addWidget(self.population_combo)
+        pop_row.addStretch()  # Add stretch to prevent full width
+        
+        content_layout.addLayout(pop_row)
         
         content_layout.addSpacing(10)
         
-        # Facilities section
-        facilities_label = QLabel("Facilities:")
-        facilities_label.setStyleSheet("font-weight: bold;")
-        content_layout.addWidget(facilities_label)
+        # Statistics sections - buttons in a single horizontal row
+        stats_label = QLabel("Statistics:")
+        stats_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(stats_label)
         
-        facilities_row = QHBoxLayout()
-        self.facilities_btn = QPushButton("Edit Facilities...")
+        buttons_row = QHBoxLayout()
+        
+        self.facilities_btn = QPushButton("Facilities...")
         self.facilities_btn.clicked.connect(self.edit_facilities)
-        facilities_row.addWidget(self.facilities_btn)
+        buttons_row.addWidget(self.facilities_btn)
+        
+        self.imports_btn = QPushButton("Imports...")
+        self.imports_btn.clicked.connect(self.edit_imports)
+        buttons_row.addWidget(self.imports_btn)
+        
+        self.exports_btn = QPushButton("Exports...")
+        self.exports_btn.clicked.connect(self.edit_exports)
+        buttons_row.addWidget(self.exports_btn)
+        
+        buttons_row.addStretch()  # Add stretch after buttons
+        
+        content_layout.addLayout(buttons_row)
+        
+        content_layout.addSpacing(10)
+        
+        # Summary labels row
+        summaries_row = QHBoxLayout()
         
         self.facilities_summary = QLabel("0 facilities")
         self.facilities_summary.setStyleSheet("color: gray;")
-        facilities_row.addWidget(self.facilities_summary)
-        facilities_row.addStretch()
-        
-        content_layout.addLayout(facilities_row)
-        
-        content_layout.addSpacing(10)
-        
-        # Imports section
-        imports_label = QLabel("Imports:")
-        imports_label.setStyleSheet("font-weight: bold;")
-        content_layout.addWidget(imports_label)
-        
-        imports_row = QHBoxLayout()
-        self.imports_btn = QPushButton("Edit Imports...")
-        self.imports_btn.clicked.connect(self.edit_imports)
-        imports_row.addWidget(self.imports_btn)
+        summaries_row.addWidget(self.facilities_summary)
         
         self.imports_summary = QLabel("0 goods")
         self.imports_summary.setStyleSheet("color: gray;")
-        imports_row.addWidget(self.imports_summary)
-        imports_row.addStretch()
-        
-        content_layout.addLayout(imports_row)
-        
-        content_layout.addSpacing(10)
-        
-        # Exports section
-        exports_label = QLabel("Exports:")
-        exports_label.setStyleSheet("font-weight: bold;")
-        content_layout.addWidget(exports_label)
-        
-        exports_row = QHBoxLayout()
-        self.exports_btn = QPushButton("Edit Exports...")
-        self.exports_btn.clicked.connect(self.edit_exports)
-        exports_row.addWidget(self.exports_btn)
+        summaries_row.addWidget(self.imports_summary)
         
         self.exports_summary = QLabel("0 goods")
         self.exports_summary.setStyleSheet("color: gray;")
-        exports_row.addWidget(self.exports_summary)
-        exports_row.addStretch()
+        summaries_row.addWidget(self.exports_summary)
         
-        content_layout.addLayout(exports_row)
+        summaries_row.addStretch()
+        
+        content_layout.addLayout(summaries_row)
         
         content_layout.addStretch()
         
@@ -996,7 +990,11 @@ class StatsWidget(QWidget):
         self.set_system(None)
     
     def populate_population_combo(self):
-        """Populate the population combo box from data."""
+        """Populate the population combo box from data.
+        
+        Each entry shows both the label and the numeric range.
+        Example: "Mikrosiedlung (1,000 – 100,000)"
+        """
         self.population_combo.clear()
         self.population_combo.addItem("(No population)", None)
         
@@ -1004,7 +1002,18 @@ class StatsWidget(QWidget):
         for level in population_levels:
             level_id = level.get("id", "")
             label = level.get("label", level_id)
-            self.population_combo.addItem(label, level_id)
+            min_val = level.get("min", 0)
+            max_val = level.get("max", 0)
+            
+            # Format the display text with label and numeric range
+            if min_val == 0 and max_val == 0:
+                # Special case for uninhabited (0 – 0)
+                display_text = f"{label} (0)"
+            else:
+                # Format numbers with thousand separators
+                display_text = f"{label} ({min_val:,} – {max_val:,})"
+            
+            self.population_combo.addItem(display_text, level_id)
     
     def set_system(self, system: Optional[SystemData]):
         """Set the current system to display/edit.
