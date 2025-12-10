@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
-    QDialog, QDialogButtonBox, QComboBox
+    QDialog, QDialogButtonBox, QComboBox, QSplitter
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -1271,13 +1271,16 @@ class StarMapEditor(QMainWindow):
         main_layout.addWidget(self.fallback_status_widget)
         self.fallback_status_widget.hide()  # Hidden by default
         
-        # Create stats widget (visible only in stats mode)
-        self.stats_widget = StatsWidget()
-        main_layout.addWidget(self.stats_widget)
-        self.stats_widget.hide()
-        
         # Update status message after toolbars are created
         self.update_status_message()
+        
+        # Create stats widget (will be placed in splitter, visible only in stats mode)
+        self.stats_widget = StatsWidget()
+        self.stats_widget.hide()
+        
+        # Fixed, narrow width for the stats sidebar
+        self.stats_widget.setMinimumWidth(260)
+        self.stats_widget.setMaximumWidth(320)
         
         # Create graphics scene and view
         self.scene = GridOverlay()
@@ -1295,7 +1298,22 @@ class StarMapEditor(QMainWindow):
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
         
-        main_layout.addWidget(self.view)
+        # Create a horizontal splitter for main content
+        self.main_splitter = QSplitter(Qt.Horizontal)
+        self.main_splitter.addWidget(self.view)
+        self.main_splitter.addWidget(self.stats_widget)
+        
+        # Give more weight to the map view
+        self.main_splitter.setStretchFactor(0, 3)
+        self.main_splitter.setStretchFactor(1, 1)
+        
+        # Initial sizes: full width for map, collapsed stats sidebar
+        # Note: Using [1, 0] to indicate map gets all available width (any positive value works)
+        # and stats sidebar is collapsed (0 width). Actual pixel values will be calculated by Qt.
+        self.main_splitter.setSizes([1, 0])
+        
+        # Add splitter to main_layout instead of adding view and stats_widget vertically
+        main_layout.addWidget(self.main_splitter)
         
         # Apply dark mode by default
         self.apply_dark_mode()
@@ -1997,11 +2015,15 @@ class StarMapEditor(QMainWindow):
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
             self.stats_widget.hide()
+            # Collapse stats sidebar (main_splitter is always initialized in __init__)
+            self.main_splitter.setSizes([1, 0])
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
             self.fallback_status_widget.hide()
             self.stats_widget.hide()
+            # Collapse stats sidebar
+            self.main_splitter.setSizes([1, 0])
             # Refresh route selector when entering routes mode
             self.refresh_route_selector()
         elif mode == 'stats':
@@ -2009,6 +2031,15 @@ class StarMapEditor(QMainWindow):
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
             self.stats_widget.show()
+            # Map : Stats ≈ 3 : 1
+            # Calculate reasonable sizes for stats sidebar
+            total_width = self.main_splitter.width()
+            # Handle case where widget hasn't been resized yet
+            if total_width <= 0:
+                total_width = 1200  # Use default window width as fallback
+            stats_width = 280  # Default width for stats sidebar
+            map_width = max(total_width - stats_width, total_width * 3 // 4)
+            self.main_splitter.setSizes([map_width, stats_width])
             # Update stats widget with current selection
             self.update_stats_widget()
         else:
@@ -2016,6 +2047,8 @@ class StarMapEditor(QMainWindow):
             self.routes_toolbar.hide()
             self.fallback_status_widget.show()
             self.stats_widget.hide()
+            # Collapse stats sidebar
+            self.main_splitter.setSizes([1, 0])
         
         # Update status
         self.update_status_message()
