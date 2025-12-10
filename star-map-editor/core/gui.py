@@ -1259,7 +1259,7 @@ class StarMapEditor(QMainWindow):
         # Create fallback status bar (visible when no toolbar with status is shown)
         self.fallback_status_widget = QWidget()
         self.fallback_status_widget.setFixedHeight(24)
-        self.fallback_status_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
+        self.fallback_status_widget.setStyleSheet("QWidget { background-color: #e0e0e0; }")
         fallback_status_layout = QHBoxLayout(self.fallback_status_widget)
         fallback_status_layout.setContentsMargins(4, 2, 4, 2)
         fallback_status_layout.setSpacing(4)
@@ -1372,7 +1372,7 @@ class StarMapEditor(QMainWindow):
         """Create the workspace toolbar for template mode."""
         toolbar_widget = QWidget()
         toolbar_widget.setFixedHeight(32)
-        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 5px; }")
+        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; }")
         toolbar_layout = QHBoxLayout(toolbar_widget)
         toolbar_layout.setContentsMargins(4, 2, 4, 2)
         toolbar_layout.setSpacing(4)
@@ -1456,10 +1456,10 @@ class StarMapEditor(QMainWindow):
         """Create the workspace toolbar for routes mode - compact 3-row design."""
         toolbar_widget = QWidget()
         toolbar_widget.setFixedHeight(80)
-        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; padding: 3px; }")
+        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; }")
         toolbar_layout = QVBoxLayout(toolbar_widget)
         toolbar_layout.setContentsMargins(4, 2, 4, 2)
-        toolbar_layout.setSpacing(2)  # Minimal spacing between rows
+        toolbar_layout.setSpacing(2)  # Minimal spacing between rows (vertical layout)
         
         # === Row 1: Route creation instructions ===
         row1_layout = QHBoxLayout()
