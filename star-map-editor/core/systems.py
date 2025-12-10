@@ -5,7 +5,7 @@ for the Star Map Editor.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem, QGraphicsTextItem, QDialog, 
@@ -28,10 +28,18 @@ class SystemData:
         id: Unique identifier for the system (UUID string)
         name: Display name of the system
         position: Position in WORLD SPACE (HSU coordinates as QPointF)
+        population_id: Population level identifier (from population_levels.json)
+        imports: List of imported goods IDs (from goods.json)
+        exports: List of exported goods IDs (from goods.json)
+        facilities: List of facility IDs (from facility_flags.json)
     """
     id: str
     name: str
     position: QPointF
+    population_id: str | None = None
+    imports: list[str] = field(default_factory=list)
+    exports: list[str] = field(default_factory=list)
+    facilities: list[str] = field(default_factory=list)
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
