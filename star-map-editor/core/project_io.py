@@ -14,6 +14,35 @@ from .systems import SystemData
 from .routes import RouteData
 
 
+def _serialize_system(system: SystemData) -> dict:
+    """Serialize a SystemData object to a dictionary.
+    
+    Args:
+        system: The SystemData to serialize
+        
+    Returns:
+        Dictionary with system data
+    """
+    system_dict = {
+        "id": system.id,
+        "name": system.name,
+        "x": system.position.x(),
+        "y": system.position.y()
+    }
+    
+    # Add stats fields only if they have values
+    if system.population_id:
+        system_dict["population_id"] = system.population_id
+    if system.imports:
+        system_dict["imports"] = system.imports
+    if system.exports:
+        system_dict["exports"] = system.exports
+    if system.facilities:
+        system_dict["facilities"] = system.facilities
+    
+    return system_dict
+
+
 def save_project(project: MapProject, file_path: Path) -> bool:
     """Save a map project to a .swmproj file.
     
@@ -41,12 +70,7 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                 for t in project.templates
             ],
             "systems": [
-                {
-                    "id": s.id,
-                    "name": s.name,
-                    "x": s.position.x(),
-                    "y": s.position.y()
-                }
+                _serialize_system(s)
                 for s in project.systems.values()
             ],
             "routes": [
@@ -119,7 +143,11 @@ def load_project(file_path: Path) -> Optional[MapProject]:
             system = SystemData(
                 id=s_dict["id"],
                 name=s_dict["name"],
-                position=QPointF(s_dict["x"], s_dict["y"])
+                position=QPointF(s_dict["x"], s_dict["y"]),
+                population_id=s_dict.get("population_id"),
+                imports=s_dict.get("imports", []),
+                exports=s_dict.get("exports", []),
+                facilities=s_dict.get("facilities", [])
             )
             project.systems[system.id] = system
         
@@ -156,6 +184,35 @@ def load_project(file_path: Path) -> Optional[MapProject]:
         return None
 
 
+def _export_system(system: SystemData) -> dict:
+    """Export a SystemData object for game use.
+    
+    Args:
+        system: The SystemData to export
+        
+    Returns:
+        Dictionary with system data for game export
+    """
+    export_dict = {
+        "id": system.id,
+        "name": system.name,
+        "x": system.position.x(),
+        "y": system.position.y()
+    }
+    
+    # Include stats fields
+    if system.population_id:
+        export_dict["population_id"] = system.population_id
+    if system.imports:
+        export_dict["imports"] = system.imports
+    if system.exports:
+        export_dict["exports"] = system.exports
+    if system.facilities:
+        export_dict["facilities"] = system.facilities
+    
+    return export_dict
+
+
 def export_map_data(project: MapProject, file_path: Path) -> bool:
     """Export map data in game-readable format.
     
@@ -174,12 +231,7 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
         export_dict = {
             "mapName": project.metadata.get("name", "Unnamed Map"),
             "systems": [
-                {
-                    "id": s.id,
-                    "name": s.name,
-                    "x": s.position.x(),
-                    "y": s.position.y()
-                }
+                _export_system(s)
                 for s in project.systems.values()
             ],
             "routes": [

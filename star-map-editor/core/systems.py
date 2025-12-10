@@ -9,9 +9,13 @@ from dataclasses import dataclass
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem, QGraphicsTextItem, QDialog, 
-    QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel
+    QVBoxLayout, QHBoxLayout, QLineEdit, QPushButton, QLabel,
+    QComboBox, QTabWidget, QWidget, QCheckBox, QListWidget,
+    QAbstractItemView, QScrollArea, QGroupBox
 )
 from PySide6.QtGui import QColor, QPen, QBrush, QFont
+
+from .data_loader import get_data_loader
 
 
 @dataclass
@@ -28,10 +32,27 @@ class SystemData:
         id: Unique identifier for the system (UUID string)
         name: Display name of the system
         position: Position in WORLD SPACE (HSU coordinates as QPointF)
+        population_id: Population level ID (from population_levels.json)
+        imports: List of imported goods IDs (from goods.json)
+        exports: List of exported goods IDs (from goods.json)
+        facilities: List of facility IDs (from facility_flags.json)
     """
     id: str
     name: str
     position: QPointF
+    population_id: str | None = None
+    imports: list[str] = None
+    exports: list[str] = None
+    facilities: list[str] = None
+    
+    def __post_init__(self):
+        """Initialize default values for list fields."""
+        if self.imports is None:
+            self.imports = []
+        if self.exports is None:
+            self.exports = []
+        if self.facilities is None:
+            self.facilities = []
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
@@ -213,6 +234,53 @@ class SystemDialog(QDialog):
         name_layout.addWidget(self.name_input)
         layout.addLayout(name_layout)
         
+        # Stats section
+        stats_group = QGroupBox("System Stats")
+        stats_layout = QVBoxLayout()
+        
+        # Population dropdown
+        pop_layout = QHBoxLayout()
+        pop_label = QLabel("Population:")
+        self.population_combo = QComboBox()
+        self.population_combo.addItem("-- None --", None)
+        
+        # Load population levels from JSON
+        data_loader = get_data_loader()
+        pop_levels = data_loader.get_population_levels()
+        for level in pop_levels:
+            self.population_combo.addItem(level.get("label", level["id"]), level["id"])
+        
+        # Set current value
+        if system_data and system_data.population_id:
+            index = self.population_combo.findData(system_data.population_id)
+            if index >= 0:
+                self.population_combo.setCurrentIndex(index)
+        
+        pop_layout.addWidget(pop_label)
+        pop_layout.addWidget(self.population_combo)
+        stats_layout.addLayout(pop_layout)
+        
+        # Imports/Exports buttons
+        trade_layout = QHBoxLayout()
+        
+        self.imports_btn = QPushButton("Edit Imports...")
+        self.imports_btn.clicked.connect(self.on_edit_imports)
+        trade_layout.addWidget(self.imports_btn)
+        
+        self.exports_btn = QPushButton("Edit Exports...")
+        self.exports_btn.clicked.connect(self.on_edit_exports)
+        trade_layout.addWidget(self.exports_btn)
+        
+        stats_layout.addLayout(trade_layout)
+        
+        # Facilities button
+        self.facilities_btn = QPushButton("Edit Facilities...")
+        self.facilities_btn.clicked.connect(self.on_edit_facilities)
+        stats_layout.addWidget(self.facilities_btn)
+        
+        stats_group.setLayout(stats_layout)
+        layout.addWidget(stats_group)
+        
         # Buttons
         button_layout = QHBoxLayout()
         
@@ -242,8 +310,40 @@ class SystemDialog(QDialog):
         if not name:
             # Don't allow empty names
             return
+        
+        # Update system data with stats
+        if self.system_data:
+            self.system_data.population_id = self.population_combo.currentData()
+        
         self.result_action = 'save'
         self.accept()
+    
+    def on_edit_imports(self):
+        """Handle Edit Imports button click."""
+        current_imports = self.system_data.imports if self.system_data else []
+        dialog = GoodsPopup(current_imports, "Select Imports", self)
+        if dialog.exec():
+            selected_goods = dialog.get_selected_goods()
+            if self.system_data:
+                self.system_data.imports = selected_goods
+    
+    def on_edit_exports(self):
+        """Handle Edit Exports button click."""
+        current_exports = self.system_data.exports if self.system_data else []
+        dialog = GoodsPopup(current_exports, "Select Exports", self)
+        if dialog.exec():
+            selected_goods = dialog.get_selected_goods()
+            if self.system_data:
+                self.system_data.exports = selected_goods
+    
+    def on_edit_facilities(self):
+        """Handle Edit Facilities button click."""
+        current_facilities = self.system_data.facilities if self.system_data else []
+        dialog = FacilityPopup(current_facilities, self)
+        if dialog.exec():
+            selected_facilities = dialog.get_selected_facilities()
+            if self.system_data:
+                self.system_data.facilities = selected_facilities
     
     def on_delete(self):
         """Handle Delete button click."""
@@ -262,3 +362,193 @@ class SystemDialog(QDialog):
             The system name from the input field
         """
         return self.name_input.text().strip()
+
+
+class GoodsPopup(QDialog):
+    """Dialog for selecting goods (imports or exports).
+    
+    Provides a multi-select list of goods loaded from goods.json.
+    """
+    
+    def __init__(self, selected_goods: list[str], title: str = "Select Goods", parent=None):
+        """Initialize the goods selection dialog.
+        
+        Args:
+            selected_goods: List of currently selected goods IDs
+            title: Dialog window title
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        self.setMinimumHeight(500)
+        
+        layout = QVBoxLayout(self)
+        
+        # Search bar (optional but nice to have)
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Search:")
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Type to filter goods...")
+        self.search_input.textChanged.connect(self._filter_goods)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        layout.addLayout(search_layout)
+        
+        # Goods list
+        self.goods_list = QListWidget()
+        self.goods_list.setSelectionMode(QAbstractItemView.MultiSelection)
+        
+        # Load goods from JSON
+        data_loader = get_data_loader()
+        self.all_goods = data_loader.get_goods()
+        
+        # Populate list
+        for good in self.all_goods:
+            item_text = f"{good.get('name', good['id'])} (Tier {good.get('tier', '?')})"
+            self.goods_list.addItem(item_text)
+            
+            # Select if in selected_goods
+            if good['id'] in selected_goods:
+                item = self.goods_list.item(self.goods_list.count() - 1)
+                item.setSelected(True)
+        
+        layout.addWidget(self.goods_list)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        save_btn = QPushButton("Save")
+        save_btn.setDefault(True)
+        save_btn.clicked.connect(self.accept)
+        button_layout.addWidget(save_btn)
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+    
+    def _filter_goods(self, search_text: str):
+        """Filter goods list based on search text.
+        
+        Args:
+            search_text: Text to search for
+        """
+        search_lower = search_text.lower()
+        
+        for i in range(self.goods_list.count()):
+            item = self.goods_list.item(i)
+            item_text = item.text().lower()
+            # Show item if search text is in item text, or if search is empty
+            item.setHidden(search_lower not in item_text and search_lower != "")
+    
+    def get_selected_goods(self) -> list[str]:
+        """Get the list of selected goods IDs.
+        
+        Returns:
+            List of selected goods IDs
+        """
+        selected_ids = []
+        for i, item in enumerate(self.goods_list.selectedItems()):
+            # Get corresponding goods ID from all_goods list
+            # Find the index in the visible list
+            row = self.goods_list.row(item)
+            if row < len(self.all_goods):
+                selected_ids.append(self.all_goods[row]['id'])
+        
+        return selected_ids
+
+
+class FacilityPopup(QDialog):
+    """Dialog for selecting facilities.
+    
+    Provides a tabbed interface with one tab per category,
+    each containing checkboxes for facilities.
+    """
+    
+    def __init__(self, selected_facilities: list[str], parent=None):
+        """Initialize the facility selection dialog.
+        
+        Args:
+            selected_facilities: List of currently selected facility IDs
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Edit Facilities")
+        self.setModal(True)
+        self.setMinimumWidth(500)
+        self.setMinimumHeight(600)
+        
+        layout = QVBoxLayout(self)
+        
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        
+        # Load facility categories from JSON
+        data_loader = get_data_loader()
+        categories = data_loader.get_facility_categories()
+        
+        # Store checkboxes for retrieval
+        self.facility_checkboxes = {}
+        
+        # Create one tab per category
+        for category_name, facility_ids in categories.items():
+            tab = QWidget()
+            tab_layout = QVBoxLayout(tab)
+            
+            # Create scrollable area for checkboxes
+            scroll = QScrollArea()
+            scroll.setWidgetResizable(True)
+            scroll_widget = QWidget()
+            scroll_layout = QVBoxLayout(scroll_widget)
+            
+            # Add checkbox for each facility
+            for facility_id in facility_ids:
+                # Convert facility_id to readable label
+                label = facility_id.replace('_', ' ').title()
+                checkbox = QCheckBox(label)
+                checkbox.setChecked(facility_id in selected_facilities)
+                
+                # Store checkbox with facility_id as key
+                self.facility_checkboxes[facility_id] = checkbox
+                
+                scroll_layout.addWidget(checkbox)
+            
+            scroll_layout.addStretch()
+            scroll.setWidget(scroll_widget)
+            tab_layout.addWidget(scroll)
+            
+            # Add tab with readable name
+            tab_title = category_name.replace('_', ' ').title()
+            self.tab_widget.addTab(tab, tab_title)
+        
+        layout.addWidget(self.tab_widget)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        
+        save_btn = QPushButton("Save")
+        save_btn.setDefault(True)
+        save_btn.clicked.connect(self.accept)
+        button_layout.addWidget(save_btn)
+        
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+    
+    def get_selected_facilities(self) -> list[str]:
+        """Get the list of selected facility IDs.
+        
+        Returns:
+            List of selected facility IDs
+        """
+        selected_ids = []
+        for facility_id, checkbox in self.facility_checkboxes.items():
+            if checkbox.isChecked():
+                selected_ids.append(facility_id)
+        
+        return selected_ids
