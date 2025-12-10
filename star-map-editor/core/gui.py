@@ -1308,6 +1308,8 @@ class StarMapEditor(QMainWindow):
         self.main_splitter.setStretchFactor(1, 1)
         
         # Initial sizes: full width for map, collapsed stats sidebar
+        # Note: Using [1, 0] to indicate map gets all available width (any positive value works)
+        # and stats sidebar is collapsed (0 width). Actual pixel values will be calculated by Qt.
         self.main_splitter.setSizes([1, 0])
         
         # Add splitter to main_layout instead of adding view and stats_widget vertically
@@ -2013,17 +2015,15 @@ class StarMapEditor(QMainWindow):
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
             self.stats_widget.hide()
-            if hasattr(self, "main_splitter"):
-                # Collapse stats sidebar completely
-                self.main_splitter.setSizes([1, 0])
+            # Collapse stats sidebar (main_splitter is always initialized in __init__)
+            self.main_splitter.setSizes([1, 0])
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
             self.fallback_status_widget.hide()
             self.stats_widget.hide()
-            if hasattr(self, "main_splitter"):
-                # Collapse stats sidebar completely
-                self.main_splitter.setSizes([1, 0])
+            # Collapse stats sidebar
+            self.main_splitter.setSizes([1, 0])
             # Refresh route selector when entering routes mode
             self.refresh_route_selector()
         elif mode == 'stats':
@@ -2031,13 +2031,15 @@ class StarMapEditor(QMainWindow):
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
             self.stats_widget.show()
-            if hasattr(self, "main_splitter"):
-                # Map : Stats ≈ 3 : 1
-                # Use actual widget width to calculate reasonable sizes
-                total_width = self.main_splitter.width()
-                stats_width = 280  # Default width for stats sidebar
-                map_width = max(total_width - stats_width, total_width * 3 // 4)
-                self.main_splitter.setSizes([map_width, stats_width])
+            # Map : Stats ≈ 3 : 1
+            # Calculate reasonable sizes for stats sidebar
+            total_width = self.main_splitter.width()
+            # Handle case where widget hasn't been resized yet
+            if total_width <= 0:
+                total_width = 1200  # Use default window width as fallback
+            stats_width = 280  # Default width for stats sidebar
+            map_width = max(total_width - stats_width, total_width * 3 // 4)
+            self.main_splitter.setSizes([map_width, stats_width])
             # Update stats widget with current selection
             self.update_stats_widget()
         else:
@@ -2045,9 +2047,8 @@ class StarMapEditor(QMainWindow):
             self.routes_toolbar.hide()
             self.fallback_status_widget.show()
             self.stats_widget.hide()
-            if hasattr(self, "main_splitter"):
-                # Collapse stats sidebar completely
-                self.main_splitter.setSizes([1, 0])
+            # Collapse stats sidebar
+            self.main_splitter.setSizes([1, 0])
         
         # Update status
         self.update_status_message()
