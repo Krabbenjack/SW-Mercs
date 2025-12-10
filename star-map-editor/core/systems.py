@@ -5,7 +5,7 @@ for the Star Map Editor.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem, QGraphicsTextItem, QDialog, 
@@ -41,18 +41,9 @@ class SystemData:
     name: str
     position: QPointF
     population_id: str | None = None
-    imports: list[str] = None
-    exports: list[str] = None
-    facilities: list[str] = None
-    
-    def __post_init__(self):
-        """Initialize default values for list fields."""
-        if self.imports is None:
-            self.imports = []
-        if self.exports is None:
-            self.exports = []
-        if self.facilities is None:
-            self.facilities = []
+    imports: list[str] = field(default_factory=list)
+    exports: list[str] = field(default_factory=list)
+    facilities: list[str] = field(default_factory=list)
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
@@ -404,15 +395,18 @@ class GoodsPopup(QDialog):
         data_loader = get_data_loader()
         self.all_goods = data_loader.get_goods()
         
-        # Populate list
+        # Populate list - store goods ID as item data
         for good in self.all_goods:
             item_text = f"{good.get('name', good['id'])} (Tier {good.get('tier', '?')})"
-            self.goods_list.addItem(item_text)
+            item = self.goods_list.addItem(item_text)
+            # Get the item we just added
+            list_item = self.goods_list.item(self.goods_list.count() - 1)
+            # Store the goods ID as user data for reliable retrieval
+            list_item.setData(Qt.UserRole, good['id'])
             
             # Select if in selected_goods
             if good['id'] in selected_goods:
-                item = self.goods_list.item(self.goods_list.count() - 1)
-                item.setSelected(True)
+                list_item.setSelected(True)
         
         layout.addWidget(self.goods_list)
         
@@ -451,12 +445,11 @@ class GoodsPopup(QDialog):
             List of selected goods IDs
         """
         selected_ids = []
-        for i, item in enumerate(self.goods_list.selectedItems()):
-            # Get corresponding goods ID from all_goods list
-            # Find the index in the visible list
-            row = self.goods_list.row(item)
-            if row < len(self.all_goods):
-                selected_ids.append(self.all_goods[row]['id'])
+        for item in self.goods_list.selectedItems():
+            # Get goods ID from item's user data
+            goods_id = item.data(Qt.UserRole)
+            if goods_id:
+                selected_ids.append(goods_id)
         
         return selected_ids
 
