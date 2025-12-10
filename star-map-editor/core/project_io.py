@@ -45,7 +45,11 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                     "id": s.id,
                     "name": s.name,
                     "x": s.position.x(),
-                    "y": s.position.y()
+                    "y": s.position.y(),
+                    **({} if s.population_id is None else {"population_id": s.population_id}),
+                    **({"imports": s.imports} if s.imports else {}),
+                    **({"exports": s.exports} if s.exports else {}),
+                    **({"facilities": s.facilities} if s.facilities else {})
                 }
                 for s in project.systems.values()
             ],
@@ -119,7 +123,11 @@ def load_project(file_path: Path) -> Optional[MapProject]:
             system = SystemData(
                 id=s_dict["id"],
                 name=s_dict["name"],
-                position=QPointF(s_dict["x"], s_dict["y"])
+                position=QPointF(s_dict["x"], s_dict["y"]),
+                population_id=s_dict.get("population_id"),
+                imports=s_dict.get("imports", []),
+                exports=s_dict.get("exports", []),
+                facilities=s_dict.get("facilities", [])
             )
             project.systems[system.id] = system
         
@@ -178,7 +186,11 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
                     "id": s.id,
                     "name": s.name,
                     "x": s.position.x(),
-                    "y": s.position.y()
+                    "y": s.position.y(),
+                    **({} if s.population_id is None else {"population_id": s.population_id}),
+                    **({"imports": s.imports} if s.imports else {}),
+                    **({"exports": s.exports} if s.exports else {}),
+                    **({"facilities": s.facilities} if s.facilities else {})
                 }
                 for s in project.systems.values()
             ],
