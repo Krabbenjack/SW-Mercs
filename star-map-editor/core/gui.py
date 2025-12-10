@@ -663,6 +663,430 @@ class MapView(QGraphicsView):
         self.position_zoom_indicator()
 
 
+class FacilityPopup(QDialog):
+    """Dialog for selecting facilities organized by category.
+    
+    Displays facilities from facility_flags.json in a tab-based interface,
+    with one tab per category containing checkboxes for each facility.
+    """
+    
+    def __init__(self, selected_facilities: list[str], parent=None):
+        """Initialize the facility selection dialog.
+        
+        Args:
+            selected_facilities: List of currently selected facility IDs
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.selected_facilities = selected_facilities.copy()
+        self.setWindowTitle("Edit Facilities")
+        self.setModal(True)
+        self.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout(self)
+        
+        # Import data loader here to avoid circular import
+        from core.data_loader import get_data_loader
+        data_loader = get_data_loader()
+        
+        # Create tab widget
+        from PySide6.QtWidgets import QTabWidget, QCheckBox, QScrollArea
+        self.tab_widget = QTabWidget()
+        
+        # Store checkboxes for retrieval
+        self.checkboxes = {}
+        
+        # Get facility categories
+        categories = data_loader.get_facility_categories()
+        
+        # Create a tab for each category
+        for category_name, facility_ids in categories.items():
+            tab_widget = QWidget()
+            tab_layout = QVBoxLayout(tab_widget)
+            
+            # Create checkboxes for each facility
+            for facility_id in facility_ids:
+                # Prettify the facility ID for display
+                display_name = facility_id.replace('_', ' ').title()
+                checkbox = QCheckBox(display_name)
+                checkbox.setChecked(facility_id in self.selected_facilities)
+                self.checkboxes[facility_id] = checkbox
+                tab_layout.addWidget(checkbox)
+            
+            # Add stretch to push checkboxes to top
+            tab_layout.addStretch()
+            
+            # Create scroll area
+            scroll = QScrollArea()
+            scroll.setWidget(tab_widget)
+            scroll.setWidgetResizable(True)
+            
+            # Add tab with prettified name
+            tab_title = category_name.replace('_', ' ').title()
+            self.tab_widget.addTab(scroll, tab_title)
+        
+        layout.addWidget(self.tab_widget)
+        
+        # Add OK/Cancel buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+    
+    def get_selected_facilities(self) -> list[str]:
+        """Get the list of selected facility IDs.
+        
+        Returns:
+            List of selected facility IDs
+        """
+        selected = []
+        for facility_id, checkbox in self.checkboxes.items():
+            if checkbox.isChecked():
+                selected.append(facility_id)
+        return selected
+
+
+class GoodsPopup(QDialog):
+    """Dialog for selecting goods for imports or exports.
+    
+    Displays goods from goods.json in a multi-select list with optional filtering.
+    """
+    
+    def __init__(self, selected_goods: list[str], mode: str = "imports", parent=None):
+        """Initialize the goods selection dialog.
+        
+        Args:
+            selected_goods: List of currently selected good IDs
+            mode: Either "imports" or "exports" for dialog title
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.selected_goods = selected_goods.copy()
+        self.mode = mode
+        self.setWindowTitle(f"Edit {mode.capitalize()}")
+        self.setModal(True)
+        self.setMinimumSize(400, 500)
+        
+        layout = QVBoxLayout(self)
+        
+        # Import data loader here to avoid circular import
+        from core.data_loader import get_data_loader
+        from PySide6.QtWidgets import QLineEdit
+        data_loader = get_data_loader()
+        
+        # Add search/filter bar
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search goods...")
+        self.search_input.textChanged.connect(self.filter_goods)
+        layout.addWidget(self.search_input)
+        
+        # Create list widget
+        self.list_widget = QListWidget()
+        self.list_widget.setSelectionMode(QListWidget.MultiSelection)
+        
+        # Get goods data
+        self.goods_data = data_loader.get_goods()
+        
+        # Populate list
+        self.populate_list()
+        
+        layout.addWidget(self.list_widget)
+        
+        # Add info label
+        info_label = QLabel("Hold Ctrl/Cmd to select multiple items")
+        info_label.setStyleSheet("color: gray; font-style: italic;")
+        layout.addWidget(info_label)
+        
+        # Add OK/Cancel buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+    
+    def populate_list(self, filter_text: str = ""):
+        """Populate the list widget with goods.
+        
+        Args:
+            filter_text: Optional filter string to limit displayed goods
+        """
+        self.list_widget.clear()
+        
+        for good in self.goods_data:
+            good_id = good.get("id", "")
+            name = good.get("name", good_id)
+            tier = good.get("tier", "")
+            
+            # Apply filter
+            if filter_text and filter_text.lower() not in name.lower():
+                continue
+            
+            # Create display text
+            display_text = f"{name} (Tier {tier})"
+            
+            # Add item
+            from PySide6.QtWidgets import QListWidgetItem
+            item = QListWidgetItem(display_text)
+            item.setData(Qt.UserRole, good_id)
+            self.list_widget.addItem(item)
+            
+            # Select if in selected_goods
+            if good_id in self.selected_goods:
+                item.setSelected(True)
+    
+    def filter_goods(self, text: str):
+        """Filter the goods list based on search text.
+        
+        Args:
+            text: Search text
+        """
+        self.populate_list(text)
+    
+    def get_selected_goods(self) -> list[str]:
+        """Get the list of selected good IDs.
+        
+        Returns:
+            List of selected good IDs
+        """
+        selected = []
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            if item.isSelected():
+                good_id = item.data(Qt.UserRole)
+                selected.append(good_id)
+        return selected
+
+
+class StatsWidget(QWidget):
+    """Widget for editing system statistics in the Stats tab.
+    
+    Displays and allows editing of population, facilities, imports, and exports
+    for the currently selected system.
+    """
+    
+    def __init__(self, parent=None):
+        """Initialize the stats widget."""
+        super().__init__(parent)
+        self.current_system: Optional[SystemData] = None
+        
+        # Import data loader
+        from core.data_loader import get_data_loader
+        self.data_loader = get_data_loader()
+        
+        # Create layout
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignTop)
+        
+        # Title
+        title_label = QLabel("System Statistics")
+        title_font = QFont()
+        title_font.setPointSize(14)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        layout.addWidget(title_label)
+        
+        layout.addSpacing(10)
+        
+        # No system selected message (initially hidden)
+        self.no_system_label = QLabel("No system selected")
+        self.no_system_label.setStyleSheet("color: gray; font-style: italic;")
+        self.no_system_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.no_system_label)
+        
+        # Content widget (initially hidden)
+        self.content_widget = QWidget()
+        content_layout = QVBoxLayout(self.content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # System name display
+        self.system_name_label = QLabel()
+        system_name_font = QFont()
+        system_name_font.setPointSize(12)
+        system_name_font.setBold(True)
+        self.system_name_label.setFont(system_name_font)
+        content_layout.addWidget(self.system_name_label)
+        
+        content_layout.addSpacing(10)
+        
+        # Population section
+        pop_label = QLabel("Population:")
+        pop_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(pop_label)
+        
+        self.population_combo = QComboBox()
+        self.population_combo.currentIndexChanged.connect(self.on_population_changed)
+        content_layout.addWidget(self.population_combo)
+        
+        content_layout.addSpacing(10)
+        
+        # Facilities section
+        facilities_label = QLabel("Facilities:")
+        facilities_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(facilities_label)
+        
+        facilities_row = QHBoxLayout()
+        self.facilities_btn = QPushButton("Edit Facilities...")
+        self.facilities_btn.clicked.connect(self.edit_facilities)
+        facilities_row.addWidget(self.facilities_btn)
+        
+        self.facilities_summary = QLabel("0 facilities")
+        self.facilities_summary.setStyleSheet("color: gray;")
+        facilities_row.addWidget(self.facilities_summary)
+        facilities_row.addStretch()
+        
+        content_layout.addLayout(facilities_row)
+        
+        content_layout.addSpacing(10)
+        
+        # Imports section
+        imports_label = QLabel("Imports:")
+        imports_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(imports_label)
+        
+        imports_row = QHBoxLayout()
+        self.imports_btn = QPushButton("Edit Imports...")
+        self.imports_btn.clicked.connect(self.edit_imports)
+        imports_row.addWidget(self.imports_btn)
+        
+        self.imports_summary = QLabel("0 goods")
+        self.imports_summary.setStyleSheet("color: gray;")
+        imports_row.addWidget(self.imports_summary)
+        imports_row.addStretch()
+        
+        content_layout.addLayout(imports_row)
+        
+        content_layout.addSpacing(10)
+        
+        # Exports section
+        exports_label = QLabel("Exports:")
+        exports_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(exports_label)
+        
+        exports_row = QHBoxLayout()
+        self.exports_btn = QPushButton("Edit Exports...")
+        self.exports_btn.clicked.connect(self.edit_exports)
+        exports_row.addWidget(self.exports_btn)
+        
+        self.exports_summary = QLabel("0 goods")
+        self.exports_summary.setStyleSheet("color: gray;")
+        exports_row.addWidget(self.exports_summary)
+        exports_row.addStretch()
+        
+        content_layout.addLayout(exports_row)
+        
+        content_layout.addStretch()
+        
+        layout.addWidget(self.content_widget)
+        
+        # Initialize population combo
+        self.populate_population_combo()
+        
+        # Initially show no system selected
+        self.set_system(None)
+    
+    def populate_population_combo(self):
+        """Populate the population combo box from data."""
+        self.population_combo.clear()
+        self.population_combo.addItem("(No population)", None)
+        
+        population_levels = self.data_loader.get_population_levels()
+        for level in population_levels:
+            level_id = level.get("id", "")
+            label = level.get("label", level_id)
+            self.population_combo.addItem(label, level_id)
+    
+    def set_system(self, system: Optional[SystemData]):
+        """Set the current system to display/edit.
+        
+        Args:
+            system: The SystemData to display, or None if no system selected
+        """
+        self.current_system = system
+        
+        if system is None:
+            # Show "no system" message
+            self.no_system_label.show()
+            self.content_widget.hide()
+        else:
+            # Show system data
+            self.no_system_label.hide()
+            self.content_widget.show()
+            
+            # Update UI
+            self.system_name_label.setText(f"System: {system.name}")
+            
+            # Set population
+            if system.population_id:
+                index = self.population_combo.findData(system.population_id)
+                if index >= 0:
+                    self.population_combo.setCurrentIndex(index)
+                else:
+                    self.population_combo.setCurrentIndex(0)
+            else:
+                self.population_combo.setCurrentIndex(0)
+            
+            # Update summaries
+            self.update_summaries()
+    
+    def update_summaries(self):
+        """Update the summary labels for facilities, imports, and exports."""
+        if self.current_system is None:
+            return
+        
+        # Update facilities summary
+        num_facilities = len(self.current_system.facilities)
+        self.facilities_summary.setText(f"{num_facilities} facility" + ("ies" if num_facilities != 1 else "y"))
+        
+        # Update imports summary
+        num_imports = len(self.current_system.imports)
+        self.imports_summary.setText(f"{num_imports} good" + ("s" if num_imports != 1 else ""))
+        
+        # Update exports summary
+        num_exports = len(self.current_system.exports)
+        self.exports_summary.setText(f"{num_exports} good" + ("s" if num_exports != 1 else ""))
+    
+    def on_population_changed(self, index: int):
+        """Handle population combo box change.
+        
+        Args:
+            index: The new combo box index
+        """
+        if self.current_system is None:
+            return
+        
+        population_id = self.population_combo.itemData(index)
+        self.current_system.population_id = population_id
+    
+    def edit_facilities(self):
+        """Open the facilities editor dialog."""
+        if self.current_system is None:
+            return
+        
+        dialog = FacilityPopup(self.current_system.facilities, self)
+        if dialog.exec() == QDialog.Accepted:
+            self.current_system.facilities = dialog.get_selected_facilities()
+            self.update_summaries()
+    
+    def edit_imports(self):
+        """Open the imports editor dialog."""
+        if self.current_system is None:
+            return
+        
+        dialog = GoodsPopup(self.current_system.imports, "imports", self)
+        if dialog.exec() == QDialog.Accepted:
+            self.current_system.imports = dialog.get_selected_goods()
+            self.update_summaries()
+    
+    def edit_exports(self):
+        """Open the exports editor dialog."""
+        if self.current_system is None:
+            return
+        
+        dialog = GoodsPopup(self.current_system.exports, "exports", self)
+        if dialog.exec() == QDialog.Accepted:
+            self.current_system.exports = dialog.get_selected_goods()
+            self.update_summaries()
+
+
 class StarMapEditor(QMainWindow):
     """Main window for the Star Map Editor application."""
     
@@ -750,6 +1174,7 @@ class StarMapEditor(QMainWindow):
         
         # Stats button
         self.stats_btn = QPushButton('Stats')
+        self.stats_btn.setCheckable(True)
         self.stats_btn.clicked.connect(self.show_stats)
         mode_layout.addWidget(self.stats_btn)
         
@@ -824,6 +1249,11 @@ class StarMapEditor(QMainWindow):
         fallback_status_layout.addWidget(self.fallback_status_label)
         main_layout.addWidget(self.fallback_status_widget)
         self.fallback_status_widget.hide()  # Hidden by default
+        
+        # Create stats widget (visible only in stats mode)
+        self.stats_widget = StatsWidget()
+        main_layout.addWidget(self.stats_widget)
+        self.stats_widget.hide()
         
         # Update status message after toolbars are created
         self.update_status_message()
@@ -1501,7 +1931,7 @@ class StarMapEditor(QMainWindow):
         """Set the current editor mode.
         
         Args:
-            mode: The mode to activate ('template', 'systems', 'routes', 'zones', or None)
+            mode: The mode to activate ('template', 'systems', 'routes', 'zones', 'stats', or None)
         """
         self.current_mode = mode
         
@@ -1510,12 +1940,14 @@ class StarMapEditor(QMainWindow):
         self.systems_btn.setChecked(mode == 'systems')
         self.routes_btn.setChecked(mode == 'routes')
         self.zones_btn.setChecked(mode == 'zones')
+        self.stats_btn.setChecked(mode == 'stats')
         
         # Update button styles
         for btn, btn_mode in [(self.template_btn, 'template'),
                                (self.systems_btn, 'systems'), 
                                (self.routes_btn, 'routes'),
-                               (self.zones_btn, 'zones')]:
+                               (self.zones_btn, 'zones'),
+                               (self.stats_btn, 'stats')]:
             if mode == btn_mode:
                 btn.setStyleSheet("QPushButton:checked { background-color: #90EE90; }")
             else:
@@ -1535,21 +1967,31 @@ class StarMapEditor(QMainWindow):
                     self.route_items[route_id].set_group_selection(False)
             self.routes_selected_for_group.clear()
         
-        # Show/hide workspace toolbars
+        # Show/hide workspace toolbars and widgets
         if mode == 'template':
             self.workspace_toolbar.show()
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
+            self.stats_widget.hide()
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
             self.fallback_status_widget.hide()
+            self.stats_widget.hide()
             # Refresh route selector when entering routes mode
             self.refresh_route_selector()
+        elif mode == 'stats':
+            self.workspace_toolbar.hide()
+            self.routes_toolbar.hide()
+            self.fallback_status_widget.hide()
+            self.stats_widget.show()
+            # Update stats widget with current selection
+            self.update_stats_widget()
         else:
             self.workspace_toolbar.hide()
             self.routes_toolbar.hide()
             self.fallback_status_widget.show()
+            self.stats_widget.hide()
         
         # Update status
         self.update_status_message()
@@ -1728,6 +2170,10 @@ class StarMapEditor(QMainWindow):
             self.view.route_editing_mode_active = True
         else:
             self.view.route_editing_mode_active = False
+        
+        # Update stats widget if in stats mode
+        if self.current_mode == 'stats':
+            self.update_stats_widget()
     
     def on_item_modified(self):
         """Handle item modification (movement, etc.)."""
@@ -2902,17 +3348,20 @@ class StarMapEditor(QMainWindow):
             self.set_mode(None)
     
     def show_stats(self):
-        """Placeholder for Stats functionality."""
-        stats_text = f"""Map Statistics:
-
-Templates: {len(self.project.templates)}
-Systems: {len(self.project.systems)}
-Routes: {len(self.project.routes)}
-Route Groups: {len(self.project.route_groups)}
-Zones: {len(self.project.zones)}
-"""
-        QMessageBox.information(
-            self,
-            "Map Statistics",
-            stats_text
-        )
+        """Toggle stats mode."""
+        if self.current_mode == 'stats':
+            self.set_mode(None)
+        else:
+            self.set_mode('stats')
+    
+    def update_stats_widget(self):
+        """Update the stats widget with the currently selected system."""
+        # Find the currently selected system
+        selected_system = None
+        for item in self.scene.selectedItems():
+            if isinstance(item, SystemItem):
+                selected_system = item.get_system_data()
+                break
+        
+        # Update the stats widget
+        self.stats_widget.set_system(selected_system)
