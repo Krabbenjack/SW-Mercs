@@ -1,0 +1,65 @@
+{
+  "categories": {
+    "industry": [
+      "mining_facility",
+      "orbital_mining_outpost",
+      "gas_harvesting_station",
+      "refinery",
+      "heavy_industry",
+      "factory",
+      "prefab_construction_plant",
+      "food_production"
+    ],
+    "space_ops": [
+      "civilian_spaceport",
+      "trade_hub",
+      "customs_station",
+      "civilian_shipyard",
+      "repair_docks",
+      "orbital_freight_hub",
+      "salvage_yard",
+      "hyperspace_beacon",
+      "deep_space_relay",
+      "orbital_habitat_ring"
+    ],
+    "military": [
+      "garrison",
+      "planetary_defense_hq",
+      "military_shipyard",
+      "orbital_defense_station",
+      "flight_academy",
+      "army_academy",
+      "military_research_division",
+      "base_shield_generator",
+      "ground_to_orbit_battery"
+    ],
+    "science": [
+      "research_lab",
+      "medical_research_facility",
+      "droid_rnd_center",
+      "hyperdrive_development_lab",
+      "fuel_stabilization_plant",
+      "coaxium_refinery",
+      "astrophysics_observatory",
+      "military_science_lab"
+    ],
+    "underworld": [
+      "smuggler_haven",
+      "pirate_base",
+      "black_market_hub",
+      "spice_refinery",
+      "slicer_den",
+      "illegal_ship_mod_shop",
+      "shadow_port",
+      "syndicate_stronghold"
+    ],
+    "social": [
+      "colony",
+      "urban_megacity",
+      "tourism_resort",
+      "cultural_center",
+      "diplomatic_embassy_station",
+      "strange_ruins"
+    ]
+  }
+}

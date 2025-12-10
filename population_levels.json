@@ -1,0 +1,16 @@
+{
+  "population_levels": [
+    { "id": "uninhabited", "label": "Unbewohnt", "min": 0, "max": 0 },
+    { "id": "micro", "label": "Mikrosiedlung", "min": 1000, "max": 100000 },
+    { "id": "very_low", "label": "Sehr niedrig", "min": 100000, "max": 1000000 },
+    { "id": "low", "label": "Niedrig", "min": 1000000, "max": 50000000 },
+    { "id": "mid_low", "label": "Mittel-niedrig", "min": 50000000, "max": 500000000 },
+    { "id": "mid", "label": "Mittel", "min": 500000000, "max": 1000000000 },
+    { "id": "established", "label": "Etabliert", "min": 1000000000, "max": 5000000000 },
+    { "id": "large", "label": "Groß", "min": 5000000000, "max": 10000000000 },
+    { "id": "very_large", "label": "Sehr groß", "min": 10000000000, "max": 50000000000 },
+    { "id": "hyperurban", "label": "Hyperurbanisiert", "min": 50000000000, "max": 200000000000 },
+    { "id": "megacity_planet", "label": "Megacity-Planet", "min": 200000000000, "max": 900000000000 },
+    { "id": "galactic_capital", "label": "Galaktische Hauptstadt", "min": 1000000000000, "max": 2000000000000 }
+  ]
+}

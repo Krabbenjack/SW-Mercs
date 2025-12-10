@@ -1,0 +1,58 @@
+{
+  "production_chains": [
+    { "output": "metal_bars", "inputs": ["ore"] },
+    { "output": "energy_cells", "inputs": ["gas", "metal_bars"] },
+    { "output": "alloys", "inputs": ["metal_bars", "energy_cells"] },
+    { "output": "rare_alloys", "inputs": ["rare_minerals"] },
+
+    { "output": "optics", "inputs": ["crystals", "energy_cells"] },
+    { "output": "polymers", "inputs": ["organics", "alloys"] },
+
+    { "output": "food_processed", "inputs": ["organics", "water"] },
+    { "output": "bio_compounds", "inputs": ["organics"] },
+
+    { "output": "rhydonium_fuel", "inputs": ["rhydonium_gas"] },
+    { "output": "coaxium_fuel", "inputs": ["coaxium_raw"] },
+
+    { "output": "industrial_parts", "inputs": ["scrap"] },
+
+    { "output": "construction_materials", "inputs": ["metal_bars", "polymers", "industrial_parts"] },
+
+    { "output": "electronics", "inputs": ["alloys", "optics", "energy_cells"] },
+    { "output": "duraplast_components", "inputs": ["polymers", "industrial_parts"] },
+    { "output": "advanced_sensors", "inputs": ["crystals", "electronics"] },
+    { "output": "reactor_cores", "inputs": ["rare_alloys", "energy_cells"] },
+    { "output": "starship_components", "inputs": ["electronics", "duraplast_components"] },
+    { "output": "medical_supplies", "inputs": ["bio_compounds", "food_processed"] },
+
+    { "output": "blaster_components", "inputs": ["industrial_parts", "electronics", "chemicals"] },
+    { "output": "droid_components", "inputs": ["electronics", "servo_units", "duraplast_components"] },
+    { "output": "computer_cores", "inputs": ["electronics", "optics"] },
+    { "output": "repulsorlift_generators", "inputs": ["rare_alloys", "electronics", "crystals"] },
+
+    { "output": "prefab_modules", "inputs": ["construction_materials", "electronics"] },
+
+    { "output": "hyperdrive_parts", "inputs": ["starship_components", "reactor_cores"] },
+    { "output": "ship_systems", "inputs": ["hyperdrive_parts", "advanced_sensors"] },
+    { "output": "blaster_weapons", "inputs": ["blaster_components", "optics"] },
+    { "output": "personal_armor", "inputs": ["duraplast_components", "rare_alloys"] },
+    { "output": "medical_packages", "inputs": ["medical_supplies"] },
+
+    { "output": "service_droids", "inputs": ["droid_components"] },
+    { "output": "astromech_droids", "inputs": ["droid_components", "advanced_sensors"] },
+    { "output": "battle_droids", "inputs": ["droid_components", "blaster_components"] },
+
+    { "output": "computer_systems", "inputs": ["computer_cores", "duraplast_components"] },
+
+    { "output": "repulsorcraft_vehicles", "inputs": ["repulsorlift_generators", "duraplast_components", "reactor_cores"] },
+
+    { "output": "habitat_modules", "inputs": ["prefab_modules"] },
+    { "output": "defense_installations", "inputs": ["prefab_modules", "blaster_components"] },
+
+    { "output": "food_supplies", "inputs": ["food_processed"] },
+    { "output": "military_rations", "inputs": ["food_processed", "bio_compounds"] },
+    { "output": "delicacies", "inputs": ["food_processed", "herbs_and_spices", "livestock_products"] },
+
+    { "output": "spice_packages", "inputs": ["herbs_and_spices", "energy_cells"] }
+  ]
+}
