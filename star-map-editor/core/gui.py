@@ -663,6 +663,18 @@ class MapView(QGraphicsView):
         self.position_zoom_indicator()
 
 
+def prettify_id(id_string: str) -> str:
+    """Convert an ID string to a human-readable label.
+    
+    Args:
+        id_string: ID string with underscores (e.g., "mining_facility")
+        
+    Returns:
+        Prettified string (e.g., "Mining Facility")
+    """
+    return id_string.replace('_', ' ').title()
+
+
 class FacilityPopup(QDialog):
     """Dialog for selecting facilities organized by category.
     
@@ -707,7 +719,7 @@ class FacilityPopup(QDialog):
             # Create checkboxes for each facility
             for facility_id in facility_ids:
                 # Prettify the facility ID for display
-                display_name = facility_id.replace('_', ' ').title()
+                display_name = prettify_id(facility_id)
                 checkbox = QCheckBox(display_name)
                 checkbox.setChecked(facility_id in self.selected_facilities)
                 self.checkboxes[facility_id] = checkbox
@@ -722,7 +734,7 @@ class FacilityPopup(QDialog):
             scroll.setWidgetResizable(True)
             
             # Add tab with prettified name
-            tab_title = category_name.replace('_', ' ').title()
+            tab_title = prettify_id(category_name)
             self.tab_widget.addTab(scroll, tab_title)
         
         layout.addWidget(self.tab_widget)

@@ -5,7 +5,7 @@ for the Star Map Editor.
 """
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem, QGraphicsTextItem, QDialog, 
@@ -37,18 +37,9 @@ class SystemData:
     name: str
     position: QPointF
     population_id: str | None = None
-    imports: list[str] = None
-    exports: list[str] = None
-    facilities: list[str] = None
-    
-    def __post_init__(self):
-        """Initialize mutable default values."""
-        if self.imports is None:
-            self.imports = []
-        if self.exports is None:
-            self.exports = []
-        if self.facilities is None:
-            self.facilities = []
+    imports: list[str] = field(default_factory=list)
+    exports: list[str] = field(default_factory=list)
+    facilities: list[str] = field(default_factory=list)
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
