@@ -60,7 +60,10 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                     "start_system_id": r.start_system_id,
                     "end_system_id": r.end_system_id,
                     "control_points": r.control_points,
-                    "system_chain": r.system_chain
+                    "system_chain": r.system_chain,
+                    "route_class": r.route_class,
+                    "travel_type": r.travel_type,
+                    "hazards": r.hazards
                 }
                 for r in project.routes.values()
             ],
@@ -142,7 +145,10 @@ def load_project(file_path: Path) -> Optional[MapProject]:
                     start_system_id=r_dict["start_system_id"],
                     end_system_id=r_dict["end_system_id"],
                     control_points=[tuple(cp) for cp in r_dict.get("control_points", [])],
-                    system_chain=r_dict.get("system_chain")  # Load system chain if present
+                    system_chain=r_dict.get("system_chain"),  # Load system chain if present
+                    route_class=r_dict.get("route_class", 3),  # Default to 3 for backward compatibility
+                    travel_type=r_dict.get("travel_type", "normal"),  # Default to "normal"
+                    hazards=r_dict.get("hazards", [])  # Default to empty list
                 )
                 project.routes[route.id] = route
         
@@ -201,7 +207,10 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
                     "start_system_id": r.start_system_id,
                     "end_system_id": r.end_system_id,
                     "control_points": r.control_points,
-                    "system_chain": r.system_chain
+                    "system_chain": r.system_chain,
+                    "route_class": r.route_class,
+                    "travel_type": r.travel_type,
+                    "hazards": r.hazards
                 }
                 for r in project.routes.values()
             ],
