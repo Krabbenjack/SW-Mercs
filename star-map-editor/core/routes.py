@@ -36,6 +36,9 @@ class RouteData:
                      If present, overrides start/end_system_id. First system is start,
                      last is end. Intermediate systems are waypoints.
                      Format: [sys1_id, sys2_id, sys3_id, ...]
+        route_class: Route class (1-5, where 1=fast, 5=slow). Default: 3
+        travel_type: Type of route (normal, express_lane, ancient_hyperlane, backwater). Default: "normal"
+        hazards: List of hazards affecting the route. Default: []
     """
     id: str
     name: str
@@ -43,6 +46,9 @@ class RouteData:
     end_system_id: str
     control_points: List[tuple[float, float]] = field(default_factory=list)
     system_chain: Optional[List[str]] = None
+    route_class: int = 3
+    travel_type: str = "normal"
+    hazards: List[str] = field(default_factory=list)
     
     @classmethod
     def create_new(cls, name: str, start_system_id: str, end_system_id: str,
@@ -474,3 +480,57 @@ class RouteItem(QGraphicsPathItem):
         
         # Distance from point to closest point
         return ((point.x() - closest_x) ** 2 + (point.y() - closest_y) ** 2) ** 0.5
+    
+    def calculate_length(self) -> float:
+        """Calculate the total length of this route in HSU.
+        
+        Sums the length of all segments in the polyline path.
+        For simple routes with control points, includes those.
+        For chain routes, sums system-to-system distances.
+        
+        Returns:
+            Total route length in Hyperspace Units (HSU)
+        """
+        system_chain = self.route_data.get_system_chain()
+        
+        # Get positions for all systems in chain
+        positions = []
+        for sys_id in system_chain:
+            if sys_id in self.system_items:
+                positions.append(self.system_items[sys_id].pos())
+            else:
+                # System not found - can't calculate length
+                return 0.0
+        
+        if len(positions) < 2:
+            return 0.0
+        
+        total_length = 0.0
+        
+        # For simple 2-system routes with control points, calculate through control points
+        if len(system_chain) == 2 and self.route_data.control_points:
+            # Start position
+            prev_pos = positions[0]
+            
+            # Add segments through control points
+            for x, y in self.route_data.control_points:
+                curr_pos = QPointF(x, y)
+                dx = curr_pos.x() - prev_pos.x()
+                dy = curr_pos.y() - prev_pos.y()
+                total_length += (dx * dx + dy * dy) ** 0.5
+                prev_pos = curr_pos
+            
+            # Add final segment to end system
+            dx = positions[1].x() - prev_pos.x()
+            dy = positions[1].y() - prev_pos.y()
+            total_length += (dx * dx + dy * dy) ** 0.5
+        else:
+            # For chain routes, sum system-to-system distances
+            for i in range(len(positions) - 1):
+                p1 = positions[i]
+                p2 = positions[i + 1]
+                dx = p2.x() - p1.x()
+                dy = p2.y() - p1.y()
+                total_length += (dx * dx + dy * dy) ** 0.5
+        
+        return total_length

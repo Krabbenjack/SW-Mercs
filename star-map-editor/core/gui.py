@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
-    QDialog, QDialogButtonBox, QComboBox, QSplitter
+    QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
+    QCheckBox, QSpinBox
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -1099,6 +1100,495 @@ class StatsWidget(QWidget):
             self.update_summaries()
 
 
+class RouteStatsWidget(QWidget):
+    """Widget for editing route statistics in the Stats tab.
+    
+    Displays and allows editing of route class, travel type, and hazards
+    for the currently selected route.
+    """
+    
+    # Available hazards for route selection
+    AVAILABLE_HAZARDS = [
+        "nebula",
+        "hypershadow",
+        "quasar",
+        "minefield",
+        "pirate_activity"
+    ]
+    
+    # Travel types
+    TRAVEL_TYPES = [
+        "normal",
+        "express_lane",
+        "ancient_hyperlane",
+        "backwater"
+    ]
+    
+    def __init__(self, system_items_dict: Dict[str, SystemItem], parent=None):
+        """Initialize the route stats widget.
+        
+        Args:
+            system_items_dict: Dictionary mapping system IDs to SystemItem instances
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.current_route_item: Optional[RouteItem] = None
+        self.system_items = system_items_dict
+        
+        # Create layout
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignTop)
+        
+        # Title
+        title_label = QLabel("Route Statistics")
+        title_font = QFont()
+        title_font.setPointSize(14)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        layout.addWidget(title_label)
+        
+        layout.addSpacing(10)
+        
+        # No route selected message (initially visible)
+        self.no_route_label = QLabel("No route selected")
+        self.no_route_label.setStyleSheet("color: gray; font-style: italic;")
+        self.no_route_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.no_route_label)
+        
+        # Content widget (initially hidden)
+        self.content_widget = QWidget()
+        content_layout = QVBoxLayout(self.content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Route name display
+        self.route_name_label = QLabel()
+        route_name_font = QFont()
+        route_name_font.setPointSize(12)
+        route_name_font.setBold(True)
+        self.route_name_label.setFont(route_name_font)
+        content_layout.addWidget(self.route_name_label)
+        
+        content_layout.addSpacing(10)
+        
+        # Route length (read-only)
+        length_label = QLabel("Route Length (HSU):")
+        length_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(length_label)
+        
+        self.length_value_label = QLabel("0.0 HSU")
+        self.length_value_label.setStyleSheet("color: gray;")
+        content_layout.addWidget(self.length_value_label)
+        
+        content_layout.addSpacing(10)
+        
+        # Route class section
+        class_label = QLabel("Route Class (1=Fast, 5=Slow):")
+        class_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(class_label)
+        
+        self.route_class_spin = QSpinBox()
+        self.route_class_spin.setMinimum(1)
+        self.route_class_spin.setMaximum(5)
+        self.route_class_spin.setValue(3)
+        self.route_class_spin.valueChanged.connect(self.on_route_class_changed)
+        content_layout.addWidget(self.route_class_spin)
+        
+        content_layout.addSpacing(10)
+        
+        # Travel type section
+        travel_type_label = QLabel("Base Travel Type:")
+        travel_type_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(travel_type_label)
+        
+        self.travel_type_combo = QComboBox()
+        for travel_type in self.TRAVEL_TYPES:
+            display_name = travel_type.replace("_", " ").title()
+            self.travel_type_combo.addItem(display_name, travel_type)
+        self.travel_type_combo.currentIndexChanged.connect(self.on_travel_type_changed)
+        content_layout.addWidget(self.travel_type_combo)
+        
+        content_layout.addSpacing(10)
+        
+        # Hazards section
+        hazards_label = QLabel("Hazards:")
+        hazards_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(hazards_label)
+        
+        # Create checkboxes for each hazard
+        self.hazard_checkboxes: Dict[str, QCheckBox] = {}
+        for hazard in self.AVAILABLE_HAZARDS:
+            display_name = hazard.replace("_", " ").title()
+            checkbox = QCheckBox(display_name)
+            checkbox.stateChanged.connect(lambda state, h=hazard: self.on_hazard_changed(h, state))
+            self.hazard_checkboxes[hazard] = checkbox
+            content_layout.addWidget(checkbox)
+        
+        content_layout.addStretch()
+        
+        layout.addWidget(self.content_widget)
+        
+        # Initially show no route selected
+        self.set_route(None)
+    
+    def set_route(self, route_item: Optional[RouteItem]):
+        """Set the current route to display/edit.
+        
+        Args:
+            route_item: The RouteItem to display, or None if no route selected
+        """
+        self.current_route_item = route_item
+        
+        if route_item is None:
+            # Show "no route" message
+            self.no_route_label.show()
+            self.content_widget.hide()
+        else:
+            # Show route data
+            self.no_route_label.hide()
+            self.content_widget.show()
+            
+            route_data = route_item.get_route_data()
+            
+            # Update UI
+            self.route_name_label.setText(f"Route: {route_data.name}")
+            
+            # Update length
+            length = route_item.calculate_length()
+            self.length_value_label.setText(f"{length:.1f} HSU")
+            
+            # Set route class
+            self.route_class_spin.setValue(route_data.route_class)
+            
+            # Set travel type
+            index = self.travel_type_combo.findData(route_data.travel_type)
+            if index >= 0:
+                self.travel_type_combo.setCurrentIndex(index)
+            else:
+                self.travel_type_combo.setCurrentIndex(0)
+            
+            # Set hazards
+            for hazard, checkbox in self.hazard_checkboxes.items():
+                checkbox.setChecked(hazard in route_data.hazards)
+    
+    def on_route_class_changed(self, value: int):
+        """Handle route class spinbox change.
+        
+        Args:
+            value: The new route class value
+        """
+        if self.current_route_item is None:
+            return
+        
+        route_data = self.current_route_item.get_route_data()
+        route_data.route_class = value
+    
+    def on_travel_type_changed(self, index: int):
+        """Handle travel type combo box change.
+        
+        Args:
+            index: The new combo box index
+        """
+        if self.current_route_item is None:
+            return
+        
+        travel_type = self.travel_type_combo.itemData(index)
+        route_data = self.current_route_item.get_route_data()
+        route_data.travel_type = travel_type
+    
+    def on_hazard_changed(self, hazard: str, state: int):
+        """Handle hazard checkbox state change.
+        
+        Args:
+            hazard: The hazard identifier
+            state: The checkbox state (Qt.Checked or Qt.Unchecked)
+        """
+        if self.current_route_item is None:
+            return
+        
+        route_data = self.current_route_item.get_route_data()
+        
+        if state == Qt.Checked:
+            if hazard not in route_data.hazards:
+                route_data.hazards.append(hazard)
+        else:
+            if hazard in route_data.hazards:
+                route_data.hazards.remove(hazard)
+
+
+class TravelCalculatorWidget(QWidget):
+    """Widget for calculating travel time based on route and ship parameters.
+    
+    Displays route length and allows user to select hyperdrive rating
+    to calculate travel time estimates.
+    """
+    
+    # Hyperdrive ratings
+    HYPERDRIVE_RATINGS = ["x1", "x2", "x3", "x4"]
+    
+    # Speed modifiers based on route class (placeholder values)
+    ROUTE_CLASS_MODIFIERS = {
+        1: 1.5,   # Fast route
+        2: 1.2,
+        3: 1.0,   # Normal
+        4: 0.8,
+        5: 0.6    # Slow route
+    }
+    
+    # Travel type modifiers (placeholder values)
+    TRAVEL_TYPE_MODIFIERS = {
+        "normal": 1.0,
+        "express_lane": 1.3,
+        "ancient_hyperlane": 0.9,
+        "backwater": 0.7
+    }
+    
+    # Hazard modifiers (placeholder values, each adds penalty)
+    HAZARD_MODIFIERS = {
+        "nebula": 0.9,
+        "hypershadow": 0.85,
+        "quasar": 0.8,
+        "minefield": 0.95,
+        "pirate_activity": 0.95
+    }
+    
+    def __init__(self, parent=None):
+        """Initialize the travel calculator widget."""
+        super().__init__(parent)
+        self.current_route_item: Optional[RouteItem] = None
+        
+        # Create layout
+        layout = QVBoxLayout(self)
+        layout.setAlignment(Qt.AlignTop)
+        
+        # Title
+        title_label = QLabel("Travel Calculator")
+        title_font = QFont()
+        title_font.setPointSize(14)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        layout.addWidget(title_label)
+        
+        layout.addSpacing(10)
+        
+        # No route selected message (initially visible)
+        self.no_route_label = QLabel("No route selected")
+        self.no_route_label.setStyleSheet("color: gray; font-style: italic;")
+        self.no_route_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.no_route_label)
+        
+        # Content widget (initially hidden)
+        self.content_widget = QWidget()
+        content_layout = QVBoxLayout(self.content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Route name display
+        self.route_name_label = QLabel()
+        route_name_font = QFont()
+        route_name_font.setPointSize(12)
+        route_name_font.setBold(True)
+        self.route_name_label.setFont(route_name_font)
+        content_layout.addWidget(self.route_name_label)
+        
+        content_layout.addSpacing(10)
+        
+        # Hyperdrive rating selection
+        hyperdrive_label = QLabel("Hyperdrive Rating:")
+        hyperdrive_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(hyperdrive_label)
+        
+        self.hyperdrive_combo = QComboBox()
+        for rating in self.HYPERDRIVE_RATINGS:
+            self.hyperdrive_combo.addItem(rating, rating)
+        self.hyperdrive_combo.currentIndexChanged.connect(self.update_calculations)
+        content_layout.addWidget(self.hyperdrive_combo)
+        
+        content_layout.addSpacing(10)
+        
+        # Read-only display values
+        info_label = QLabel("Route Information:")
+        info_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(info_label)
+        
+        # Route length
+        self.length_display = QLabel("Length: 0.0 HSU")
+        content_layout.addWidget(self.length_display)
+        
+        # Route class
+        self.class_display = QLabel("Class: 3")
+        content_layout.addWidget(self.class_display)
+        
+        # Travel type
+        self.type_display = QLabel("Type: Normal")
+        content_layout.addWidget(self.type_display)
+        
+        # Hazards
+        self.hazards_display = QLabel("Hazards: None")
+        content_layout.addWidget(self.hazards_display)
+        
+        content_layout.addSpacing(10)
+        
+        # Calculated values
+        calc_label = QLabel("Estimated Travel:")
+        calc_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(calc_label)
+        
+        self.speed_display = QLabel("Speed Factor: 1.0x")
+        content_layout.addWidget(self.speed_display)
+        
+        self.time_display = QLabel("Travel Time: -- hours")
+        content_layout.addWidget(self.time_display)
+        
+        # Placeholder for fuel estimate
+        self.fuel_display = QLabel("Fuel Estimate: TBD")
+        self.fuel_display.setStyleSheet("color: gray; font-style: italic;")
+        content_layout.addWidget(self.fuel_display)
+        
+        content_layout.addStretch()
+        
+        layout.addWidget(self.content_widget)
+        
+        # Initially show no route selected
+        self.set_route(None)
+    
+    def set_route(self, route_item: Optional[RouteItem]):
+        """Set the current route for calculations.
+        
+        Args:
+            route_item: The RouteItem to use for calculations, or None
+        """
+        self.current_route_item = route_item
+        
+        if route_item is None:
+            # Show "no route" message
+            self.no_route_label.show()
+            self.content_widget.hide()
+        else:
+            # Show calculator
+            self.no_route_label.hide()
+            self.content_widget.show()
+            
+            route_data = route_item.get_route_data()
+            self.route_name_label.setText(f"Route: {route_data.name}")
+            
+            # Update calculations
+            self.update_calculations()
+    
+    def update_calculations(self):
+        """Update all calculated values based on current route and hyperdrive."""
+        if self.current_route_item is None:
+            return
+        
+        route_data = self.current_route_item.get_route_data()
+        
+        # Get route length
+        length = self.current_route_item.calculate_length()
+        self.length_display.setText(f"Length: {length:.1f} HSU")
+        
+        # Display route class
+        self.class_display.setText(f"Class: {route_data.route_class}")
+        
+        # Display travel type
+        travel_type_display = route_data.travel_type.replace("_", " ").title()
+        self.type_display.setText(f"Type: {travel_type_display}")
+        
+        # Display hazards
+        if route_data.hazards:
+            hazards_str = ", ".join([h.replace("_", " ").title() for h in route_data.hazards])
+            self.hazards_display.setText(f"Hazards: {hazards_str}")
+        else:
+            self.hazards_display.setText("Hazards: None")
+        
+        # Calculate speed factor
+        speed_factor = 1.0
+        
+        # Apply route class modifier
+        speed_factor *= self.ROUTE_CLASS_MODIFIERS.get(route_data.route_class, 1.0)
+        
+        # Apply travel type modifier
+        speed_factor *= self.TRAVEL_TYPE_MODIFIERS.get(route_data.travel_type, 1.0)
+        
+        # Apply hazard modifiers (multiplicative)
+        for hazard in route_data.hazards:
+            speed_factor *= self.HAZARD_MODIFIERS.get(hazard, 1.0)
+        
+        self.speed_display.setText(f"Speed Factor: {speed_factor:.2f}x")
+        
+        # Calculate travel time (placeholder formula)
+        # Base: 1 HSU = 1 hour at x1 hyperdrive
+        hyperdrive_rating = self.hyperdrive_combo.currentData()
+        hyperdrive_multiplier = float(hyperdrive_rating[1:])  # Extract number from "x1", "x2", etc.
+        
+        # Time = (length / hyperdrive) / speed_factor
+        base_time = length / hyperdrive_multiplier
+        travel_time = base_time / speed_factor
+        
+        self.time_display.setText(f"Travel Time: {travel_time:.1f} hours")
+
+
+class StatsInspector(QWidget):
+    """Container widget with tabs for System, Route, and Calculator stats.
+    
+    This widget contains a QTabWidget that switches between different
+    stats editors based on what is selected in the scene.
+    """
+    
+    def __init__(self, system_items_dict: Dict[str, SystemItem], parent=None):
+        """Initialize the stats inspector.
+        
+        Args:
+            system_items_dict: Dictionary mapping system IDs to SystemItem instances
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.system_items = system_items_dict
+        
+        # Create layout
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create tab widget
+        self.tab_widget = QTabWidget()
+        
+        # Create the three tabs
+        self.system_stats_widget = StatsWidget()
+        self.route_stats_widget = RouteStatsWidget(system_items_dict)
+        self.calculator_widget = TravelCalculatorWidget()
+        
+        # Add tabs
+        self.tab_widget.addTab(self.system_stats_widget, "System")
+        self.tab_widget.addTab(self.route_stats_widget, "Route")
+        self.tab_widget.addTab(self.calculator_widget, "Calculator")
+        
+        layout.addWidget(self.tab_widget)
+    
+    def set_selected_system(self, system_data: Optional[SystemData]):
+        """Set the selected system and switch to System tab.
+        
+        Args:
+            system_data: The selected SystemData, or None
+        """
+        self.system_stats_widget.set_system(system_data)
+        if system_data is not None:
+            self.tab_widget.setCurrentWidget(self.system_stats_widget)
+    
+    def set_selected_route(self, route_item: Optional[RouteItem]):
+        """Set the selected route and switch to Route tab.
+        
+        Args:
+            route_item: The selected RouteItem, or None
+        """
+        self.route_stats_widget.set_route(route_item)
+        self.calculator_widget.set_route(route_item)
+        if route_item is not None:
+            self.tab_widget.setCurrentWidget(self.route_stats_widget)
+    
+    def clear_selection(self):
+        """Clear all selections (no system or route selected)."""
+        self.system_stats_widget.set_system(None)
+        self.route_stats_widget.set_route(None)
+        self.calculator_widget.set_route(None)
+
+
 class StarMapEditor(QMainWindow):
     """Main window for the Star Map Editor application."""
     
@@ -1274,15 +1764,7 @@ class StarMapEditor(QMainWindow):
         # Update status message after toolbars are created
         self.update_status_message()
         
-        # Create stats widget (will be placed in splitter, visible only in stats mode)
-        self.stats_widget = StatsWidget()
-        self.stats_widget.hide()
-        
-        # Fixed, narrow width for the stats sidebar
-        self.stats_widget.setMinimumWidth(260)
-        self.stats_widget.setMaximumWidth(320)
-        
-        # Create graphics scene and view
+        # Create graphics scene and view (need to do this before stats inspector)
         self.scene = GridOverlay()
         self.view = MapView(self.scene)
         self.view.setFocusPolicy(Qt.StrongFocus)
@@ -1298,10 +1780,19 @@ class StarMapEditor(QMainWindow):
         # Connect scene selection changed signal
         self.scene.selectionChanged.connect(self.on_selection_changed)
         
+        # Create stats inspector (will be placed in splitter, visible only in stats mode)
+        # Pass system_items dict for route calculations
+        self.stats_inspector = StatsInspector(self.system_items)
+        self.stats_inspector.hide()
+        
+        # Fixed, narrow width for the stats sidebar
+        self.stats_inspector.setMinimumWidth(260)
+        self.stats_inspector.setMaximumWidth(320)
+        
         # Create a horizontal splitter for main content
         self.main_splitter = QSplitter(Qt.Horizontal)
         self.main_splitter.addWidget(self.view)
-        self.main_splitter.addWidget(self.stats_widget)
+        self.main_splitter.addWidget(self.stats_inspector)
         
         # Give more weight to the map view
         self.main_splitter.setStretchFactor(0, 3)
@@ -1312,7 +1803,7 @@ class StarMapEditor(QMainWindow):
         # and stats sidebar is collapsed (0 width). Actual pixel values will be calculated by Qt.
         self.main_splitter.setSizes([1, 0])
         
-        # Add splitter to main_layout instead of adding view and stats_widget vertically
+        # Add splitter to main_layout instead of adding view and stats_inspector vertically
         main_layout.addWidget(self.main_splitter)
         
         # Apply dark mode by default
@@ -2014,14 +2505,14 @@ class StarMapEditor(QMainWindow):
             self.workspace_toolbar.show()
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
-            self.stats_widget.hide()
+            self.stats_inspector.hide()
             # Collapse stats sidebar (main_splitter is always initialized in __init__)
             self.main_splitter.setSizes([1, 0])
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
             self.fallback_status_widget.hide()
-            self.stats_widget.hide()
+            self.stats_inspector.hide()
             # Collapse stats sidebar
             self.main_splitter.setSizes([1, 0])
             # Refresh route selector when entering routes mode
@@ -2030,7 +2521,7 @@ class StarMapEditor(QMainWindow):
             self.workspace_toolbar.hide()
             self.routes_toolbar.hide()
             self.fallback_status_widget.hide()
-            self.stats_widget.show()
+            self.stats_inspector.show()
             # Map : Stats ≈ 3 : 1
             # Calculate reasonable sizes for stats sidebar
             total_width = self.main_splitter.width()
@@ -2040,13 +2531,13 @@ class StarMapEditor(QMainWindow):
             stats_width = 280  # Default width for stats sidebar
             map_width = max(total_width - stats_width, total_width * 3 // 4)
             self.main_splitter.setSizes([map_width, stats_width])
-            # Update stats widget with current selection
-            self.update_stats_widget()
+            # Update stats inspector with current selection
+            self.update_stats_inspector()
         else:
             self.workspace_toolbar.hide()
             self.routes_toolbar.hide()
             self.fallback_status_widget.show()
-            self.stats_widget.hide()
+            self.stats_inspector.hide()
             # Collapse stats sidebar
             self.main_splitter.setSizes([1, 0])
         
@@ -2228,9 +2719,9 @@ class StarMapEditor(QMainWindow):
         else:
             self.view.route_editing_mode_active = False
         
-        # Update stats widget if in stats mode
+        # Update stats inspector if in stats mode
         if self.current_mode == 'stats':
-            self.update_stats_widget()
+            self.update_stats_inspector()
     
     def on_item_modified(self):
         """Handle item modification (movement, etc.)."""
@@ -3411,14 +3902,24 @@ class StarMapEditor(QMainWindow):
         else:
             self.set_mode('stats')
     
-    def update_stats_widget(self):
-        """Update the stats widget with the currently selected system."""
-        # Find the currently selected system
+    def update_stats_inspector(self):
+        """Update the stats inspector with the currently selected system or route."""
+        # Find the currently selected system or route
         selected_system = None
+        selected_route = None
+        
         for item in self.scene.selectedItems():
             if isinstance(item, SystemItem):
                 selected_system = item.get_system_data()
                 break
+            elif isinstance(item, RouteItem):
+                selected_route = item
+                break
         
-        # Update the stats widget
-        self.stats_widget.set_system(selected_system)
+        # Update the stats inspector based on what's selected
+        if selected_system is not None:
+            self.stats_inspector.set_selected_system(selected_system)
+        elif selected_route is not None:
+            self.stats_inspector.set_selected_route(selected_route)
+        else:
+            self.stats_inspector.clear_selection()
