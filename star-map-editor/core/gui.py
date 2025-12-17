@@ -1322,8 +1322,13 @@ class TravelCalculatorWidget(QWidget):
     to calculate travel time estimates.
     """
     
-    # Hyperdrive ratings
-    HYPERDRIVE_RATINGS = ["x1", "x2", "x3", "x4"]
+    # Hyperdrive ratings and their multipliers
+    HYPERDRIVE_RATINGS = {
+        "x1": 1.0,
+        "x2": 2.0,
+        "x3": 3.0,
+        "x4": 4.0
+    }
     
     # Speed modifiers based on route class (placeholder values)
     ROUTE_CLASS_MODIFIERS = {
@@ -1397,8 +1402,8 @@ class TravelCalculatorWidget(QWidget):
         content_layout.addWidget(hyperdrive_label)
         
         self.hyperdrive_combo = QComboBox()
-        for rating in self.HYPERDRIVE_RATINGS:
-            self.hyperdrive_combo.addItem(rating, rating)
+        for rating_name in self.HYPERDRIVE_RATINGS.keys():
+            self.hyperdrive_combo.addItem(rating_name, rating_name)
         self.hyperdrive_combo.currentIndexChanged.connect(self.update_calculations)
         content_layout.addWidget(self.hyperdrive_combo)
         
@@ -1516,7 +1521,7 @@ class TravelCalculatorWidget(QWidget):
         # Calculate travel time (placeholder formula)
         # Base: 1 HSU = 1 hour at x1 hyperdrive
         hyperdrive_rating = self.hyperdrive_combo.currentData()
-        hyperdrive_multiplier = float(hyperdrive_rating[1:])  # Extract number from "x1", "x2", etc.
+        hyperdrive_multiplier = self.HYPERDRIVE_RATINGS.get(hyperdrive_rating, 1.0)
         
         # Time = (length / hyperdrive) / speed_factor
         base_time = length / hyperdrive_multiplier
