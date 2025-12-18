@@ -160,14 +160,22 @@ def format_population(value: int | None) -> str:
     if value is None or value == 0:
         return ""
     
+    def format_with_suffix(num, suffix):
+        """Format number with suffix, removing unnecessary decimals."""
+        formatted = f"{num:.1f}"
+        # Remove trailing zeros and decimal point if not needed
+        if '.' in formatted:
+            formatted = formatted.rstrip('0').rstrip('.')
+        return formatted + suffix
+    
     if value >= 1_000_000_000_000:  # Trillion
-        return f"{value / 1_000_000_000_000:.1f}T".rstrip('0').rstrip('.')
+        return format_with_suffix(value / 1_000_000_000_000, 'T')
     elif value >= 1_000_000_000:  # Billion
-        return f"{value / 1_000_000_000:.1f}B".rstrip('0').rstrip('.')
+        return format_with_suffix(value / 1_000_000_000, 'B')
     elif value >= 1_000_000:  # Million
-        return f"{value / 1_000_000:.1f}M".rstrip('0').rstrip('.')
+        return format_with_suffix(value / 1_000_000, 'M')
     elif value >= 1_000:  # Thousand
-        return f"{value / 1_000:.1f}K".rstrip('0').rstrip('.')
+        return format_with_suffix(value / 1_000, 'K')
     else:
         return str(value)
 
