@@ -214,6 +214,64 @@ class MapProject:
             "name": "Unnamed Map",
             "version": "1.0"
         }
+    
+    def rescale_world(self, factor: float, scale_templates: bool = True, 
+                     anchor_mode: str = "centroid") -> None:
+        """Rescale all world geometry by the given factor.
+        
+        This method scales:
+        - System positions
+        - Route control points
+        - Template positions and scales (if scale_templates is True)
+        
+        Args:
+            factor: Scale factor to apply (e.g., 0.5 = half size, 2.0 = double size)
+            scale_templates: Whether to scale templates as well
+            anchor_mode: Either "centroid" (default) or "origin"
+                - "centroid": Scale around the center of all systems
+                - "origin": Scale around (0, 0)
+        """
+        # Determine anchor point
+        if anchor_mode == "origin":
+            anchor = QPointF(0.0, 0.0)
+        else:  # "centroid"
+            # Calculate centroid of all systems
+            if self.systems:
+                sum_x = sum(system.position.x() for system in self.systems.values())
+                sum_y = sum(system.position.y() for system in self.systems.values())
+                count = len(self.systems)
+                anchor = QPointF(sum_x / count, sum_y / count)
+            else:
+                # Fallback to (0, 0) if no systems
+                anchor = QPointF(0.0, 0.0)
+        
+        # Scale system positions: p' = anchor + (p - anchor) * factor
+        for system in self.systems.values():
+            old_pos = system.position
+            new_x = anchor.x() + (old_pos.x() - anchor.x()) * factor
+            new_y = anchor.y() + (old_pos.y() - anchor.y()) * factor
+            system.position = QPointF(new_x, new_y)
+        
+        # Scale route control points
+        for route in self.routes.values():
+            scaled_points = []
+            for px, py in route.control_points:
+                new_x = anchor.x() + (px - anchor.x()) * factor
+                new_y = anchor.y() + (py - anchor.y()) * factor
+                scaled_points.append((new_x, new_y))
+            route.control_points = scaled_points
+        
+        # Scale templates if requested
+        if scale_templates:
+            for template in self.templates:
+                # Scale template position
+                old_x, old_y = template.position
+                new_x = anchor.x() + (old_x - anchor.x()) * factor
+                new_y = anchor.y() + (old_y - anchor.y()) * factor
+                template.position = (new_x, new_y)
+                
+                # Scale template scale factor
+                template.scale *= factor
 
 # Import SystemData and RouteData here to avoid circular imports
 # These are defined in systems.py and routes.py
