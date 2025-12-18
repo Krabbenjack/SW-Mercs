@@ -361,11 +361,115 @@ Route Groups allow you to organize multiple route segments under a common name, 
 - Route names and groups are fully customizable
 - Handle visibility and colors have been improved for better usability
 
+### Stats Mode
+
+Stats Mode provides a comprehensive inspector for viewing and editing detailed statistics for both star systems and hyperlane routes. The stats interface uses a tabbed layout to organize different types of information.
+
+#### Activating Stats Mode
+
+Click the **"Stats"** button in the mode bar. When active, the button turns green and a stats sidebar appears on the right side of the window.
+
+**Status bar message**: *"Stats mode active: Select systems or routes to view/edit their statistics"*
+
+#### Stats Inspector Layout
+
+The stats sidebar contains three tabs:
+
+1. **System Tab** - Edit system population, facilities, imports, and exports
+2. **Route Tab** - Edit route class, travel type, and hazards
+3. **Calculator Tab** - Calculate travel time based on route parameters
+
+The inspector automatically switches to the appropriate tab based on your selection:
+- Select a system → System tab is displayed
+- Select a route → Route tab is displayed
+- You can manually switch tabs at any time to access different information
+
+#### System Statistics
+
+When a system is selected, the System tab displays:
+
+- **System Name**: The name of the selected system
+- **Population**: Dropdown to select population tier (from data/population_levels.json)
+  - Options: Uninhabited, Small Colony, Settlement, Large Settlement, City, Metropolis, etc.
+- **Facilities**: Click "Edit Facilities..." to open a searchable list of available facilities
+  - Select multiple facilities that exist on this system
+  - Facilities are defined in data/facilities.json
+  - Summary shows count of selected facilities
+- **Imports**: Click "Edit Imports..." to choose goods this system imports
+  - Multi-select from searchable goods list (data/goods.json)
+  - Summary shows count of imported goods
+- **Exports**: Click "Edit Exports..." to choose goods this system exports
+  - Multi-select from searchable goods list
+  - Summary shows count of exported goods
+
+All system statistics are saved with your project and can be exported for use in game data.
+
+#### Route Statistics
+
+When a route is selected, the Route tab displays:
+
+- **Route Name**: The name of the selected route
+- **Route Length (HSU)**: Read-only display of the route's total length in Hyperspace Units
+  - Automatically calculated from the polyline path
+  - Updates when route geometry changes
+- **Route Class**: Spinbox to set route class from 1 to 5
+  - 1 = Fast route (well-maintained major hyperlane)
+  - 3 = Normal route (standard hyperlane)
+  - 5 = Slow route (poorly maintained or difficult route)
+  - Affects travel speed calculations
+- **Base Travel Type**: Dropdown to select route type
+  - **Normal**: Standard hyperlane route
+  - **Express Lane**: High-speed trade corridor with boosted speed
+  - **Ancient Hyperlane**: Old, established route with moderate speed
+  - **Backwater**: Remote, poorly-traveled route with reduced speed
+- **Hazards**: Checkboxes for route hazards that affect travel
+  - **Nebula**: Dense gas cloud reducing visibility and speed
+  - **Hypershadow**: Gravity anomaly affecting hyperspace travel
+  - **Quasar**: Intense radiation source causing navigation difficulties
+  - **Minefield**: Area with debris or active mines
+  - **Pirate Activity**: Known pirate operating zone affecting safety and speed
+  - Multiple hazards can be active on a single route
+  - Each hazard applies a speed penalty
+
+All route statistics are saved with your project and exported in the map data JSON.
+
+#### Travel Calculator
+
+The Calculator tab provides travel time estimates for the currently selected route:
+
+- **Hyperdrive Rating**: Dropdown to select ship's hyperdrive (x1, x2, x3, x4)
+  - Higher ratings mean faster travel
+- **Route Information** (Read-only displays):
+  - **Length**: Total route distance in HSU
+  - **Class**: Route class (1-5)
+  - **Type**: Travel type (Normal, Express Lane, etc.)
+  - **Hazards**: List of active hazards
+- **Estimated Travel** (Calculated values):
+  - **Speed Factor**: Combined multiplier from route class, type, and hazards
+  - **Travel Time**: Estimated hours to traverse the route
+    - Calculated using: (length / hyperdrive_rating) / speed_factor
+  - **Fuel Estimate**: Placeholder for future fuel consumption calculation
+
+The calculator automatically updates when:
+- You change the hyperdrive rating
+- You switch to a different route
+- Route statistics are modified in the Route tab
+
+**Note**: Travel time calculations use placeholder formulas and modifiers. These values should be tuned to match your game's balance requirements.
+
+#### No Selection State
+
+When no system or route is selected:
+- System tab displays "No system selected"
+- Route tab displays "No route selected"
+- Calculator tab displays "No route selected"
+- All controls are disabled until you make a selection
+
 ### Zones Mode (Coming Soon)
 
 Placeholder for defining territorial regions and special areas.
 
-### Statistics
+### Statistics (Project Overview)
 
 View map statistics including:
 - Number of templates
@@ -409,7 +513,10 @@ Projects are saved as `.swmproj` files in JSON format, containing:
       "name": "Corellian Run",
       "start_system_id": "system-uuid-1",
       "end_system_id": "system-uuid-2",
-      "control_points": [[1500.0, 800.0], [2000.0, 900.0]]
+      "control_points": [[1500.0, 800.0], [2000.0, 900.0]],
+      "route_class": 3,
+      "travel_type": "normal",
+      "hazards": ["nebula", "pirate_activity"]
     }
   ],
   "route_groups": [
@@ -455,7 +562,10 @@ Exported map data (for game use) is saved as clean JSON:
       "name": "Corellian Run",
       "start_system_id": "system-uuid-1",
       "end_system_id": "system-uuid-2",
-      "control_points": [[1500.0, 800.0], [2000.0, 900.0]]
+      "control_points": [[1500.0, 800.0], [2000.0, 900.0]],
+      "route_class": 3,
+      "travel_type": "normal",
+      "hazards": ["nebula", "pirate_activity"]
     }
   ],
   "zones": [],
