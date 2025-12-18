@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
     QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
-    QCheckBox, QSpinBox
+    QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -867,6 +867,106 @@ class GoodsPopup(QDialog):
                 good_id = item.data(Qt.UserRole)
                 selected.append(good_id)
         return selected
+
+
+class WorldScaleDialog(QDialog):
+    """Dialog for rescaling the entire world geometry.
+    
+    Allows the user to specify a scale factor and anchor mode to rescale
+    all systems, routes, and optionally templates in the map project.
+    """
+    
+    def __init__(self, parent=None):
+        """Initialize the world scale dialog.
+        
+        Args:
+            parent: Parent widget
+        """
+        super().__init__(parent)
+        self.setWindowTitle("World Scale")
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        
+        layout = QVBoxLayout(self)
+        
+        # Create form layout for inputs
+        form_layout = QFormLayout()
+        
+        # Scale factor input
+        self.scale_factor_spin = QDoubleSpinBox()
+        self.scale_factor_spin.setRange(0.01, 100.0)
+        self.scale_factor_spin.setValue(1.0)
+        self.scale_factor_spin.setDecimals(2)
+        self.scale_factor_spin.setSingleStep(0.1)
+        self.scale_factor_spin.setSuffix("x")
+        form_layout.addRow("Scale Factor:", self.scale_factor_spin)
+        
+        layout.addLayout(form_layout)
+        
+        # Scale templates checkbox
+        self.scale_templates_check = QCheckBox("Scale templates too")
+        self.scale_templates_check.setChecked(True)
+        layout.addWidget(self.scale_templates_check)
+        
+        # Anchor mode selection
+        layout.addWidget(QLabel("Anchor Point:"))
+        
+        self.anchor_group = QButtonGroup(self)
+        
+        self.centroid_radio = QRadioButton("Keep center (centroid)")
+        self.centroid_radio.setChecked(True)
+        self.anchor_group.addButton(self.centroid_radio)
+        layout.addWidget(self.centroid_radio)
+        
+        self.origin_radio = QRadioButton("Origin (0, 0)")
+        self.anchor_group.addButton(self.origin_radio)
+        layout.addWidget(self.origin_radio)
+        
+        # Add spacing
+        layout.addSpacing(20)
+        
+        # Info label
+        info_label = QLabel(
+            "This will rescale all system positions, route geometry, "
+            "and optionally template positions/scales.\n\n"
+            "Use this to fix travel time issues by adjusting world scale."
+        )
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("color: gray; font-size: 10pt;")
+        layout.addWidget(info_label)
+        
+        # Add OK/Cancel buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+    
+    def get_scale_factor(self) -> float:
+        """Get the scale factor value.
+        
+        Returns:
+            Scale factor as a float
+        """
+        return self.scale_factor_spin.value()
+    
+    def get_scale_templates(self) -> bool:
+        """Get whether to scale templates.
+        
+        Returns:
+            True if templates should be scaled
+        """
+        return self.scale_templates_check.isChecked()
+    
+    def get_anchor_mode(self) -> str:
+        """Get the selected anchor mode.
+        
+        Returns:
+            Either "centroid" or "origin"
+        """
+        if self.centroid_radio.isChecked():
+            return "centroid"
+        else:
+            return "origin"
 
 
 class StatsWidget(QWidget):
@@ -1865,6 +1965,14 @@ class StarMapEditor(QMainWindow):
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
         
+        # World menu
+        world_menu = menubar.addMenu('&World')
+        
+        # Scale action
+        scale_action = QAction('&Scale...', self)
+        scale_action.triggered.connect(self.show_world_scale_dialog)
+        world_menu.addAction(scale_action)
+        
         # View menu
         view_menu = menubar.addMenu('&View')
         
@@ -2246,38 +2354,16 @@ class StarMapEditor(QMainWindow):
                 if self.project.templates or self.project.systems:
                     self.scene.show_grid = True
                     
-                # Set a reasonable initial scene rect for viewing
+                # Recompute scene rect to encompass all loaded items
+                self.recompute_scene_rect()
+                    
+                # Set a reasonable initial view
                 if self.template_items:
                     first_template = list(self.template_items.values())[0]
-                    template_bounds = first_template.boundingRect()
-                    padding = 1000
-                    self.scene.setSceneRect(
-                        template_bounds.x() - padding,
-                        template_bounds.y() - padding,
-                        template_bounds.width() + 2 * padding,
-                        template_bounds.height() + 2 * padding
-                    )
                     self.view.fitInView(first_template.boundingRect(), Qt.KeepAspectRatio)
                     self.view.update_zoom_indicator()
                 elif self.project.systems:
-                    # No templates but has systems - set view based on systems
-                    # Calculate bounding box of all systems
-                    min_x = min_y = float('inf')
-                    max_x = max_y = float('-inf')
-                    for system_data in self.project.systems.values():
-                        pos = system_data.position
-                        min_x = min(min_x, pos.x())
-                        min_y = min(min_y, pos.y())
-                        max_x = max(max_x, pos.x())
-                        max_y = max(max_y, pos.y())
-                    
-                    padding = 500
-                    self.scene.setSceneRect(
-                        min_x - padding,
-                        min_y - padding,
-                        (max_x - min_x) + 2 * padding,
-                        (max_y - min_y) + 2 * padding
-                    )
+                    # No templates but has systems - fit view to systems
                     self.view.fitInView(self.scene.sceneRect(), Qt.KeepAspectRatio)
                     self.view.update_zoom_indicator()
                 
@@ -2371,6 +2457,96 @@ class StarMapEditor(QMainWindow):
                     "Export Failed",
                     f"Could not export map data to:\n{file_path}"
                 )
+    
+    # ===== World Menu Actions =====
+    
+    def show_world_scale_dialog(self):
+        """Show the world scale dialog and apply scaling if confirmed."""
+        if not self.project.systems and not self.project.templates:
+            QMessageBox.information(
+                self,
+                "No Content",
+                "The project is empty. Add systems or templates before rescaling."
+            )
+            return
+        
+        dialog = WorldScaleDialog(self)
+        if dialog.exec() == QDialog.Accepted:
+            scale_factor = dialog.get_scale_factor()
+            scale_templates = dialog.get_scale_templates()
+            anchor_mode = dialog.get_anchor_mode()
+            
+            # Apply rescaling to project data
+            self.project.rescale_world(scale_factor, scale_templates, anchor_mode)
+            
+            # Refresh all graphics items from data
+            self.refresh_all_items()
+            
+            # Recompute scene rect to ensure everything is visible
+            self.recompute_scene_rect()
+            
+            # Mark as modified
+            self.mark_unsaved_changes()
+            
+            QMessageBox.information(
+                self,
+                "Rescaling Complete",
+                f"World geometry rescaled by factor {scale_factor}x.\n\n"
+                f"Anchor: {anchor_mode}\n"
+                f"Templates scaled: {'Yes' if scale_templates else 'No'}"
+            )
+    
+    def recompute_scene_rect(self, padding: float = 1000.0):
+        """Recompute and expand the scene rect based on all items.
+        
+        This ensures the scrollable area encompasses all items without
+        changing the camera position or zoom level.
+        
+        Args:
+            padding: Padding to add around items (default: 1000.0)
+        """
+        # Get bounding rect of all items
+        items_rect = self.scene.itemsBoundingRect()
+        
+        if items_rect.isValid():
+            # Expand with padding
+            expanded_rect = items_rect.adjusted(-padding, -padding, padding, padding)
+            
+            # Set the new scene rect without affecting view transform
+            self.scene.setSceneRect(expanded_rect)
+    
+    def refresh_all_items(self):
+        """Refresh all graphics items from project data.
+        
+        This updates positions, scales, and geometries of all items
+        to match the current state of the project data model.
+        """
+        # Refresh system items
+        for system_id, system_item in self.system_items.items():
+            system_data = self.project.systems.get(system_id)
+            if system_data:
+                system_item.setPos(system_data.position)
+        
+        # Refresh route items
+        for route_id, route_item in self.route_items.items():
+            route_data = self.project.routes.get(route_id)
+            if route_data:
+                # Rebuild route path from updated data
+                route_item.recompute_path()
+        
+        # Refresh template items
+        for template_id, template_item in self.template_items.items():
+            template_data = self.project.get_template(template_id)
+            if template_data:
+                template_item.setPos(template_data.position[0], template_data.position[1])
+                template_item.setScale(template_data.scale)
+                # Update data reference
+                template_item.template_data = template_data
+        
+        # Update the scene
+        self.scene.update()
+    
+    # ===== Unsaved Changes and Window Management =====
     
     def check_unsaved_changes(self) -> bool:
         """Check if there are unsaved changes and prompt user.
@@ -2582,20 +2758,13 @@ class StarMapEditor(QMainWindow):
             # Add to scene
             template_item = self.add_template_to_scene(template_data)
             
+            # Recompute scene rect to encompass all templates
+            self.recompute_scene_rect()
+            
             # If this is the first template, enable grid and fit view
             # Grid is now infinite and independent of template size
             if len(self.project.templates) == 1:
                 self.scene.show_grid = True
-                # Set a large scene rect for infinite grid coverage
-                # This doesn't limit the grid, just provides a sensible initial view area
-                template_bounds = template_item.boundingRect()
-                padding = 1000  # Extra space around template
-                self.scene.setSceneRect(
-                    template_bounds.x() - padding,
-                    template_bounds.y() - padding,
-                    template_bounds.width() + 2 * padding,
-                    template_bounds.height() + 2 * padding
-                )
                 self.view.resetTransform()
                 self.view.current_zoom = 1.0
                 self.view.fitInView(template_item.boundingRect(), Qt.KeepAspectRatio)

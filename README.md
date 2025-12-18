@@ -65,8 +65,38 @@ SW-Mercs/
 - ⭐ **Star System Placement**: Add and position star systems on your map
 - 🛣️ **Route Creation**: Connect systems with curved hyperlane routes
 - 🔍 **Advanced Navigation**: Smooth zoom and pan controls
+- 🌍 **World Rescaling**: Adjust world scale to fix travel time issues
 - 💾 **Project Management**: Save/load projects with full state
 - 📤 **Export**: Generate game-ready JSON data
+
+## World Menu
+
+The **World** menu provides tools for adjusting the global scale and geometry of your map:
+
+### World → Scale...
+
+The **Scale** feature allows you to rescale the entire world geometry to fix travel time issues or adjust the overall map scale.
+
+**What it does:**
+- Scales all system positions by a given factor
+- Scales all route control points (geometry)
+- Optionally scales template positions and sizes
+
+**Parameters:**
+- **Scale Factor** (0.01 - 100.0): The multiplier to apply to all coordinates
+  - Values < 1.0: Shrink the world (shorter travel times)
+  - Values > 1.0: Expand the world (longer travel times)
+- **Scale templates too**: When checked, templates are also scaled and repositioned
+- **Anchor Point**: Choose the fixed point around which scaling occurs
+  - **Keep center (centroid)**: Scale around the center of all systems (default)
+  - **Origin (0, 0)**: Scale from the coordinate origin
+
+**Use cases:**
+- **Fix travel times**: If newly created projects have unrealistic travel times due to incorrect world scale, use this to rescale everything proportionally
+- **Match reference scale**: Scale your map to match a specific reference or measurement
+- **Combine maps**: Adjust scale when merging content from different sources
+
+**Scene expansion:** The scrollable scene area automatically expands after rescaling to ensure all content remains accessible.
 
 ## Technology Stack
 
