@@ -98,6 +98,63 @@ The **Scale** feature allows you to rescale the entire world geometry to fix tra
 
 **Scene expansion:** The scrollable scene area automatically expands after rescaling to ensure all content remains accessible.
 
+## Route Classes & Travel Speed
+
+The Star Map Editor includes a comprehensive route statistics system that affects travel time calculations. Route Classes allow you to differentiate between fast trade lanes and slow dangerous routes.
+
+### Route Class System (1-5)
+
+Routes are categorized into five classes that significantly affect travel speed:
+
+- **Class 1**: Super-fast trade lane (10x base speed, ≈ 4000 HSU/h)
+- **Class 2**: Fast main route (4x base speed, ≈ 1600 HSU/h)
+- **Class 3**: Standard route (1x base speed, ≈ 400 HSU/h) - Default
+- **Class 4**: Slow / indirect route (0.5x base speed, ≈ 200 HSU/h)
+- **Class 5**: Very slow / dangerous route (0.25x base speed, ≈ 100 HSU/h)
+
+### Travel Time Calculation
+
+The editor uses a calibrated formula to calculate realistic travel times:
+
+**Base Calibration**: `BASE_HSU_PER_HOUR = 400`
+- This applies to Route Class 3, normal travel type, no hazards, with a x1 hyperdrive
+
+**Formula**:
+```
+effective_hsu_per_hour = BASE_HSU_PER_HOUR × route_class_multiplier × travel_type_multiplier × hazard_multiplier
+travel_time_hours = (route_length_hsu / effective_hsu_per_hour) × hyperdrive_rating
+```
+
+### Factors Affecting Travel Time
+
+1. **Route Class**: Primary speed factor (see multipliers above)
+2. **Travel Type**: Route condition modifiers
+   - Normal: 1.0x (standard)
+   - Express Lane: 1.2x (well-maintained)
+   - Ancient Hyperlane: 0.8x (degraded)
+   - Backwater: 0.6x (poorly maintained)
+3. **Hazards**: Each hazard reduces speed (stacks multiplicatively)
+   - Nebula: 0.8x (20% slower)
+   - Hypershadow: 0.7x (30% slower)
+   - Quasar: 0.6x (40% slower)
+   - Minefield: 0.85x (15% slower)
+   - Pirate Activity: 0.9x (10% slower)
+4. **Hyperdrive Rating**: Ship capability
+   - x1: Fastest (1.0x time)
+   - x2: 2x travel time
+   - x3: 3x travel time
+   - x4: Slowest (4x travel time)
+
+### Using Route Stats
+
+1. Select a route on the map
+2. Switch to "Route" tab in the Stats panel (or it switches automatically)
+3. Adjust Route Class, Travel Type, and Hazards
+4. Switch to "Calculator" tab to see travel time estimates
+5. Select different hyperdrive ratings to compare ship performance
+
+The Travel Calculator updates automatically when you change route parameters.
+
 ## Technology Stack
 
 - **Python 3.10+**
