@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
     QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
     QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout,
-    QPlainTextEdit
+    QPlainTextEdit, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -29,6 +29,8 @@ from core import (
 )
 from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
+from core.systems import PlanetData, MoonData
+from core.data_loader import format_population
 
 
 class GridOverlay(QGraphicsScene):
@@ -838,7 +840,6 @@ class GoodsPopup(QDialog):
             display_text = f"{name} (Tier {tier})"
             
             # Add item
-            from PySide6.QtWidgets import QListWidgetItem
             item = QListWidgetItem(display_text)
             item.setData(Qt.UserRole, good_id)
             self.list_widget.addItem(item)
@@ -1239,7 +1240,6 @@ class StatsWidget(QWidget):
             return
         
         # Update population value display
-        from core.data_loader import format_population
         pop_value = self.data_loader.get_population_value(self.current_system.population_id)
         if pop_value and pop_value > 0:
             formatted = format_population(pop_value)
@@ -1272,7 +1272,6 @@ class StatsWidget(QWidget):
         self.current_system.population_id = population_id
         
         # Update the population value display
-        from core.data_loader import format_population
         pop_value = self.data_loader.get_population_value(population_id)
         if pop_value and pop_value > 0:
             formatted = format_population(pop_value)
@@ -1317,7 +1316,6 @@ class StatsWidget(QWidget):
         
         self.planets_list.clear()
         for planet in self.current_system.planets:
-            from PySide6.QtWidgets import QListWidgetItem
             item = QListWidgetItem(planet.name)
             item.setData(Qt.UserRole, planet.id)
             self.planets_list.addItem(item)
@@ -1342,7 +1340,6 @@ class StatsWidget(QWidget):
         
         if planet:
             for moon in planet.moons:
-                from PySide6.QtWidgets import QListWidgetItem
                 item = QListWidgetItem(moon.name)
                 item.setData(Qt.UserRole, moon.id)
                 self.moons_list.addItem(item)
@@ -1364,7 +1361,6 @@ class StatsWidget(QWidget):
         
         name, ok = QInputDialog.getText(self, "Add Planet", "Planet name:")
         if ok and name.strip():
-            from core.systems import PlanetData
             planet = PlanetData.create_new(name.strip())
             self.current_system.planets.append(planet)
             self.refresh_planets_list()
@@ -1416,7 +1412,6 @@ class StatsWidget(QWidget):
         if planet:
             name, ok = QInputDialog.getText(self, "Add Moon", "Moon name:")
             if ok and name.strip():
-                from core.systems import MoonData
                 moon = MoonData.create_new(name.strip())
                 planet.moons.append(moon)
                 self.refresh_moons_list()
