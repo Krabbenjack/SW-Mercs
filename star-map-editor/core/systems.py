@@ -15,6 +15,56 @@ from PySide6.QtGui import QColor, QPen, QBrush, QFont
 
 
 @dataclass
+class MoonData:
+    """Data model for a moon orbiting a planet.
+    
+    Attributes:
+        id: Unique identifier for the moon (UUID string)
+        name: Display name of the moon
+    """
+    id: str
+    name: str
+    
+    @classmethod
+    def create_new(cls, name: str):
+        """Create a new moon with a generated UUID.
+        
+        Args:
+            name: Display name for the moon
+        """
+        return cls(
+            id=str(uuid.uuid4()),
+            name=name
+        )
+
+
+@dataclass
+class PlanetData:
+    """Data model for a planet in a star system.
+    
+    Attributes:
+        id: Unique identifier for the planet (UUID string)
+        name: Display name of the planet
+        moons: List of moons orbiting this planet
+    """
+    id: str
+    name: str
+    moons: list['MoonData'] = field(default_factory=list)
+    
+    @classmethod
+    def create_new(cls, name: str):
+        """Create a new planet with a generated UUID.
+        
+        Args:
+            name: Display name for the planet
+        """
+        return cls(
+            id=str(uuid.uuid4()),
+            name=name
+        )
+
+
+@dataclass
 class SystemData:
     """Data model for a star system.
     
@@ -32,6 +82,8 @@ class SystemData:
         imports: List of imported goods IDs (from goods.json)
         exports: List of exported goods IDs (from goods.json)
         facilities: List of facility IDs (from facility_flags.json)
+        planets: List of planets in this system
+        fluff_text: Lore/description text for this system (max 500 chars)
     """
     id: str
     name: str
@@ -40,6 +92,8 @@ class SystemData:
     imports: list[str] = field(default_factory=list)
     exports: list[str] = field(default_factory=list)
     facilities: list[str] = field(default_factory=list)
+    planets: list[PlanetData] = field(default_factory=list)
+    fluff_text: str = ""
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):

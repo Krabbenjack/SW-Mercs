@@ -10,7 +10,7 @@ from typing import Optional
 from PySide6.QtCore import QPointF
 
 from .project_model import MapProject, TemplateData, RouteGroup
-from .systems import SystemData
+from .systems import SystemData, PlanetData, MoonData
 from .routes import RouteData
 
 
@@ -49,7 +49,19 @@ def save_project(project: MapProject, file_path: Path) -> bool:
                     **({} if s.population_id is None else {"population_id": s.population_id}),
                     **({"imports": s.imports} if s.imports else {}),
                     **({"exports": s.exports} if s.exports else {}),
-                    **({"facilities": s.facilities} if s.facilities else {})
+                    **({"facilities": s.facilities} if s.facilities else {}),
+                    **({"planets": [
+                        {
+                            "id": p.id,
+                            "name": p.name,
+                            "moons": [
+                                {"id": m.id, "name": m.name}
+                                for m in p.moons
+                            ]
+                        }
+                        for p in s.planets
+                    ]} if s.planets else {}),
+                    **({"fluff_text": s.fluff_text} if s.fluff_text else {})
                 }
                 for s in project.systems.values()
             ],
@@ -123,6 +135,24 @@ def load_project(file_path: Path) -> Optional[MapProject]:
         
         # Load systems
         for s_dict in project_dict.get("systems", []):
+            # Load planets with backward compatibility
+            planets = []
+            for p_dict in s_dict.get("planets", []):
+                moons = []
+                for m_dict in p_dict.get("moons", []):
+                    moon = MoonData(
+                        id=m_dict["id"],
+                        name=m_dict["name"]
+                    )
+                    moons.append(moon)
+                
+                planet = PlanetData(
+                    id=p_dict["id"],
+                    name=p_dict["name"],
+                    moons=moons
+                )
+                planets.append(planet)
+            
             system = SystemData(
                 id=s_dict["id"],
                 name=s_dict["name"],
@@ -130,7 +160,9 @@ def load_project(file_path: Path) -> Optional[MapProject]:
                 population_id=s_dict.get("population_id"),
                 imports=s_dict.get("imports", []),
                 exports=s_dict.get("exports", []),
-                facilities=s_dict.get("facilities", [])
+                facilities=s_dict.get("facilities", []),
+                planets=planets,
+                fluff_text=s_dict.get("fluff_text", "")
             )
             project.systems[system.id] = system
         
@@ -196,7 +228,19 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
                     **({} if s.population_id is None else {"population_id": s.population_id}),
                     **({"imports": s.imports} if s.imports else {}),
                     **({"exports": s.exports} if s.exports else {}),
-                    **({"facilities": s.facilities} if s.facilities else {})
+                    **({"facilities": s.facilities} if s.facilities else {}),
+                    **({"planets": [
+                        {
+                            "id": p.id,
+                            "name": p.name,
+                            "moons": [
+                                {"id": m.id, "name": m.name}
+                                for m in p.moons
+                            ]
+                        }
+                        for p in s.planets
+                    ]} if s.planets else {}),
+                    **({"fluff_text": s.fluff_text} if s.fluff_text else {})
                 }
                 for s in project.systems.values()
             ],
