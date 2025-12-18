@@ -1207,6 +1207,9 @@ class RouteStatsWidget(QWidget):
     for the currently selected route.
     """
     
+    # Signal emitted when route data changes
+    route_data_changed = Signal()
+    
     # Available hazards for route selection
     AVAILABLE_HAZARDS = [
         "nebula",
@@ -1381,6 +1384,9 @@ class RouteStatsWidget(QWidget):
         
         route_data = self.current_route_item.get_route_data()
         route_data.route_class = value
+        
+        # Notify listeners that route data changed
+        self.route_data_changed.emit()
     
     def on_travel_type_changed(self, index: int):
         """Handle travel type combo box change.
@@ -1394,6 +1400,9 @@ class RouteStatsWidget(QWidget):
         travel_type = self.travel_type_combo.itemData(index)
         route_data = self.current_route_item.get_route_data()
         route_data.travel_type = travel_type
+        
+        # Notify listeners that route data changed
+        self.route_data_changed.emit()
     
     def on_hazard_changed(self, hazard: str, state: int):
         """Handle hazard checkbox state change.
@@ -1413,6 +1422,9 @@ class RouteStatsWidget(QWidget):
         else:
             if hazard in route_data.hazards:
                 route_data.hazards.remove(hazard)
+        
+        # Notify listeners that route data changed
+        self.route_data_changed.emit()
 
 
 class TravelCalculatorWidget(QWidget):
@@ -1420,9 +1432,24 @@ class TravelCalculatorWidget(QWidget):
     
     Displays route length and allows user to select hyperdrive rating
     to calculate travel time estimates.
+    
+    Travel Time Formula:
+        effective_hsu_per_hour = BASE_HSU_PER_HOUR * route_class_multiplier 
+                                 * travel_type_multiplier * hazard_multiplier
+        travel_time_hours = (route_length_hsu / effective_hsu_per_hour) * hyperdrive_rating
+    
+    Where:
+        - BASE_HSU_PER_HOUR = 400 (calibrated for Route Class 3, normal, no hazards, x1 hyperdrive)
+        - hyperdrive_rating: x1=1.0 (fastest), x4=4.0 (slowest) - multiplies travel time
+        - route_class_multiplier: affects effective speed (higher multiplier = faster route)
+        - hazards: reduce speed (multiplier < 1.0 increases travel time)
     """
     
-    # Hyperdrive ratings and their multipliers
+    # Base travel speed calibration
+    # Applies to: Route Class 3, Travel Type normal, No hazards, Hyperdrive x1
+    BASE_HSU_PER_HOUR = 400
+    
+    # Hyperdrive ratings - these MULTIPLY travel time (x1 fastest, x4 slowest)
     HYPERDRIVE_RATINGS = {
         "x1": 1.0,
         "x2": 2.0,
@@ -1430,30 +1457,32 @@ class TravelCalculatorWidget(QWidget):
         "x4": 4.0
     }
     
-    # Speed modifiers based on route class (placeholder values)
-    ROUTE_CLASS_MODIFIERS = {
-        1: 1.5,   # Fast route
-        2: 1.2,
-        3: 1.0,   # Normal
-        4: 0.8,
-        5: 0.6    # Slow route
+    # Route Class speed multipliers - affect effective HSU/hour
+    # Higher multiplier = faster route (more HSU per hour)
+    ROUTE_CLASS_SPEED_MULTIPLIER = {
+        1: 10.0,   # Super-fast trade lane (≈ 4000 HSU/h at base)
+        2: 4.0,    # Fast main route (≈ 1600 HSU/h at base)
+        3: 1.0,    # Standard route (≈ 400 HSU/h at base)
+        4: 0.5,    # Slow / indirect route (≈ 200 HSU/h at base)
+        5: 0.25    # Very slow / dangerous route (≈ 100 HSU/h at base)
     }
     
-    # Travel type modifiers (placeholder values)
+    # Travel type modifiers - affect effective HSU/hour
     TRAVEL_TYPE_MODIFIERS = {
-        "normal": 1.0,
-        "express_lane": 1.3,
-        "ancient_hyperlane": 0.9,
-        "backwater": 0.7
+        "normal": 1.0,          # Standard travel speed
+        "express_lane": 1.2,    # Faster (well-maintained routes)
+        "ancient_hyperlane": 0.8,  # Slower (degraded ancient routes)
+        "backwater": 0.6        # Much slower (poorly maintained)
     }
     
-    # Hazard modifiers (placeholder values, each adds penalty)
+    # Hazard modifiers - REDUCE speed (multiplier < 1.0)
+    # Each hazard makes travel slower (increases time)
     HAZARD_MODIFIERS = {
-        "nebula": 0.9,
-        "hypershadow": 0.85,
-        "quasar": 0.8,
-        "minefield": 0.95,
-        "pirate_activity": 0.95
+        "nebula": 0.8,           # 20% slower
+        "hypershadow": 0.7,      # 30% slower
+        "quasar": 0.6,           # 40% slower
+        "minefield": 0.85,       # 15% slower
+        "pirate_activity": 0.9   # 10% slower
     }
     
     def __init__(self, parent=None):
@@ -1603,29 +1632,38 @@ class TravelCalculatorWidget(QWidget):
         else:
             self.hazards_display.setText("Hazards: None")
         
-        # Calculate speed factor
-        speed_factor = 1.0
+        # Calculate effective HSU per hour
+        # Start with base calibration (for Route Class 3, normal, no hazards)
+        effective_hsu_per_hour = self.BASE_HSU_PER_HOUR
         
-        # Apply route class modifier
-        speed_factor *= self.ROUTE_CLASS_MODIFIERS.get(route_data.route_class, 1.0)
+        # Apply route class speed multiplier
+        route_class_multiplier = self.ROUTE_CLASS_SPEED_MULTIPLIER.get(route_data.route_class, 1.0)
+        effective_hsu_per_hour *= route_class_multiplier
         
         # Apply travel type modifier
-        speed_factor *= self.TRAVEL_TYPE_MODIFIERS.get(route_data.travel_type, 1.0)
+        travel_type_multiplier = self.TRAVEL_TYPE_MODIFIERS.get(route_data.travel_type, 1.0)
+        effective_hsu_per_hour *= travel_type_multiplier
         
-        # Apply hazard modifiers (multiplicative)
+        # Apply hazard modifiers (multiplicative - each hazard reduces speed)
+        hazard_multiplier = 1.0
         for hazard in route_data.hazards:
-            speed_factor *= self.HAZARD_MODIFIERS.get(hazard, 1.0)
+            hazard_multiplier *= self.HAZARD_MODIFIERS.get(hazard, 1.0)
+        effective_hsu_per_hour *= hazard_multiplier
         
-        self.speed_display.setText(f"Speed Factor: {speed_factor:.2f}x")
+        # Calculate overall speed factor for display
+        overall_speed_factor = route_class_multiplier * travel_type_multiplier * hazard_multiplier
+        self.speed_display.setText(f"Speed Factor: {overall_speed_factor:.2f}x (≈{effective_hsu_per_hour:.0f} HSU/h)")
         
-        # Calculate travel time (placeholder formula)
-        # Base: 1 HSU = 1 hour at x1 hyperdrive
+        # Calculate travel time
+        # Formula: travel_time = (length / effective_hsu_per_hour) * hyperdrive_rating
+        # Hyperdrive rating MULTIPLIES time (x1 fastest, x4 slowest)
         hyperdrive_rating = self.hyperdrive_combo.currentData()
         hyperdrive_multiplier = self.HYPERDRIVE_RATINGS.get(hyperdrive_rating, 1.0)
         
-        # Time = (length / hyperdrive) / speed_factor
-        base_time = length / hyperdrive_multiplier
-        travel_time = base_time / speed_factor
+        if effective_hsu_per_hour > 0:
+            travel_time = (length / effective_hsu_per_hour) * hyperdrive_multiplier
+        else:
+            travel_time = 0.0
         
         self.time_display.setText(f"Travel Time: {travel_time:.1f} hours")
 
@@ -1658,6 +1696,9 @@ class StatsInspector(QWidget):
         self.system_stats_widget = StatsWidget()
         self.route_stats_widget = RouteStatsWidget(system_items_dict)
         self.calculator_widget = TravelCalculatorWidget()
+        
+        # Connect route stats changes to calculator updates
+        self.route_stats_widget.route_data_changed.connect(self.calculator_widget.update_calculations)
         
         # Add tabs
         self.tab_widget.addTab(self.system_stats_widget, "System")
