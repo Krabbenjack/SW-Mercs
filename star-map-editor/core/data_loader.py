@@ -116,6 +116,68 @@ class DataLoader:
             data = self._load_json_file("population/population_levels.json")
             self._population_levels = data.get("population_levels", [])
         return self._population_levels
+    
+    def get_population_value(self, population_id: str | None) -> int | None:
+        """Get the numeric population value for a given population ID.
+        
+        Uses the average of min and max for the population level.
+        
+        Args:
+            population_id: The population level ID (from population_levels.json)
+            
+        Returns:
+            The average population value, or None if not found or if uninhabited
+        """
+        if population_id is None:
+            return None
+        
+        population_levels = self.get_population_levels()
+        for level in population_levels:
+            if level.get("id") == population_id:
+                min_val = level.get("min", 0)
+                max_val = level.get("max", 0)
+                # Return average of min and max
+                return (min_val + max_val) // 2
+        
+        return None
+
+
+def format_population(value: int | None) -> str:
+    """Format a population value in a human-readable way.
+    
+    Examples:
+        1_200_000_000 -> "1.2B"
+        500_000_000 -> "500M"
+        1_000_000 -> "1M"
+        50_000 -> "50K"
+    
+    Args:
+        value: The population value to format
+        
+    Returns:
+        Formatted string (e.g., "1.2B") or empty string if value is None
+    """
+    if value is None or value == 0:
+        return ""
+    
+    def format_with_suffix(num, suffix):
+        """Format number with suffix, removing unnecessary decimals."""
+        formatted = f"{num:.1f}"
+        # Remove trailing zeros and decimal point if not needed
+        if '.' in formatted:
+            formatted = formatted.rstrip('0').rstrip('.')
+        return formatted + suffix
+    
+    if value >= 1_000_000_000_000:  # Trillion
+        return format_with_suffix(value / 1_000_000_000_000, 'T')
+    elif value >= 1_000_000_000:  # Billion
+        return format_with_suffix(value / 1_000_000_000, 'B')
+    elif value >= 1_000_000:  # Million
+        return format_with_suffix(value / 1_000_000, 'M')
+    elif value >= 1_000:  # Thousand
+        return format_with_suffix(value / 1_000, 'K')
+    else:
+        return str(value)
 
 
 # Global singleton instance

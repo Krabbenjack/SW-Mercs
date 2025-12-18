@@ -69,6 +69,63 @@ SW-Mercs/
 - 💾 **Project Management**: Save/load projects with full state
 - 📤 **Export**: Generate game-ready JSON data
 
+## System Statistics
+
+The Star Map Editor provides comprehensive system management through the **Stats** tab in the right sidebar. When a system is selected, you can configure:
+
+### Population
+
+Select from predefined population levels (from uninhabited to galactic capitals). The editor displays both the population category label and an approximate numeric value:
+
+- **Uninhabited** — No permanent inhabitants
+- **Mikrosiedlung** — ≈ 50K inhabitants
+- **Sehr niedrig** — ≈ 550K inhabitants
+- **Niedrig** — ≈ 25M inhabitants
+- **Mittel-niedrig** — ≈ 275M inhabitants
+- **Mittel** — ≈ 750M inhabitants
+- **Etabliert** — ≈ 3B inhabitants
+- **Groß** — ≈ 7.5B inhabitants
+- **Sehr groß** — ≈ 30B inhabitants
+- **Hyperurbanisiert** — ≈ 125B inhabitants
+- **Megacity-Planet** — ≈ 550B inhabitants
+- **Galaktische Hauptstadt** — ≈ 1.5T inhabitants
+
+### Planets and Moons
+
+Each system can contain multiple planets, and each planet can have multiple moons:
+
+- **Add Planet**: Create a new planet in the system
+- **Rename**: Change the name of a selected planet
+- **Delete**: Remove a planet (and all its moons) from the system
+
+When a planet is selected, you can manage its moons:
+
+- **Add Moon**: Create a new moon orbiting the selected planet
+- **Rename**: Change the name of a selected moon
+- **Delete**: Remove a moon from the planet
+
+**Example**: A Coruscant-style multi-planet system might have:
+- Planet: **Coruscant Prime**
+  - Moon: **Hesperidium**
+  - Moon: **Centax-1**
+  - Moon: **Centax-2**
+- Planet: **Coruscant Minor**
+  - Moon: **Centax-3**
+
+### Facilities
+
+Configure what industrial and commercial facilities are present in the system (mining, manufacturing, trade hubs, etc.).
+
+### Imports and Exports
+
+Define which goods the system imports and exports for trade route planning.
+
+### Lore / Description
+
+Add custom flavor text describing the system's history, culture, or strategic importance. The lore field has a 500 character limit with a live character counter.
+
+**Example**: "Capital of the Galactic Republic and later the Empire. A sprawling ecumenopolis covering the entire planet, Coruscant serves as the political, economic, and cultural heart of the galaxy."
+
 ## World Menu
 
 The **World** menu provides tools for adjusting the global scale and geometry of your map:

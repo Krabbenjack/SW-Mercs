@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
     QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
-    QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout
+    QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout,
+    QPlainTextEdit, QListWidgetItem
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -28,6 +29,8 @@ from core import (
 )
 from core.project_model import RouteGroup
 from core.project_io import save_project, load_project, export_map_data
+from core.systems import PlanetData, MoonData
+from core.data_loader import format_population
 
 
 class GridOverlay(QGraphicsScene):
@@ -837,7 +840,6 @@ class GoodsPopup(QDialog):
             display_text = f"{name} (Tier {tier})"
             
             # Add item
-            from PySide6.QtWidgets import QListWidgetItem
             item = QListWidgetItem(display_text)
             item.setData(Qt.UserRole, good_id)
             self.list_widget.addItem(item)
@@ -1029,6 +1031,11 @@ class StatsWidget(QWidget):
         self.population_combo.currentIndexChanged.connect(self.on_population_changed)
         content_layout.addWidget(self.population_combo)
         
+        # Population value display (numeric)
+        self.population_value_label = QLabel()
+        self.population_value_label.setStyleSheet("color: gray; font-style: italic;")
+        content_layout.addWidget(self.population_value_label)
+        
         content_layout.addSpacing(10)
         
         # Facilities section
@@ -1086,6 +1093,87 @@ class StatsWidget(QWidget):
         
         content_layout.addLayout(exports_row)
         
+        content_layout.addSpacing(10)
+        
+        # Planets section
+        planets_label = QLabel("Planets:")
+        planets_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(planets_label)
+        
+        # Planet list and buttons
+        planets_container = QHBoxLayout()
+        
+        self.planets_list = QListWidget()
+        self.planets_list.currentItemChanged.connect(self.on_planet_selected)
+        planets_container.addWidget(self.planets_list)
+        
+        planets_buttons_layout = QVBoxLayout()
+        self.add_planet_btn = QPushButton("Add Planet")
+        self.add_planet_btn.clicked.connect(self.add_planet)
+        planets_buttons_layout.addWidget(self.add_planet_btn)
+        
+        self.rename_planet_btn = QPushButton("Rename")
+        self.rename_planet_btn.clicked.connect(self.rename_planet)
+        planets_buttons_layout.addWidget(self.rename_planet_btn)
+        
+        self.delete_planet_btn = QPushButton("Delete")
+        self.delete_planet_btn.clicked.connect(self.delete_planet)
+        planets_buttons_layout.addWidget(self.delete_planet_btn)
+        
+        planets_buttons_layout.addStretch()
+        planets_container.addLayout(planets_buttons_layout)
+        
+        content_layout.addLayout(planets_container)
+        
+        content_layout.addSpacing(10)
+        
+        # Moons section
+        moons_label = QLabel("Moons (for selected planet):")
+        moons_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(moons_label)
+        
+        # Moon list and buttons
+        moons_container = QHBoxLayout()
+        
+        self.moons_list = QListWidget()
+        moons_container.addWidget(self.moons_list)
+        
+        moons_buttons_layout = QVBoxLayout()
+        self.add_moon_btn = QPushButton("Add Moon")
+        self.add_moon_btn.clicked.connect(self.add_moon)
+        moons_buttons_layout.addWidget(self.add_moon_btn)
+        
+        self.rename_moon_btn = QPushButton("Rename")
+        self.rename_moon_btn.clicked.connect(self.rename_moon)
+        moons_buttons_layout.addWidget(self.rename_moon_btn)
+        
+        self.delete_moon_btn = QPushButton("Delete")
+        self.delete_moon_btn.clicked.connect(self.delete_moon)
+        moons_buttons_layout.addWidget(self.delete_moon_btn)
+        
+        moons_buttons_layout.addStretch()
+        moons_container.addLayout(moons_buttons_layout)
+        
+        content_layout.addLayout(moons_container)
+        
+        content_layout.addSpacing(10)
+        
+        # Fluff text section
+        fluff_label = QLabel("Lore / Description:")
+        fluff_label.setStyleSheet("font-weight: bold;")
+        content_layout.addWidget(fluff_label)
+        
+        self.fluff_text_edit = QPlainTextEdit()
+        self.fluff_text_edit.setMaximumHeight(100)
+        self.fluff_text_edit.textChanged.connect(self.on_fluff_text_changed)
+        content_layout.addWidget(self.fluff_text_edit)
+        
+        # Character counter
+        self.fluff_char_counter = QLabel("0 / 500")
+        self.fluff_char_counter.setStyleSheet("color: gray; font-size: 10px;")
+        self.fluff_char_counter.setAlignment(Qt.AlignRight)
+        content_layout.addWidget(self.fluff_char_counter)
+        
         content_layout.addStretch()
         
         layout.addWidget(self.content_widget)
@@ -1137,6 +1225,12 @@ class StatsWidget(QWidget):
             else:
                 self.population_combo.setCurrentIndex(0)
             
+            # Populate planets list
+            self.refresh_planets_list()
+            
+            # Set fluff text
+            self.fluff_text_edit.setPlainText(system.fluff_text)
+            
             # Update summaries
             self.update_summaries()
     
@@ -1144,6 +1238,14 @@ class StatsWidget(QWidget):
         """Update the summary labels for facilities, imports, and exports."""
         if self.current_system is None:
             return
+        
+        # Update population value display
+        pop_value = self.data_loader.get_population_value(self.current_system.population_id)
+        if pop_value and pop_value > 0:
+            formatted = format_population(pop_value)
+            self.population_value_label.setText(f"≈ {formatted} inhabitants")
+        else:
+            self.population_value_label.setText("")
         
         # Update facilities summary
         num_facilities = len(self.current_system.facilities)
@@ -1168,6 +1270,14 @@ class StatsWidget(QWidget):
         
         population_id = self.population_combo.itemData(index)
         self.current_system.population_id = population_id
+        
+        # Update the population value display
+        pop_value = self.data_loader.get_population_value(population_id)
+        if pop_value and pop_value > 0:
+            formatted = format_population(pop_value)
+            self.population_value_label.setText(f"≈ {formatted} inhabitants")
+        else:
+            self.population_value_label.setText("")
     
     def edit_facilities(self):
         """Open the facilities editor dialog."""
@@ -1198,6 +1308,187 @@ class StatsWidget(QWidget):
         if dialog.exec() == QDialog.Accepted:
             self.current_system.exports = dialog.get_selected_goods()
             self.update_summaries()
+    
+    def refresh_planets_list(self):
+        """Refresh the planets list widget."""
+        if self.current_system is None:
+            return
+        
+        self.planets_list.clear()
+        for planet in self.current_system.planets:
+            item = QListWidgetItem(planet.name)
+            item.setData(Qt.UserRole, planet.id)
+            self.planets_list.addItem(item)
+    
+    def on_planet_selected(self, current, previous):
+        """Handle planet selection change."""
+        self.refresh_moons_list()
+    
+    def refresh_moons_list(self):
+        """Refresh the moons list widget for the selected planet."""
+        self.moons_list.clear()
+        
+        if self.current_system is None:
+            return
+        
+        current_item = self.planets_list.currentItem()
+        if current_item is None:
+            return
+        
+        planet_id = current_item.data(Qt.UserRole)
+        planet = self.get_planet_by_id(planet_id)
+        
+        if planet:
+            for moon in planet.moons:
+                item = QListWidgetItem(moon.name)
+                item.setData(Qt.UserRole, moon.id)
+                self.moons_list.addItem(item)
+    
+    def get_planet_by_id(self, planet_id: str):
+        """Get a planet by its ID."""
+        if self.current_system is None:
+            return None
+        
+        for planet in self.current_system.planets:
+            if planet.id == planet_id:
+                return planet
+        return None
+    
+    def add_planet(self):
+        """Add a new planet to the system."""
+        if self.current_system is None:
+            return
+        
+        name, ok = QInputDialog.getText(self, "Add Planet", "Planet name:")
+        if ok and name.strip():
+            planet = PlanetData.create_new(name.strip())
+            self.current_system.planets.append(planet)
+            self.refresh_planets_list()
+    
+    def rename_planet(self):
+        """Rename the selected planet."""
+        if self.current_system is None:
+            return
+        
+        current_item = self.planets_list.currentItem()
+        if current_item is None:
+            return
+        
+        planet_id = current_item.data(Qt.UserRole)
+        planet = self.get_planet_by_id(planet_id)
+        
+        if planet:
+            name, ok = QInputDialog.getText(self, "Rename Planet", "Planet name:", text=planet.name)
+            if ok and name.strip():
+                planet.name = name.strip()
+                self.refresh_planets_list()
+    
+    def delete_planet(self):
+        """Delete the selected planet."""
+        if self.current_system is None:
+            return
+        
+        current_item = self.planets_list.currentItem()
+        if current_item is None:
+            return
+        
+        planet_id = current_item.data(Qt.UserRole)
+        self.current_system.planets = [p for p in self.current_system.planets if p.id != planet_id]
+        self.refresh_planets_list()
+    
+    def add_moon(self):
+        """Add a new moon to the selected planet."""
+        if self.current_system is None:
+            return
+        
+        current_item = self.planets_list.currentItem()
+        if current_item is None:
+            QMessageBox.warning(self, "No Planet Selected", "Please select a planet first.")
+            return
+        
+        planet_id = current_item.data(Qt.UserRole)
+        planet = self.get_planet_by_id(planet_id)
+        
+        if planet:
+            name, ok = QInputDialog.getText(self, "Add Moon", "Moon name:")
+            if ok and name.strip():
+                moon = MoonData.create_new(name.strip())
+                planet.moons.append(moon)
+                self.refresh_moons_list()
+    
+    def rename_moon(self):
+        """Rename the selected moon."""
+        if self.current_system is None:
+            return
+        
+        current_item = self.planets_list.currentItem()
+        if current_item is None:
+            return
+        
+        planet_id = current_item.data(Qt.UserRole)
+        planet = self.get_planet_by_id(planet_id)
+        
+        if planet:
+            moon_item = self.moons_list.currentItem()
+            if moon_item is None:
+                return
+            
+            moon_id = moon_item.data(Qt.UserRole)
+            moon = None
+            for m in planet.moons:
+                if m.id == moon_id:
+                    moon = m
+                    break
+            
+            if moon:
+                name, ok = QInputDialog.getText(self, "Rename Moon", "Moon name:", text=moon.name)
+                if ok and name.strip():
+                    moon.name = name.strip()
+                    self.refresh_moons_list()
+    
+    def delete_moon(self):
+        """Delete the selected moon."""
+        if self.current_system is None:
+            return
+        
+        current_item = self.planets_list.currentItem()
+        if current_item is None:
+            return
+        
+        planet_id = current_item.data(Qt.UserRole)
+        planet = self.get_planet_by_id(planet_id)
+        
+        if planet:
+            moon_item = self.moons_list.currentItem()
+            if moon_item is None:
+                return
+            
+            moon_id = moon_item.data(Qt.UserRole)
+            planet.moons = [m for m in planet.moons if m.id != moon_id]
+            self.refresh_moons_list()
+    
+    def on_fluff_text_changed(self):
+        """Handle fluff text changes and enforce character limit."""
+        if self.current_system is None:
+            return
+        
+        text = self.fluff_text_edit.toPlainText()
+        
+        # Enforce 500 character limit
+        if len(text) > 500:
+            # Truncate text
+            text = text[:500]
+            self.fluff_text_edit.setPlainText(text)
+            # Move cursor to end
+            cursor = self.fluff_text_edit.textCursor()
+            cursor.movePosition(cursor.End)
+            self.fluff_text_edit.setTextCursor(cursor)
+        
+        # Update character counter
+        self.fluff_char_counter.setText(f"{len(text)} / 500")
+        
+        # Update system data
+        self.current_system.fluff_text = text
 
 
 class RouteStatsWidget(QWidget):
