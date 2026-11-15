@@ -6,7 +6,7 @@ This directory preserves design decisions and project data independently of chat
 - `ECONOMIC_MODEL.json`: original economic model.
 - `CSA_Sector-Systems.json`: original V7 sector dataset (59 systems).
 - `GOODS_MASTER.json`: index of existing authoritative data under `/data`.
-- `STARSHIP_MASTER.json`: partial recovery only; original numeric enum still required.
+- `STARSHIP_MASTER.json`: index of the recovered [ship, station and container enum](../data/ships/starship_master_enum.json).
 - `EVENT_MODEL.json`: recovered design notes; not a complete executable schema.
 
 For editor implementation see [README](../README.md), [architecture](../ARCHITECTURE.md), and [project summary](../PROJECT_SUMMARY.md). Do not treat incomplete records as final rules or delete original chats until their contents have been reconciled.

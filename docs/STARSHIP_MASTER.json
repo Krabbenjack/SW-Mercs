@@ -1,25 +1,11 @@
 {
-  "status": "incomplete recovery; not a replacement for original enum",
-  "original_artifact": "starship_master_enum.json",
-  "known_ids": {
-    "XQ1": 10001,
-    "XQ2": 10002,
-    "XQ3": 10003,
-    "XQ4": 10004,
-    "Golan I": 10010,
-    "Golan II": 10011,
-    "Golan III": 10012,
-    "Scarif Shield Gate": 10030,
-    "Industrial station": 10101,
-    "Research station": 10102,
-    "Cargo station": 10103,
-    "Container": 11001
+  "status": "authoritative enum recovered from project chat",
+  "enum": "../data/ships/starship_master_enum.json",
+  "counts": {
+    "starships": 75,
+    "stations": 11,
+    "cargo_containers": 10
   },
-  "reserved_original_range": {
-    "xizor_classes": [
-      11101,
-      11109
-    ]
-  },
-  "open": "Recover original ship list and exact numeric IDs and faction assignments before use."
+  "id_policy": "Preserve existing numeric IDs; reference them from future ship statistics and faction assignments.",
+  "faction_assignments": "Not included in the original enum; maintain separately when available."
 }
