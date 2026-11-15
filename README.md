@@ -87,6 +87,23 @@ SW-Mercs/
 - 💾 **Project Management**: Save/load projects with full state
 - 📤 **Export**: Generate game-ready JSON data
 
+## System Statistics
+
+In Stats mode, select a star system to edit its population, facilities,
+imports and exports in the right-hand sidebar. The population label also shows
+the estimated numeric population (midpoint of the selected population category).
+Uninhabited is explicitly 0; an unspecified category is unknown.
+
+- Add, rename and delete planets, each with its own stable ID and optional type:
+  Desert, Ice, Temperate or Gas Giant.
+- Select a planet to add, rename or delete its moons. Deleting a planet requires
+  confirmation and removes its moons from that system as well.
+- Enter a system description (up to 500 characters) with a live character count.
+
+The new fields are included in map saves and game JSON exports. Older maps load
+without modification; missing planets, planet types and descriptions remain
+unspecified/empty. Edits mark the project as unsaved.
+
 ## World Menu
 
 The **World** menu provides tools for adjusting the global scale and geometry of your map:

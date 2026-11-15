@@ -17,9 +17,9 @@ from PySide6.QtWidgets import (
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
     QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
     QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout, QScrollArea,
-    QSizePolicy
+    QSizePolicy, QPlainTextEdit
 )
-from PySide6.QtCore import Qt, QTimer, QPointF, Signal
+from PySide6.QtCore import Qt, QTimer, QPointF, Signal, QSignalBlocker
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
 
 from app.editors.starmap import (
@@ -28,6 +28,9 @@ from app.editors.starmap import (
 )
 from app.editors.starmap.project_model import RouteGroup
 from app.editors.starmap.project_io import save_project, load_project, export_map_data
+from app.editors.starmap.data_loader import get_data_loader, format_population
+from app.editors.starmap.systems import MAX_FLUFF_LENGTH
+from app.editors.starmap.planet_editor import PlanetEditor
 
 
 class GridOverlay(QGraphicsScene):
@@ -967,13 +970,13 @@ class StatsWidget(QWidget):
     for the currently selected system.
     """
     
+    system_data_changed = Signal()
+
     def __init__(self, parent=None):
         """Initialize the stats widget."""
         super().__init__(parent)
         self.current_system: Optional[SystemData] = None
         
-        # Import data loader
-        from app.editors.starmap.data_loader import get_data_loader
         self.data_loader = get_data_loader()
         
         # Create layout
@@ -1013,6 +1016,10 @@ class StatsWidget(QWidget):
         self.population_combo = QComboBox()
         self.population_combo.currentIndexChanged.connect(self.on_population_changed)
         content_layout.addWidget(self.population_combo)
+        self.population_value_label = QLabel()
+        self.population_value_label.setProperty("role", "muted")
+        self.population_value_label.setWordWrap(True)
+        content_layout.addWidget(self.population_value_label)
         
         content_layout.addSpacing(10)
         
@@ -1070,7 +1077,26 @@ class StatsWidget(QWidget):
         exports_row.addStretch()
         
         content_layout.addLayout(exports_row)
-        
+        content_layout.addSpacing(12)
+
+        self.planet_editor = PlanetEditor()
+        self.planet_editor.changed.connect(self.system_data_changed.emit)
+        content_layout.addWidget(self.planet_editor)
+        content_layout.addSpacing(10)
+
+        fluff_label = QLabel("System description")
+        fluff_label.setProperty("role", "section")
+        content_layout.addWidget(fluff_label)
+        self.fluff_text_edit = QPlainTextEdit()
+        self.fluff_text_edit.setPlaceholderText("System lore and background…")
+        self.fluff_text_edit.setMaximumHeight(130)
+        self.fluff_text_edit.textChanged.connect(self.on_fluff_text_changed)
+        content_layout.addWidget(self.fluff_text_edit)
+        self.fluff_counter = QLabel()
+        self.fluff_counter.setProperty("role", "muted")
+        self.fluff_counter.setAlignment(Qt.AlignRight)
+        content_layout.addWidget(self.fluff_counter)
+
         content_layout.addStretch()
         
         layout.addWidget(self.content_widget)
@@ -1084,7 +1110,7 @@ class StatsWidget(QWidget):
     def populate_population_combo(self):
         """Populate the population combo box from data."""
         self.population_combo.clear()
-        self.population_combo.addItem("(No population)", None)
+        self.population_combo.addItem("Unknown / unspecified", None)
         
         population_levels = self.data_loader.get_population_levels()
         for level in population_levels:
@@ -1099,6 +1125,7 @@ class StatsWidget(QWidget):
             system: The SystemData to display, or None if no system selected
         """
         self.current_system = system
+        self.planet_editor.set_system(system)
         
         if system is None:
             # Show "no system" message
@@ -1112,15 +1139,12 @@ class StatsWidget(QWidget):
             # Update UI
             self.system_name_label.setText(f"System: {system.name}")
             
-            # Set population
-            if system.population_id:
-                index = self.population_combo.findData(system.population_id)
-                if index >= 0:
-                    self.population_combo.setCurrentIndex(index)
-                else:
-                    self.population_combo.setCurrentIndex(0)
-            else:
-                self.population_combo.setCurrentIndex(0)
+            # Selection must never mutate the model or mark the project dirty.
+            with QSignalBlocker(self.population_combo), QSignalBlocker(self.fluff_text_edit):
+                self.population_combo.setCurrentIndex(max(0, self.population_combo.findData(system.population_id)))
+                self.fluff_text_edit.setPlainText(system.fluff_text)
+            self.update_population_value()
+            self.update_fluff_counter()
             
             # Update summaries
             self.update_summaries()
@@ -1152,7 +1176,37 @@ class StatsWidget(QWidget):
             return
         
         population_id = self.population_combo.itemData(index)
-        self.current_system.population_id = population_id
+        if self.current_system.population_id != population_id:
+            self.current_system.population_id = population_id
+            self.update_population_value()
+            self.system_data_changed.emit()
+
+    def update_population_value(self):
+        value = self.data_loader.get_population_value(self.current_system.population_id)
+        self.population_value_label.setText(
+            "Population unknown" if value is None else
+            "0 inhabitants" if value == 0 else f"≈ {format_population(value)} inhabitants")
+        self.population_value_label.setToolTip(
+            "" if value is None else f"Estimated population: {value:,} (midpoint of category)")
+
+    def update_fluff_counter(self):
+        self.fluff_counter.setText(f"{len(self.fluff_text_edit.toPlainText())} / {MAX_FLUFF_LENGTH}")
+
+    def on_fluff_text_changed(self):
+        if self.current_system is None:
+            return
+        text = self.fluff_text_edit.toPlainText()
+        if len(text) > MAX_FLUFF_LENGTH:
+            text = text[:MAX_FLUFF_LENGTH]
+            with QSignalBlocker(self.fluff_text_edit):
+                self.fluff_text_edit.setPlainText(text)
+                cursor = self.fluff_text_edit.textCursor()
+                cursor.movePosition(cursor.MoveOperation.End)
+                self.fluff_text_edit.setTextCursor(cursor)
+        self.update_fluff_counter()
+        if self.current_system.fluff_text != text:
+            self.current_system.fluff_text = text
+            self.system_data_changed.emit()
     
     def edit_facilities(self):
         """Open the facilities editor dialog."""
@@ -1163,6 +1217,7 @@ class StatsWidget(QWidget):
         if dialog.exec() == QDialog.Accepted:
             self.current_system.facilities = dialog.get_selected_facilities()
             self.update_summaries()
+            self.system_data_changed.emit()
     
     def edit_imports(self):
         """Open the imports editor dialog."""
@@ -1173,6 +1228,7 @@ class StatsWidget(QWidget):
         if dialog.exec() == QDialog.Accepted:
             self.current_system.imports = dialog.get_selected_goods()
             self.update_summaries()
+            self.system_data_changed.emit()
     
     def edit_exports(self):
         """Open the exports editor dialog."""
@@ -1183,6 +1239,7 @@ class StatsWidget(QWidget):
         if dialog.exec() == QDialog.Accepted:
             self.current_system.exports = dialog.get_selected_goods()
             self.update_summaries()
+            self.system_data_changed.emit()
 
 
 class RouteStatsWidget(QWidget):
@@ -1911,6 +1968,7 @@ class StarMapEditor(QMainWindow):
         # Create stats inspector (will be placed in splitter, visible only in stats mode)
         # Pass system_items dict for route calculations
         self.stats_inspector = StatsInspector(self.system_items)
+        self.stats_inspector.system_stats_widget.system_data_changed.connect(self.mark_unsaved_changes)
         self.stats_inspector.hide()
         
         # Fixed, narrow width for the stats sidebar

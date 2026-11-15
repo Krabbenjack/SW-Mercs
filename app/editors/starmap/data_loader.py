@@ -110,6 +110,23 @@ class DataLoader:
             self._population_levels = data.get("population_levels", [])
         return self._population_levels
 
+    def get_population_value(self, population_id: str | None) -> int | None:
+        """Return the midpoint of the selected population category, not a census."""
+        for level in self.get_population_levels():
+            if level.get("id") == population_id and population_id is not None:
+                return (level["min"] + level["max"]) // 2
+        return None
+
+
+def format_population(value: int | None) -> str:
+    """Compact population display; 0 and unknown are distinct."""
+    if value is None:
+        return ""
+    for divisor, suffix in ((10**12, "T"), (10**9, "B"), (10**6, "M"), (10**3, "K")):
+        if value >= divisor:
+            return f"{value / divisor:.1f}".rstrip("0").rstrip(".") + suffix
+    return str(value)
+
 
 # Global singleton instance
 _data_loader_instance = None
