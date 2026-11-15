@@ -6,11 +6,13 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QStackedWidget, QVBoxLayout, QWidget)
 from app.shared.theme import apply_theme
+from app.shared.paths import ensure_save_directories
 
 
 class Launcher(QMainWindow):
     def __init__(self):
         super().__init__()
+        ensure_save_directories()
         self.map_window = None
         self.ship_window = None
         self.setWindowTitle("SW-Mercs")

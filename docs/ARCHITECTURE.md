@@ -12,7 +12,7 @@ The root entry point `swmercs.py` checks dependencies via `app.launcher.bootstra
 - `app/shared/paths.py`: canonical root-relative data, resources, saves and exports directories.
 - `app/shared/theme.py`: combines the common QSS and per-window stylesheet. See [UI design system](UI_DESIGN_SYSTEM.md).
 
-Data and resource paths are resolved from the repository, never the current working directory. Existing master data and the map save/export schemas remain unchanged. Existing user saves are not relocated; the Open dialog also recognizes legacy save directories.
+Data and resource paths are resolved from the repository, never the current working directory. Existing master data and the map save/export schemas remain unchanged. The launcher ensures `saves/starmaps/` and `saves/shipsets/` exist; new maps use the former, and the latter is reserved for whole-database persistence. Existing user saves are not relocated; the Open dialog also recognizes the former root `saves/` and legacy save directories. The standard folders are tracked via their README files, with personal saves ignored and curated examples allowed in their `examples/` subdirectories.
 
 ## Verification
 

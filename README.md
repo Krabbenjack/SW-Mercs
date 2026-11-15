@@ -18,7 +18,7 @@ Unknown fields are blank (JSON `null`); zero, false and empty lists are distinct
 
 The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Module-specific styles live in `resources/styles/`; the map's own light/dark rendering remains independently selectable.
 
-The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. New saves and exports default to the root `saves/` and `exports/` directories.
+The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. The launcher creates `saves/starmaps/` and `saves/shipsets/` on startup. New star maps default to `saves/starmaps/`; the shipsets folder is reserved for whole-database saves. Exports default to the root `exports/` directory. Personal saves are ignored by Git; curated examples can be versioned in the respective `examples/` subfolders.
 
 ## Quick Start
 
@@ -67,7 +67,9 @@ SW-Mercs/
 │   └── shared/                 # Central application paths
 ├── data/                       # Master JSON data
 ├── resources/                  # QSS, icons and templates
-├── saves/                      # Local projects, created on demand
+├── saves/                      # Standard save directories (created on startup)
+│   ├── starmaps/               # Star map projects (.swmproj)
+│   └── shipsets/               # Reserved for complete ship databases
 ├── exports/                    # Local exports, created on demand
 ├── tests/                      # Automated regression tests
 ├── tools/                      # Installation verifier

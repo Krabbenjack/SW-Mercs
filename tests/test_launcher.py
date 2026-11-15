@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PySide6.QtCore import QPointF
@@ -23,7 +24,12 @@ def main():
         previous = Path.cwd()
         os.chdir(directory)
         try:
-            window = Launcher()
+            maps_dir = Path(directory) / "saves" / "starmaps"
+            shipsets_dir = Path(directory) / "saves" / "shipsets"
+            with patch("app.shared.paths.STARMAPS_DIR", maps_dir), \
+                    patch("app.shared.paths.SHIPSETS_DIR", shipsets_dir):
+                window = Launcher()
+                assert maps_dir.is_dir() and shipsets_dir.is_dir()
             window.show()
             app.processEvents()
             assert window.isVisible() and window.pages.currentWidget() is window.home
@@ -43,6 +49,17 @@ def main():
             app.processEvents()
             editor = window.map_window
             assert editor is not None and editor.isVisible()
+            with patch("app.editors.starmap.gui.STARMAPS_DIR", maps_dir), \
+                    patch("app.editors.starmap.gui.QFileDialog.getSaveFileName", return_value=("", "")) as save_dialog:
+                editor.save_project_as()
+                assert Path(save_dialog.call_args.args[2]) == maps_dir / "map.swmproj"
+            with patch("app.shared.paths.STARMAPS_DIR", maps_dir), \
+                    patch("app.shared.paths.SHIPSETS_DIR", shipsets_dir), \
+                    patch("app.shared.paths.SAVES_DIR", maps_dir.parent), \
+                    patch("app.shared.paths.ROOT", Path(directory)), \
+                    patch("app.editors.starmap.gui.QFileDialog.getOpenFileName", return_value=("", "")) as open_dialog:
+                editor.open_project()
+                assert Path(open_dialog.call_args.args[2]) == maps_dir
             assert not app.styleSheet()  # launcher styling is local
             assert "#101923" in editor.styleSheet() and "#101923" in window.styleSheet()
             assert "#mapView" in editor.styleSheet()
