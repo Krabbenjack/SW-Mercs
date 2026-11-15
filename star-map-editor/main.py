@@ -20,6 +20,7 @@ def main():
     app = QApplication(sys.argv)
     load_application_theme(app)
     window = StarMapEditor()
+    window.show()
     sys.exit(app.exec())
 
 
