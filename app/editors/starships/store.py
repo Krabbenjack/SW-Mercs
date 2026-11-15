@@ -196,8 +196,8 @@ class CatalogStore:
         ok = False
         if kind in ("text", "long"):
             ok = isinstance(value, str)
-        elif kind in ("number", "int"):
-            ok = self._number(value, kind == "int")
+        elif kind in ("number", "int", "silhouette"):
+            ok = self._number(value, kind != "number")
         elif kind in ("size_class", "size_limit"):
             ok = type(value) is int and value in WEAPON_SIZE_CLASSES
         elif kind == "bool":

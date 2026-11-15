@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QSplitter, QMessageBox,
 )
 
-from .schema import DIRECTIONS, WEAPON_SIZE_CLASSES, size_label
+from .schema import DIRECTIONS, WEAPON_SIZE_CLASSES, SILHOUETTE_CLASSES, size_label
 from .store import CatalogError
 
 
@@ -51,6 +51,39 @@ def show_size_help(parent):
             table.setItem(row, column, QTableWidgetItem(value))
     table.resizeRowsToContents()
     layout.addWidget(table)
+    buttons = QDialogButtonBox(QDialogButtonBox.Close)
+    buttons.rejected.connect(dialog.reject)
+    layout.addWidget(buttons)
+    dialog.exec()
+
+
+def show_silhouette_help(parent):
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Ship silhouette · FFG")
+    dialog.resize(680, 490)
+    layout = QVBoxLayout(dialog)
+    hint = QLabel("Silhouette describes relative size and mass, not a fixed length. "
+                  "The classes are approximate; 10 and higher are for exceptional ships and stations. "
+                  "Weapon size limits are separate.")
+    hint.setWordWrap(True)
+    layout.addWidget(hint)
+    table = QTableWidget(len(SILHOUETTE_CLASSES) + 1, 2)
+    table.setHorizontalHeaderLabels(["Silhouette", "Typical examples"])
+    table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    table.verticalHeader().hide()
+    table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+    for row, (size, (name, examples)) in enumerate(SILHOUETTE_CLASSES.items()):
+        table.setItem(row, 0, QTableWidgetItem(f"{size} · {name}"))
+        table.setItem(row, 1, QTableWidgetItem(examples))
+    table.setItem(11, 0, QTableWidgetItem("11+ · Custom"))
+    table.setItem(11, 1, QTableWidgetItem("Exceptional megastructures / vessels"))
+    table.resizeRowsToContents()
+    layout.addWidget(table)
+    source = QLabel("Reference: Age of Rebellion Core Rulebook, pp. 236, 266–284; labels are editor shorthand.")
+    source.setWordWrap(True)
+    source.setProperty("role", "muted")
+    layout.addWidget(source)
     buttons = QDialogButtonBox(QDialogButtonBox.Close)
     buttons.rejected.connect(dialog.reject)
     layout.addWidget(buttons)
@@ -473,6 +506,25 @@ class FieldInput(QWidget):
             row.addWidget(self.help_button)
             layout.addLayout(row)
             return
+        elif kind == "silhouette":
+            self.input = choice({size: f"{size} · {label}" for size, (label, _) in SILHOUETTE_CLASSES.items()})
+            self.input.addItem("11+ · Custom", "custom")
+            self.custom_silhouette = QLineEdit("11")
+            self.custom_silhouette.setPlaceholderText("Integer ≥ 11")
+            self.custom_silhouette.hide()
+            self.custom_silhouette.textChanged.connect(lambda *_: self.changed.emit())
+            self.input.currentIndexChanged.connect(self._silhouette_changed)
+            row = QHBoxLayout()
+            row.addWidget(self.input, 1)
+            row.addWidget(self.custom_silhouette)
+            self.help_button = QPushButton("?")
+            self.help_button.setFixedWidth(32)
+            self.help_button.setToolTip("Explain FFG silhouettes")
+            self.help_button.setAccessibleName("Silhouette help")
+            self.help_button.clicked.connect(lambda: show_silhouette_help(self))
+            row.addWidget(self.help_button)
+            layout.addLayout(row)
+            return
         elif kind in ("goods", "facility"):
             self.input = choice(store.references(kind))
             self.input.currentIndexChanged.connect(lambda *_: self.changed.emit())
@@ -489,8 +541,15 @@ class FieldInput(QWidget):
             self.input.textChanged.connect(lambda *_: self.changed.emit())
         layout.addWidget(self.input)
 
+    def _silhouette_changed(self, *_):
+        self.custom_silhouette.setVisible(self.input.currentData() == "custom")
+        self.changed.emit()
+
     def set_value(self, value):
-        if isinstance(self.input, (ListField, TableField, WeaponField)):
+        if self.field.kind == "silhouette" and value is not None and value > 10:
+            self.custom_silhouette.setText(str(value))
+            self.input.setCurrentIndex(self.input.findData("custom"))
+        elif isinstance(self.input, (ListField, TableField, WeaponField)):
             self.input.set_value(value)
         elif isinstance(self.input, QComboBox):
             self.input.setCurrentIndex(max(0, self.input.findData(value)))
@@ -500,6 +559,11 @@ class FieldInput(QWidget):
             self.input.setText("" if value is None else str(value))
 
     def value(self):
+        if self.field.kind == "silhouette" and self.input.currentData() == "custom":
+            value = number(self.custom_silhouette.text(), True)
+            if value is None or value < 11:
+                raise CatalogError("Custom silhouette must be an integer of 11 or higher.")
+            return value
         if isinstance(self.input, (ListField, TableField, WeaponField)):
             return self.input.value()
         if isinstance(self.input, QComboBox):

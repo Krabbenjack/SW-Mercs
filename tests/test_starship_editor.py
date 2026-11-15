@@ -62,6 +62,22 @@ def main():
         editor.tabs.setCurrentIndex(0)
         form = ships.form
         form.inputs[("technical", "length_m")].input.setText("12.5")
+        silhouette = form.inputs[("technical", "silhouette")]
+        assert silhouette.value() is None
+        silhouette.input.setCurrentIndex(silhouette.input.findData(0))
+        assert silhouette.value() == 0
+        silhouette.input.setCurrentIndex(silhouette.input.findData(3))
+        assert silhouette.value() == 3
+        def check_silhouette_help():
+            dialog = QApplication.activeModalWidget()
+            try:
+                table = dialog.findChild(QTableWidget)
+                help_results.append(table.rowCount() == 12 and "11+" in table.item(11, 0).text())
+            finally:
+                dialog.reject()
+        QTimer.singleShot(0, check_silhouette_help)
+        silhouette.help_button.click()
+        assert help_results == [True, True]
         assert ships.dirty and ships.save_button.isEnabled()
         factions = form.inputs[("general", "factions")].input
         factions.known.setChecked(True)
@@ -128,6 +144,7 @@ def main():
         ships.save_button.click()
         record = store.read(1001)
         assert record["technical"]["length_m"] == 12.5
+        assert record["technical"]["silhouette"] == 3
         assert len(record["general"]["factions"]) == 2
         assert record["combat"]["weapons"] == [
             {"weapon_id": 1, "quantity": 4, "direction": "Starboard", "ammunition_capacity": 0}]
@@ -164,6 +181,13 @@ def main():
         ships.search.clear()
         ships.tree.setCurrentItem(ships.items[10001])
         assert ships.form.tabs.count() == 9 and ("station", "special_function") in ships.form.inputs
+        silhouette = ships.form.inputs[("technical", "silhouette")]
+        silhouette.input.setCurrentIndex(silhouette.input.findData("custom"))
+        silhouette.custom_silhouette.setText("12")
+        assert silhouette.value() == 12
+        ships.save_button.click()
+        assert store.read(10001)["technical"]["silhouette"] == 12
+        assert ships.form.inputs[("technical", "silhouette")].value() == 12
         ships.tree.setCurrentItem(ships.items[6002])
         assert ships.form.forms["cargo"].isRowVisible(ships.form.inputs[("cargo", "container_slots")])
         assert not ships.form.tabs.isTabVisible(ships.form.tabs.indexOf(ships.form.pages["hangar"]))

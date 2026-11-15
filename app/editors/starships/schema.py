@@ -3,6 +3,21 @@ from dataclasses import dataclass
 
 VERSION = 1
 DIRECTIONS = ("Front", "Rear", "Port", "Starboard", "Turret")
+# FFG Age of Rebellion, Core Rulebook p. 236: relative size and mass.
+# Labels are UI shorthand, not mandatory hull types or length thresholds.
+SILHOUETTE_CLASSES = {
+    0: ("Tiny", "Small objects, astromech droids"),
+    1: ("Personal", "Adult humanoids"),
+    2: ("Small Vehicle", "Speeder bikes, small vehicles"),
+    3: ("Starfighter", "X-Wing, TIE Fighter, Y-Wing"),
+    4: ("Transport", "Light freighters, shuttles"),
+    5: ("Corvette / light frigate", "Corvettes, Lancer-class frigate"),
+    6: ("Frigate", "Nebulon-B frigate"),
+    7: ("Heavy Cruiser", "Dreadnought-class, Interdictor"),
+    8: ("Destroyer", "Imperial I-class Star Destroyer"),
+    9: ("Battlecruiser", "Praetor II-class battlecruiser"),
+    10: ("Massive", "Largest ships and stations"),
+}
 WEAPON_SIZE_CLASSES = {
     1: ("Light", "Light laser / ion cannon", "Light fighters"),
     2: ("Medium", "Medium laser cannon / proton torpedo launcher", "X-Wing, Y-Wing"),
@@ -49,7 +64,8 @@ GENERAL = (
     F("description", "Description", "long"), F("image", "Image path"),
 )
 TECHNICAL = (
-    F("length_m", "Length", "number", "m"), F("sublight_mglt", "Sublight speed", "number", "MGLT"),
+    F("length_m", "Length", "number", "m"), F("silhouette", "Silhouette", "silhouette"),
+    F("sublight_mglt", "Sublight speed", "number", "MGLT"),
     F("atmospheric_speed_kmh", "Atmospheric speed", "number", "km/h"),
     F("acceleration", "Acceleration", "number", "game value"),
     F("maneuverability", "Maneuverability", "number", "game value"),
@@ -158,7 +174,7 @@ def sections_for(object_type):
         sections = dict(SHIP_SECTIONS)
         # Stations have no assumed propulsion/landing or fuel requirements.
         sections["technical"] = ("Technical", tuple(f for f in TECHNICAL if f.key in
-                                  {"length_m", "sensor_range_km", "communication_system", "tractor_beams"}))
+                                  {"length_m", "silhouette", "sensor_range_km", "communication_system", "tractor_beams"}))
         sections["cargo"] = ("Cargo", CARGO[:5])
         sections["station"] = ("Station", STATION)
         return sections
