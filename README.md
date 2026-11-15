@@ -4,7 +4,7 @@ SW-Mercs is a desktop toolkit for galactic maps, ship databases and economic sim
 
 ## SW-Mercs Launcher (new)
 
-From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. Install dependencies first with `python -m pip install -r requirements.txt`.
+From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. If PySide6 is missing or too old, the launcher offers to install dependencies into a local virtual environment (`.venv`). Internet access is required for the first installation. Subsequent launches reuse the environment automatically.
 
 The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the existing Star Map Editor; Starship and Industry modules are placeholders for future development.
 
@@ -15,11 +15,8 @@ The existing `python star-map-editor/main.py` command remains supported as a leg
 ### Installation
 
 1. **Install Python 3.10+**
-2. **Open a terminal in the repository root.**
-3. **Install dependencies:**
-   ```bash
-   python -m pip install -r requirements.txt
-   ```
+2. **Double-click `swmercs.bat`** (Windows) or run `python swmercs.py` from a terminal.
+3. **Confirm the first-run setup if prompted** with Y or J. The launcher installs dependencies and opens the application when finished. No changes to system Python are needed.
 
 ### Running the Application
 
@@ -32,6 +29,8 @@ python swmercs.py
 ```bash
 python tools/verify_installation.py
 ```
+
+If the launcher created a virtual environment, use `.venv\Scripts\python.exe tools/verify_installation.py` on Windows (or `.venv/bin/python tools/verify_installation.py` on Linux/macOS).
 
 ## Documentation
 

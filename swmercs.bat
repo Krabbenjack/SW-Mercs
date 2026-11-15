@@ -15,7 +15,7 @@ if exist ".venv\Scripts\python.exe" (
 )
 if errorlevel 1 (
     echo.
-    echo SW-Mercs could not start. Check the error above and install dependencies with: python -m pip install -r requirements.txt
+    echo SW-Mercs could not start. Check the error above and try again.
     pause
     exit /b 1
 )
