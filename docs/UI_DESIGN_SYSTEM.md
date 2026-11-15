@@ -30,7 +30,7 @@ The Star Map Editor now uses this common design for its menus, controls, dialogs
 4. Industry Editor: goods, production and economic simulation in one module.
 5. Modules can eventually be open at the same time, sharing master IDs and catalog data.
 
-The main menu, command center and existing Star Map Editor are operational. The other modules are disabled placeholders until implemented.
+The main menu, command center, Star Map Editor and Starship Editor are operational. The Starship Editor uses the shared stylesheet plus `starships.qss`. Play and Industry remain disabled placeholders.
 
 ## Manual visual QA
 

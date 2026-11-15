@@ -6,7 +6,13 @@ SW-Mercs is a desktop toolkit for galactic maps, ship databases and economic sim
 
 From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. If PySide6 is missing or too old, the launcher offers to install dependencies into a local virtual environment (`.venv`). Internet access is required for the first installation. Subsequent launches reuse the environment automatically.
 
-The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the existing Star Map Editor; Starship and Industry modules are placeholders for future development.
+The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the Star Map Editor and Starship Editor. Industry and the Fleet Manager are planned.
+
+### Starship Editor
+
+The Starship Database lists ships, stations and cargo containers by their stable master IDs. Each class has its own editable JSON file. Search, create, edit, save, import and export individual records or batches. The Component Database manages reusable weapons, which can be assigned to ships with count, firing direction and optional ammunition capacity.
+
+Unknown fields are blank (JSON `null`); zero, false and empty lists are distinct explicit values. Imports validate IDs and references, preserve omitted fields and ask before updating existing records. See [Starship catalog](docs/STARSHIP_CATALOG.md) for the data format.
 
 The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Module-specific styles live in `resources/styles/`; the map's own light/dark rendering remains independently selectable.
 
@@ -53,7 +59,7 @@ SW-Mercs/
 │   ├── launcher/               # Main menu and command center
 │   ├── editors/
 │   │   ├── starmap/            # Working map editor and models
-│   │   ├── starships/          # Planned database and fleet tools
+│   │   ├── starships/          # Ship and weapon catalogs; fleet tools planned
 │   │   └── industry/           # Planned production and goods tools
 │   ├── simulation/             # Reserved for game simulation
 │   └── shared/                 # Central application paths

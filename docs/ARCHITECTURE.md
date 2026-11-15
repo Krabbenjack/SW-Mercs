@@ -1,12 +1,12 @@
 # SW-Mercs application architecture
 
-The root entry point `swmercs.py` checks dependencies via `app.launcher.bootstrap.main()` before starting `app.launcher.window.main()`, which creates a single QApplication and shows the main menu. Editor opens the command center. Star Map Editor creates a separate window in the same Qt application; it checks for unsaved changes before closing. Play, Starship Editor and Industry Editor are disabled until implemented.
+The root entry point `swmercs.py` checks dependencies via `app.launcher.bootstrap.main()` before starting `app.launcher.window.main()`, which creates a single QApplication and shows the main menu. Editor opens the command center. Star Map Editor and Starship Editor create separate windows in the same Qt application; both check for unsaved changes before closing. Play and Industry Editor are disabled until implemented.
 
 ## Modules
 
 - `app/launcher/`: navigation and launcher-specific styling.
 - `app/editors/starmap/`: existing map editor, system and route graphics, templates, models, project I/O and data loader.
-- `app/editors/starships/`: reserved for the ship database and fleet tooling.
+- `app/editors/starships/`: class and weapon catalogs, field schema, validated JSON persistence and Qt editor; fleet tooling planned.
 - `app/editors/industry/`: reserved for goods and production tools.
 - `app/simulation/`: reserved for simulation logic.
 - `app/shared/paths.py`: canonical root-relative data, resources, saves and exports directories.

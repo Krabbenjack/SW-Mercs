@@ -12,6 +12,7 @@ class Launcher(QMainWindow):
     def __init__(self):
         super().__init__()
         self.map_window = None
+        self.ship_window = None
         self.setWindowTitle("SW-Mercs")
         self.resize(850, 570)
         self.pages = QStackedWidget()
@@ -37,7 +38,7 @@ class Launcher(QMainWindow):
         center.addWidget(title)
         center.addWidget(QLabel("Development & Data Management"))
         self.map_button = self._button(center, "STAR MAP EDITOR\nSystems · Routes · Zones · Infrastructure", self.open_map, height=95)
-        self.ship_button = self._button(center, "STARSHIP EDITOR\nShip Database · Fleet Manager · Maintenance (planned)", enabled=False, height=95)
+        self.ship_button = self._button(center, "STARSHIP EDITOR\nShip Database · Weapon Components", self.open_ships, height=95)
         self.industry_button = self._button(center, "INDUSTRY EDITOR\nGoods · Production · Economic Simulation (planned)", enabled=False, height=95)
         for button in (self.map_button, self.ship_button, self.industry_button):
             button.setObjectName("module")
@@ -84,11 +85,27 @@ class Launcher(QMainWindow):
             QMessageBox.critical(self, "Star Map Editor", f"Could not start editor:\n{exc}")
 
     def closeEvent(self, event):
+        if self.ship_window is not None and self.ship_window.isVisible():
+            if not self.ship_window.close():
+                event.ignore()
+                return
         if self.map_window is not None and self.map_window.isVisible():
             if not self.map_window.close():
                 event.ignore()
                 return
         event.accept()
+
+    def open_ships(self):
+        try:
+            from app.editors.starships.window import StarshipEditor
+            if self.ship_window is None:
+                self.ship_window = StarshipEditor()
+            self.ship_window.show()
+            self.ship_window.raise_()
+            self.ship_window.activateWindow()
+        except Exception as exc:
+            traceback.print_exc()
+            QMessageBox.critical(self, "Starship Editor", f"Could not start editor:\n{exc}")
 
 
 def main():

@@ -30,10 +30,15 @@ def main():
             assert not window.play_button.isEnabled()
             window.editor_button.click()
             assert window.pages.currentWidget() is window.center
-            assert not window.ship_button.isEnabled() and not window.industry_button.isEnabled()
+            assert window.ship_button.isEnabled() and not window.industry_button.isEnabled()
             window.back_button.click()
             assert window.pages.currentWidget() is window.home
             window.editor_button.click()
+            window.ship_button.click()
+            app.processEvents()
+            assert window.ship_window is not None and window.ship_window.isVisible()
+            assert len(window.ship_window.ship_panel.items) >= 96
+            assert window.ship_window.close()
             window.open_map()
             app.processEvents()
             editor = window.map_window
