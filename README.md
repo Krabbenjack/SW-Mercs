@@ -2,6 +2,14 @@
 
 Star Map Editor for creating and editing Star Wars-inspired galactic maps.
 
+## SW-Mercs Launcher (new)
+
+From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. Install dependencies first with `pip install -r star-map-editor/requirements.txt`.
+
+The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the existing Star Map Editor; Starship and Industry modules are placeholders for future development.
+
+The existing `cd star-map-editor && python main.py` command remains supported as a legacy direct entry point. The Star Map Editor files have **not** been relocated: this is an incremental migration to avoid breaking existing imports, map projects and resources.
+
 ## Quick Start
 
 ### Installation
