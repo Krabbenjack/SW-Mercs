@@ -9,4 +9,5 @@ This directory preserves design decisions and project data independently of chat
 - `STARSHIP_MASTER.json`: index of the recovered [ship, station and container enum](../data/ships/starship_master_enum.json).
 - `EVENT_MODEL.json`: recovered design notes; not a complete executable schema.
 
-For editor implementation see [README](../README.md), [architecture](../ARCHITECTURE.md), and [project summary](../PROJECT_SUMMARY.md). Do not treat incomplete records as final rules or delete original chats until their contents have been reconciled.
+For editor implementation see [README](../README.md), [architecture](ARCHITECTURE.md), and [historical project summary](archive/PROJECT_SUMMARY.md). Do not treat incomplete records as final rules or delete original chats until their contents have been reconciled.
+

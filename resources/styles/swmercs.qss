@@ -66,3 +66,4 @@ QSplitter::handle { background-color: #344657; }
 QProgressBar { background-color: #1B2C3B; border: 1px solid #3B5366; border-radius: 4px; text-align: center; }
 QProgressBar::chunk { background-color: #75B6E4; border-radius: 3px; }
 QToolTip { background-color: #273F54; color: #EFF7FF; border: 1px solid #75B6E4; padding: 5px; }
+

@@ -1,70 +1,69 @@
 # SW-Mercs
 
-Star Map Editor for creating and editing Star Wars-inspired galactic maps.
+SW-Mercs is a desktop toolkit for galactic maps, ship databases and economic simulation. The Star Map Editor is the first working module.
 
 ## SW-Mercs Launcher (new)
 
-From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. Install dependencies first with `pip install -r star-map-editor/requirements.txt`.
+From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. Install dependencies first with `python -m pip install -r requirements.txt`.
 
 The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the existing Star Map Editor; Starship and Industry modules are placeholders for future development.
 
-The existing `cd star-map-editor && python main.py` command remains supported as a legacy direct entry point. The Star Map Editor files have **not** been relocated: this is an incremental migration to avoid breaking existing imports, map projects and resources.
+The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. New saves and exports default to the root `saves/` and `exports/` directories.
 
 ## Quick Start
 
 ### Installation
 
 1. **Install Python 3.10+**
-2. **Navigate to the application directory:**
-   ```bash
-   cd star-map-editor
-   ```
+2. **Open a terminal in the repository root.**
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   python -m pip install -r requirements.txt
    ```
 
 ### Running the Application
 
 ```bash
-cd star-map-editor
-python main.py
+python swmercs.py
 ```
 
 ### Verifying Installation
 
 ```bash
-cd star-map-editor
-python verify_installation.py
+python tools/verify_installation.py
 ```
 
 ## Documentation
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete architecture overview and technical details
-- **[star-map-editor/README.md](star-map-editor/README.md)** - Full feature documentation
-- **[star-map-editor/QUICKSTART.md](star-map-editor/QUICKSTART.md)** - 5-minute getting started guide
-- **[star-map-editor/TESTING.md](star-map-editor/TESTING.md)** - Manual testing procedures
+- **[Architecture](docs/ARCHITECTURE.md)** - Current application layout
+- **[Project knowledge base](docs/README.md)** - Design decisions and game data
+- **[Star Map Editor documentation (archive)](docs/archive/starmap/README.md)** - Historical feature documentation
+- **[Manual testing reference](docs/archive/starmap/TESTING.md)** - Historical manual testing procedures
 - **[.github/copilot-instructions.md](.github/copilot-instructions.md)** - Development guidelines for contributors
 
 ## Project Structure
 
 ```
 SW-Mercs/
-├── ARCHITECTURE.md              # Architecture documentation
-├── star-map-editor/            # Main application directory
-│   ├── main.py                 # Application entry point
-│   ├── gui.py                  # PySide6 GUI implementation
-│   ├── core/                   # Business logic and data models
-│   │   ├── project_model.py    # MapProject, TemplateData
-│   │   ├── systems.py          # SystemData, SystemItem
-│   │   ├── routes.py           # RouteData, RouteItem
-│   │   ├── templates.py        # TemplateItem
-│   │   └── project_io.py       # Save/load/export
-│   ├── resources/              # Application resources
-│   ├── Saves/                  # Project files (.swmproj)
-│   └── Exports/                # Exported map data (.json)
-└── .github/
-    └── copilot-instructions.md # Development guidelines
+├── swmercs.bat                 # Windows launcher
+├── swmercs.py                  # Python entry point
+├── requirements.txt
+├── app/
+│   ├── launcher/               # Main menu and command center
+│   ├── editors/
+│   │   ├── starmap/            # Working map editor and models
+│   │   ├── starships/          # Planned database and fleet tools
+│   │   └── industry/           # Planned production and goods tools
+│   ├── simulation/             # Reserved for game simulation
+│   └── shared/                 # Central application paths
+├── data/                       # Master JSON data
+├── resources/                  # QSS, icons and templates
+├── saves/                      # Local projects, created on demand
+├── exports/                    # Local exports, created on demand
+├── tests/                      # Automated regression tests
+├── tools/                      # Installation verifier
+├── docs/                       # Design and historical documentation
+└── star-map-editor/            # Legacy entry point only
 ```
 
 ## Key Features
@@ -172,7 +171,7 @@ The Travel Calculator updates automatically when you change route parameters.
 ## Testing
 
 Currently, testing is done manually. Run the application and follow procedures in:
-- `star-map-editor/TESTING.md`
+- `docs/archive/starmap/TESTING.md`
 
 Future: Add automated unit and integration tests.
 
@@ -187,3 +186,4 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for:
 ## License
 
 See [LICENSE](LICENSE) file for details.
+

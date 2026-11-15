@@ -7,6 +7,7 @@ Provides a centralized interface for accessing goods, facilities, and population
 import json
 from pathlib import Path
 from typing import Optional
+from app.shared.paths import DATA_DIR
 
 
 class DataLoader:
@@ -32,17 +33,9 @@ class DataLoader:
         if self._data_dir is not None:
             return self._data_dir
             
-        # Start from this file's directory and search upward
-        current = Path(__file__).resolve().parent
-        
-        # Try going up to find the data directory
-        for _ in range(5):  # Limit search depth
-            data_path = current.parent / "data"
-            if data_path.exists() and data_path.is_dir():
-                self._data_dir = data_path
-                return self._data_dir
-            current = current.parent
-        
+        if DATA_DIR.is_dir():
+            self._data_dir = DATA_DIR
+            return self._data_dir
         return None
     
     def _load_json_file(self, relative_path: str) -> dict:
@@ -132,3 +125,4 @@ def get_data_loader() -> DataLoader:
     if _data_loader_instance is None:
         _data_loader_instance = DataLoader()
     return _data_loader_instance
+

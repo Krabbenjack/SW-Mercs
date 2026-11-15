@@ -534,3 +534,4 @@ class RouteItem(QGraphicsPathItem):
                 total_length += (dx * dx + dy * dy) ** 0.5
         
         return total_length
+

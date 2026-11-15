@@ -4,12 +4,10 @@ This module contains all PySide6 UI components including the main window,
 map view, and workspace controls.
 """
 
-import sys
 from pathlib import Path
 from typing import Dict, Optional, List
 
-# Add current directory to path for core imports
-sys.path.insert(0, str(Path(__file__).parent))
+from app.shared.paths import SAVES_DIR, EXPORTS_DIR, open_project_directory
 
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
@@ -22,12 +20,12 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
 
-from core import (
+from app.editors.starmap import (
     MapProject, TemplateData, SystemData, SystemItem, 
     SystemDialog, TemplateItem, RouteData, RouteItem
 )
-from core.project_model import RouteGroup
-from core.project_io import save_project, load_project, export_map_data
+from app.editors.starmap.project_model import RouteGroup
+from app.editors.starmap.project_io import save_project, load_project, export_map_data
 
 
 class GridOverlay(QGraphicsScene):
@@ -699,7 +697,7 @@ class FacilityPopup(QDialog):
         layout = QVBoxLayout(self)
         
         # Import data loader here to avoid circular import
-        from core.data_loader import get_data_loader
+        from app.editors.starmap.data_loader import get_data_loader
         data_loader = get_data_loader()
         
         # Create tab widget
@@ -783,7 +781,7 @@ class GoodsPopup(QDialog):
         layout = QVBoxLayout(self)
         
         # Import data loader here to avoid circular import
-        from core.data_loader import get_data_loader
+        from app.editors.starmap.data_loader import get_data_loader
         from PySide6.QtWidgets import QLineEdit
         data_loader = get_data_loader()
         
@@ -982,7 +980,7 @@ class StatsWidget(QWidget):
         self.current_system: Optional[SystemData] = None
         
         # Import data loader
-        from core.data_loader import get_data_loader
+        from app.editors.starmap.data_loader import get_data_loader
         self.data_loader = get_data_loader()
         
         # Create layout
@@ -2347,8 +2345,7 @@ class StarMapEditor(QMainWindow):
             return
         
         # Default to Saves directory
-        saves_dir = Path(__file__).parent / "Saves"
-        saves_dir.mkdir(exist_ok=True)
+        saves_dir = open_project_directory()
         
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -2440,8 +2437,8 @@ class StarMapEditor(QMainWindow):
     def save_project_as(self):
         """Save the current project with a new name."""
         # Default to Saves directory
-        saves_dir = Path(__file__).parent / "Saves"
-        saves_dir.mkdir(exist_ok=True)
+        saves_dir = SAVES_DIR
+        saves_dir.mkdir(parents=True, exist_ok=True)
         
         file_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -2475,8 +2472,8 @@ class StarMapEditor(QMainWindow):
     def export_map_data_action(self):
         """Export map data to game-readable format."""
         # Default to Exports directory
-        exports_dir = Path(__file__).parent / "Exports"
-        exports_dir.mkdir(exist_ok=True)
+        exports_dir = EXPORTS_DIR
+        exports_dir.mkdir(parents=True, exist_ok=True)
         
         file_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -4138,3 +4135,4 @@ class StarMapEditor(QMainWindow):
             self.stats_inspector.set_selected_route(selected_route)
         else:
             self.stats_inspector.clear_selection()
+

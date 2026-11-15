@@ -270,3 +270,4 @@ class SystemDialog(QDialog):
             The system name from the input field
         """
         return self.name_input.text().strip()
+

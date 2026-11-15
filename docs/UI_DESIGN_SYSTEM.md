@@ -18,9 +18,9 @@ The common SW-Mercs visual identity is a dark, navy/steel-blue technical console
 | Success | `#81C8A4` | Validated/ready |
 | Warning | `#E2BF83` | Pending/caution |
 
-The shared implementation is `star-map-editor/resources/styles/swmercs.qss`, loaded by `star-map-editor/main.py` at application startup. Do not apply theme colors to the star-map scene, route classes, hazards, system markers, or other semantically color-coded graphics without separate review.
+The launcher loads `resources/styles/launcher.qss` on its own window. The shared design reference is `resources/styles/swmercs.qss`; gradually adopt it across editors after testing their original visual behavior. Do not apply theme colors to the star-map scene, route classes, hazards, system markers, or other semantically color-coded graphics without separate review.
 
-## Planned navigation (not yet implemented)
+## Navigation and planned modules
 
 1. Main menu: **Play** (disabled for now) and **Editor**.
 2. Editor Command Center: **Star Map Editor**, **Starship Editor**, **Industry Editor**.
@@ -28,11 +28,11 @@ The shared implementation is `star-map-editor/resources/styles/swmercs.qss`, loa
 4. Industry Editor: goods, production and economic simulation in one module.
 5. Modules can eventually be open at the same time, sharing master IDs and catalog data.
 
-The current PR only adds the visual foundation, not a launcher or functional new editor modules.
+The main menu, command center and existing Star Map Editor are operational. The other modules are disabled placeholders until implemented.
 
 ## Manual visual QA
 
-- Start with `cd star-map-editor && python main.py`.
+- Start from the repository root with `python swmercs.py` or double-click `swmercs.bat` on Windows.
 - Check main menu/toolbar, sidebar, tabs, tables, dialogs and scrollbars for readable contrast.
 - Verify existing map layers and route colors remain distinguishable.
 - Check keyboard focus, disabled controls, input selection and dropdown visibility.

@@ -10,3 +10,4 @@ QPushButton:pressed { background: #365674; }
 QPushButton:disabled { color: #778797; border-color: #344657; }
 QPushButton#primary, QPushButton#module { background: #22384C; }
 QPushButton#primary:hover, QPushButton#module:hover { background: #273F54; border-color: #75B6E4; }
+

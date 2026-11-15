@@ -143,3 +143,4 @@ class TemplateItem(QGraphicsPixmapItem):
             The TemplateData object for this item
         """
         return self.template_data
+

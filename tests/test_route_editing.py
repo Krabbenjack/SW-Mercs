@@ -8,64 +8,9 @@ import sys
 from pathlib import Path
 
 # Add parent directory to path (star-map-editor/)
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-# Mock PySide6 modules for testing - must be done before any imports
-class MockQPointF:
-    def __init__(self, x=0, y=0):
-        self._x = x
-        self._y = y
-    
-    def x(self):
-        return self._x
-    
-    def y(self):
-        return self._y
-
-class MockQt:
-    pass
-
-# Create mock modules
-pyside6_module = type(sys)('PySide6')
-qtcore_module = type(sys)('PySide6.QtCore')
-qtwidgets_module = type(sys)('PySide6.QtWidgets')
-qtgui_module = type(sys)('PySide6.QtGui')
-
-# Add mock classes
-qtcore_module.QPointF = MockQPointF
-qtcore_module.Qt = MockQt
-qtcore_module.Signal = lambda *a: None
-qtcore_module.QRectF = object
-qtcore_module.QTimer = object
-
-qtwidgets_module.QGraphicsEllipseItem = object
-qtwidgets_module.QGraphicsTextItem = object
-qtwidgets_module.QDialog = object
-qtwidgets_module.QVBoxLayout = object
-qtwidgets_module.QHBoxLayout = object
-qtwidgets_module.QLineEdit = object
-qtwidgets_module.QPushButton = object
-qtwidgets_module.QLabel = object
-qtwidgets_module.QGraphicsPathItem = object
-qtwidgets_module.QGraphicsPixmapItem = object
-
-qtgui_module.QColor = lambda *a, **k: None
-qtgui_module.QPen = lambda *a, **k: None
-qtgui_module.QBrush = lambda *a, **k: None
-qtgui_module.QFont = lambda *a, **k: None
-qtgui_module.QPainterPath = type('QPainterPath', (), {'moveTo': lambda *a: None, 'lineTo': lambda *a: None})
-qtgui_module.QPixmap = object
-qtgui_module.QPainter = object
-qtgui_module.QTransform = object
-
-# Install mocks
-sys.modules['PySide6'] = pyside6_module
-sys.modules['PySide6.QtCore'] = qtcore_module
-sys.modules['PySide6.QtWidgets'] = qtwidgets_module
-sys.modules['PySide6.QtGui'] = qtgui_module
-
-# Now import our modules
-from core.routes import RouteData
+from app.editors.starmap.routes import RouteData
 
 def test_system_chain_basic():
     """Test basic system chain functionality."""
@@ -270,3 +215,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+

@@ -8,13 +8,13 @@ import sys
 from pathlib import Path
 
 # Add parent directory to path for core imports (star-map-editor/)
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PySide6.QtCore import QPointF
-from core.systems import SystemData
-from core.routes import RouteData
-from core.templates import TemplateData
-from core.project_model import MapProject
+from app.editors.starmap.systems import SystemData
+from app.editors.starmap.routes import RouteData
+from app.editors.starmap.templates import TemplateData
+from app.editors.starmap.project_model import MapProject
 
 
 def test_rescale_systems():
@@ -166,3 +166,4 @@ def main():
 if __name__ == '__main__':
     success = main()
     sys.exit(0 if success else 1)
+

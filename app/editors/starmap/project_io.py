@@ -231,3 +231,4 @@ def export_map_data(project: MapProject, file_path: Path) -> bool:
     except Exception as e:
         print(f"Error exporting map data: {e}")
         return False
+

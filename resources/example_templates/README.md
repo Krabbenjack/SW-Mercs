@@ -25,3 +25,4 @@ Template images should be:
 - Start with lower resolution for faster loading during testing
 - Use the opacity slider to blend multiple templates
 - Lock templates after positioning to prevent accidental changes
+
