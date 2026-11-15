@@ -1,4 +1,4 @@
-/* SW-Mercs launcher theme; existing Star Map Editor keeps its own styles. */
+/* SW-Mercs launcher-specific overrides. Shared base: swmercs.qss. */
 QMainWindow { background: #101923; }
 QWidget#central { background: #101923; }
 QLabel { color: #B3C4D2; font-family: "Segoe UI", Arial; font-size: 11pt; }

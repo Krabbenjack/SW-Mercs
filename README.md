@@ -8,6 +8,8 @@ From the **repository root**, double-click `swmercs.bat` on Windows or run `pyth
 
 The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the existing Star Map Editor; Starship and Industry modules are placeholders for future development.
 
+The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Module-specific styles live in `resources/styles/`; the map's own light/dark rendering remains independently selectable.
+
 The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. New saves and exports default to the root `saves/` and `exports/` directories.
 
 ## Quick Start

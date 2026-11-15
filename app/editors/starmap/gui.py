@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Optional, List
 
 from app.shared.paths import SAVES_DIR, EXPORTS_DIR, open_project_directory
+from app.shared.theme import apply_theme
 
 from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
@@ -15,7 +16,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
     QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
     QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
-    QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout
+    QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout, QScrollArea,
+    QSizePolicy
 )
 from PySide6.QtCore import Qt, QTimer, QPointF, Signal
 from PySide6.QtGui import QPixmap, QPen, QColor, QPainter, QKeyEvent, QWheelEvent, QAction, QPainterPath, QFont
@@ -183,16 +185,7 @@ class MapView(QGraphicsView):
         
         # Zoom indicator overlay (UI SPACE: always visible in corner)
         self.zoom_indicator = QLabel(self)
-        self.zoom_indicator.setStyleSheet("""
-            QLabel {
-                background-color: rgba(0, 0, 0, 180);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 4px;
-                font-family: monospace;
-                font-size: 11px;
-            }
-        """)
+        self.zoom_indicator.setObjectName("zoomIndicator")
         self.zoom_indicator.setAlignment(Qt.AlignLeft)
         self.update_zoom_indicator()
 
@@ -805,7 +798,7 @@ class GoodsPopup(QDialog):
         
         # Add info label
         info_label = QLabel("Hold Ctrl/Cmd to select multiple items")
-        info_label.setStyleSheet("color: gray; font-style: italic;")
+        info_label.setProperty("role", "hint")
         layout.addWidget(info_label)
         
         # Add OK/Cancel buttons
@@ -930,7 +923,7 @@ class WorldScaleDialog(QDialog):
             "Use this to fix travel time issues by adjusting world scale."
         )
         info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: gray; font-size: 10pt;")
+        info_label.setProperty("role", "muted")
         layout.addWidget(info_label)
         
         # Add OK/Cancel buttons
@@ -989,17 +982,14 @@ class StatsWidget(QWidget):
         
         # Title
         title_label = QLabel("System Statistics")
-        title_font = QFont()
-        title_font.setPointSize(14)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
+        title_label.setProperty("role", "title")
         layout.addWidget(title_label)
         
         layout.addSpacing(10)
         
         # No system selected message (initially hidden)
         self.no_system_label = QLabel("No system selected")
-        self.no_system_label.setStyleSheet("color: gray; font-style: italic;")
+        self.no_system_label.setProperty("role", "hint")
         self.no_system_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.no_system_label)
         
@@ -1010,17 +1000,14 @@ class StatsWidget(QWidget):
         
         # System name display
         self.system_name_label = QLabel()
-        system_name_font = QFont()
-        system_name_font.setPointSize(12)
-        system_name_font.setBold(True)
-        self.system_name_label.setFont(system_name_font)
+        self.system_name_label.setProperty("role", "subtitle")
         content_layout.addWidget(self.system_name_label)
         
         content_layout.addSpacing(10)
         
         # Population section
         pop_label = QLabel("Population:")
-        pop_label.setStyleSheet("font-weight: bold;")
+        pop_label.setProperty("role", "section")
         content_layout.addWidget(pop_label)
         
         self.population_combo = QComboBox()
@@ -1031,7 +1018,7 @@ class StatsWidget(QWidget):
         
         # Facilities section
         facilities_label = QLabel("Facilities:")
-        facilities_label.setStyleSheet("font-weight: bold;")
+        facilities_label.setProperty("role", "section")
         content_layout.addWidget(facilities_label)
         
         facilities_row = QHBoxLayout()
@@ -1040,7 +1027,7 @@ class StatsWidget(QWidget):
         facilities_row.addWidget(self.facilities_btn)
         
         self.facilities_summary = QLabel("0 facilities")
-        self.facilities_summary.setStyleSheet("color: gray;")
+        self.facilities_summary.setProperty("role", "muted")
         facilities_row.addWidget(self.facilities_summary)
         facilities_row.addStretch()
         
@@ -1050,7 +1037,7 @@ class StatsWidget(QWidget):
         
         # Imports section
         imports_label = QLabel("Imports:")
-        imports_label.setStyleSheet("font-weight: bold;")
+        imports_label.setProperty("role", "section")
         content_layout.addWidget(imports_label)
         
         imports_row = QHBoxLayout()
@@ -1059,7 +1046,7 @@ class StatsWidget(QWidget):
         imports_row.addWidget(self.imports_btn)
         
         self.imports_summary = QLabel("0 goods")
-        self.imports_summary.setStyleSheet("color: gray;")
+        self.imports_summary.setProperty("role", "muted")
         imports_row.addWidget(self.imports_summary)
         imports_row.addStretch()
         
@@ -1069,7 +1056,7 @@ class StatsWidget(QWidget):
         
         # Exports section
         exports_label = QLabel("Exports:")
-        exports_label.setStyleSheet("font-weight: bold;")
+        exports_label.setProperty("role", "section")
         content_layout.addWidget(exports_label)
         
         exports_row = QHBoxLayout()
@@ -1078,7 +1065,7 @@ class StatsWidget(QWidget):
         exports_row.addWidget(self.exports_btn)
         
         self.exports_summary = QLabel("0 goods")
-        self.exports_summary.setStyleSheet("color: gray;")
+        self.exports_summary.setProperty("role", "muted")
         exports_row.addWidget(self.exports_summary)
         exports_row.addStretch()
         
@@ -1242,17 +1229,14 @@ class RouteStatsWidget(QWidget):
         
         # Title
         title_label = QLabel("Route Statistics")
-        title_font = QFont()
-        title_font.setPointSize(14)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
+        title_label.setProperty("role", "title")
         layout.addWidget(title_label)
         
         layout.addSpacing(10)
         
         # No route selected message (initially visible)
         self.no_route_label = QLabel("No route selected")
-        self.no_route_label.setStyleSheet("color: gray; font-style: italic;")
+        self.no_route_label.setProperty("role", "hint")
         self.no_route_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.no_route_label)
         
@@ -1263,28 +1247,25 @@ class RouteStatsWidget(QWidget):
         
         # Route name display
         self.route_name_label = QLabel()
-        route_name_font = QFont()
-        route_name_font.setPointSize(12)
-        route_name_font.setBold(True)
-        self.route_name_label.setFont(route_name_font)
+        self.route_name_label.setProperty("role", "subtitle")
         content_layout.addWidget(self.route_name_label)
         
         content_layout.addSpacing(10)
         
         # Route length (read-only)
         length_label = QLabel("Route Length (HSU):")
-        length_label.setStyleSheet("font-weight: bold;")
+        length_label.setProperty("role", "section")
         content_layout.addWidget(length_label)
         
         self.length_value_label = QLabel("0.0 HSU")
-        self.length_value_label.setStyleSheet("color: gray;")
+        self.length_value_label.setProperty("role", "muted")
         content_layout.addWidget(self.length_value_label)
         
         content_layout.addSpacing(10)
         
         # Route class section
         class_label = QLabel("Route Class (1=Fast, 5=Slow):")
-        class_label.setStyleSheet("font-weight: bold;")
+        class_label.setProperty("role", "section")
         content_layout.addWidget(class_label)
         
         self.route_class_spin = QSpinBox()
@@ -1298,7 +1279,7 @@ class RouteStatsWidget(QWidget):
         
         # Travel type section
         travel_type_label = QLabel("Base Travel Type:")
-        travel_type_label.setStyleSheet("font-weight: bold;")
+        travel_type_label.setProperty("role", "section")
         content_layout.addWidget(travel_type_label)
         
         self.travel_type_combo = QComboBox()
@@ -1312,7 +1293,7 @@ class RouteStatsWidget(QWidget):
         
         # Hazards section
         hazards_label = QLabel("Hazards:")
-        hazards_label.setStyleSheet("font-weight: bold;")
+        hazards_label.setProperty("role", "section")
         content_layout.addWidget(hazards_label)
         
         # Create checkboxes for each hazard
@@ -1494,17 +1475,14 @@ class TravelCalculatorWidget(QWidget):
         
         # Title
         title_label = QLabel("Travel Calculator")
-        title_font = QFont()
-        title_font.setPointSize(14)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
+        title_label.setProperty("role", "title")
         layout.addWidget(title_label)
         
         layout.addSpacing(10)
         
         # No route selected message (initially visible)
         self.no_route_label = QLabel("No route selected")
-        self.no_route_label.setStyleSheet("color: gray; font-style: italic;")
+        self.no_route_label.setProperty("role", "hint")
         self.no_route_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.no_route_label)
         
@@ -1515,17 +1493,14 @@ class TravelCalculatorWidget(QWidget):
         
         # Route name display
         self.route_name_label = QLabel()
-        route_name_font = QFont()
-        route_name_font.setPointSize(12)
-        route_name_font.setBold(True)
-        self.route_name_label.setFont(route_name_font)
+        self.route_name_label.setProperty("role", "subtitle")
         content_layout.addWidget(self.route_name_label)
         
         content_layout.addSpacing(10)
         
         # Hyperdrive rating selection
         hyperdrive_label = QLabel("Hyperdrive Rating:")
-        hyperdrive_label.setStyleSheet("font-weight: bold;")
+        hyperdrive_label.setProperty("role", "section")
         content_layout.addWidget(hyperdrive_label)
         
         self.hyperdrive_combo = QComboBox()
@@ -1538,7 +1513,7 @@ class TravelCalculatorWidget(QWidget):
         
         # Read-only display values
         info_label = QLabel("Route Information:")
-        info_label.setStyleSheet("font-weight: bold;")
+        info_label.setProperty("role", "section")
         content_layout.addWidget(info_label)
         
         # Route length
@@ -1561,7 +1536,7 @@ class TravelCalculatorWidget(QWidget):
         
         # Calculated values
         calc_label = QLabel("Estimated Travel:")
-        calc_label.setStyleSheet("font-weight: bold;")
+        calc_label.setProperty("role", "section")
         content_layout.addWidget(calc_label)
         
         self.speed_display = QLabel("Speed Factor: 1.0x")
@@ -1572,7 +1547,7 @@ class TravelCalculatorWidget(QWidget):
         
         # Placeholder for fuel estimate
         self.fuel_display = QLabel("Fuel Estimate: TBD")
-        self.fuel_display.setStyleSheet("color: gray; font-style: italic;")
+        self.fuel_display.setProperty("role", "hint")
         content_layout.addWidget(self.fuel_display)
         
         content_layout.addStretch()
@@ -1682,6 +1657,7 @@ class StatsInspector(QWidget):
         """
         super().__init__(parent)
         self.system_items = system_items_dict
+        self.setObjectName("statsInspector")
         
         # Create layout
         layout = QVBoxLayout(self)
@@ -1699,11 +1675,22 @@ class StatsInspector(QWidget):
         self.route_stats_widget.route_data_changed.connect(self.calculator_widget.update_calculations)
         
         # Add tabs
-        self.tab_widget.addTab(self.system_stats_widget, "System")
-        self.tab_widget.addTab(self.route_stats_widget, "Route")
-        self.tab_widget.addTab(self.calculator_widget, "Calculator")
+        self.system_scroll = self._scroll_tab(self.system_stats_widget)
+        self.route_scroll = self._scroll_tab(self.route_stats_widget)
+        self.calculator_scroll = self._scroll_tab(self.calculator_widget)
+        self.tab_widget.addTab(self.system_scroll, "System")
+        self.tab_widget.addTab(self.route_scroll, "Route")
+        self.tab_widget.addTab(self.calculator_scroll, "Calculator")
         
         layout.addWidget(self.tab_widget)
+
+    @staticmethod
+    def _scroll_tab(content):
+        scroll = QScrollArea()
+        scroll.setObjectName("statsScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(content)
+        return scroll
     
     def set_selected_system(self, system_data: Optional[SystemData]):
         """Set the selected system and switch to System tab.
@@ -1713,7 +1700,7 @@ class StatsInspector(QWidget):
         """
         self.system_stats_widget.set_system(system_data)
         if system_data is not None:
-            self.tab_widget.setCurrentWidget(self.system_stats_widget)
+            self.tab_widget.setCurrentWidget(self.system_scroll)
     
     def set_selected_route(self, route_item: Optional[RouteItem]):
         """Set the selected route and switch to Route tab.
@@ -1724,7 +1711,7 @@ class StatsInspector(QWidget):
         self.route_stats_widget.set_route(route_item)
         self.calculator_widget.set_route(route_item)
         if route_item is not None:
-            self.tab_widget.setCurrentWidget(self.route_stats_widget)
+            self.tab_widget.setCurrentWidget(self.route_scroll)
     
     def clear_selection(self):
         """Clear all selections (no system or route selected)."""
@@ -1793,7 +1780,8 @@ class StarMapEditor(QMainWindow):
         
         # Create mode button bar (wrapped in widget with fixed height)
         self.mode_toolbar_widget = QWidget()
-        self.mode_toolbar_widget.setFixedHeight(40)
+        self.mode_toolbar_widget.setProperty("role", "toolbar")
+        self.mode_toolbar_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         mode_layout = QHBoxLayout(self.mode_toolbar_widget)
         mode_layout.setContentsMargins(4, 2, 4, 2)
         mode_layout.setSpacing(4)
@@ -1855,7 +1843,8 @@ class StarMapEditor(QMainWindow):
         
         # Create pan sensitivity controls (always visible, wrapped in widget with fixed height)
         self.pan_sensitivity_widget = QWidget()
-        self.pan_sensitivity_widget.setFixedHeight(28)
+        self.pan_sensitivity_widget.setProperty("role", "toolbar")
+        self.pan_sensitivity_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         pan_sensitivity_layout = QHBoxLayout(self.pan_sensitivity_widget)
         pan_sensitivity_layout.setContentsMargins(4, 2, 4, 2)
         pan_sensitivity_layout.setSpacing(4)
@@ -1876,10 +1865,6 @@ class StarMapEditor(QMainWindow):
         pan_sensitivity_layout.addStretch()
         main_layout.addWidget(self.pan_sensitivity_widget)
         
-        # Create status label for mode indication (before toolbars, so we can embed it)
-        self.status_label = QLabel()
-        self.status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
-        
         # Create workspace toolbar (visible only in template mode)
         self.workspace_toolbar = self.create_workspace_toolbar()
         main_layout.addWidget(self.workspace_toolbar)
@@ -1890,20 +1875,18 @@ class StarMapEditor(QMainWindow):
         main_layout.addWidget(self.routes_toolbar)
         self.routes_toolbar.hide()
         
-        # Create fallback status bar (visible when no toolbar with status is shown)
+        # Shared status bar, independent of the currently active workspace.
         self.fallback_status_widget = QWidget()
-        self.fallback_status_widget.setFixedHeight(24)
-        self.fallback_status_widget.setStyleSheet("QWidget { background-color: #e0e0e0; }")
+        self.fallback_status_widget.setProperty("role", "toolbar")
+        self.fallback_status_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         fallback_status_layout = QHBoxLayout(self.fallback_status_widget)
         fallback_status_layout.setContentsMargins(4, 2, 4, 2)
         fallback_status_layout.setSpacing(4)
-        fallback_status_layout.addStretch()
-        # Create a second status label for fallback (when no toolbar is visible)
         self.fallback_status_label = QLabel()
-        self.fallback_status_label.setStyleSheet("QLabel { padding: 5px; background-color: #f0f0f0; }")
+        self.fallback_status_label.setObjectName("mapStatus")
+        self.fallback_status_label.setWordWrap(True)
         fallback_status_layout.addWidget(self.fallback_status_label)
         main_layout.addWidget(self.fallback_status_widget)
-        self.fallback_status_widget.hide()  # Hidden by default
         
         # Update status message after toolbars are created
         self.update_status_message()
@@ -1911,6 +1894,7 @@ class StarMapEditor(QMainWindow):
         # Create graphics scene and view (need to do this before stats inspector)
         self.scene = GridOverlay()
         self.view = MapView(self.scene)
+        self.view.setObjectName("mapView")
         self.view.setFocusPolicy(Qt.StrongFocus)
         self.view.system_click.connect(self.handle_system_click)
         self.view.start_route_drawing.connect(self.handle_start_route_drawing)
@@ -1948,7 +1932,9 @@ class StarMapEditor(QMainWindow):
         self.main_splitter.setSizes([1, 0])
         
         # Add splitter to main_layout instead of adding view and stats_inspector vertically
-        main_layout.addWidget(self.main_splitter)
+        main_layout.addWidget(self.main_splitter, 1)
+        apply_theme(self, "starmap")
+        self.view.zoom_indicator.adjustSize()
         
         # Apply dark mode by default
         self.apply_dark_mode()
@@ -2032,10 +2018,13 @@ class StarMapEditor(QMainWindow):
     def create_workspace_toolbar(self) -> QWidget:
         """Create the workspace toolbar for template mode."""
         toolbar_widget = QWidget()
-        toolbar_widget.setFixedHeight(32)
-        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; }")
-        toolbar_layout = QHBoxLayout(toolbar_widget)
-        toolbar_layout.setContentsMargins(4, 2, 4, 2)
+        toolbar_widget.setProperty("role", "toolbar")
+        toolbar_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        rows = QVBoxLayout(toolbar_widget)
+        rows.setContentsMargins(8, 5, 8, 5)
+        rows.setSpacing(4)
+        toolbar_layout = QHBoxLayout()
+        rows.addLayout(toolbar_layout)
         toolbar_layout.setSpacing(4)
         
         # Load Template button
@@ -2076,6 +2065,9 @@ class StarMapEditor(QMainWindow):
         self.opacity_label = QLabel('100%')
         self.opacity_label.setMinimumWidth(40)
         toolbar_layout.addWidget(self.opacity_label)
+        toolbar_layout.addStretch()
+        toolbar_layout = QHBoxLayout()
+        rows.addLayout(toolbar_layout)
         
         # Template Scale controls (IMAGE LAYER: affects pixmap rendering only)
         toolbar_layout.addWidget(QLabel('Template Scale:'))
@@ -2108,36 +2100,17 @@ class StarMapEditor(QMainWindow):
         
         toolbar_layout.addStretch()
         
-        # Add status label (right-aligned)
-        toolbar_layout.addWidget(self.status_label)
         
         return toolbar_widget
     
     def create_routes_toolbar(self) -> QWidget:
-        """Create the workspace toolbar for routes mode - compact 3-row design."""
+        """Create the workspace toolbar for routes mode - compact 2-row design."""
         toolbar_widget = QWidget()
-        toolbar_widget.setFixedHeight(80)
-        toolbar_widget.setStyleSheet("QWidget { background-color: #e0e0e0; }")
+        toolbar_widget.setProperty("role", "toolbar")
+        toolbar_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         toolbar_layout = QVBoxLayout(toolbar_widget)
         toolbar_layout.setContentsMargins(4, 2, 4, 2)
         toolbar_layout.setSpacing(2)  # Minimal spacing between rows (vertical layout)
-        
-        # === Row 1: Route creation instructions ===
-        row1_layout = QHBoxLayout()
-        row1_layout.setSpacing(5)
-        
-        # Info label for polyline route creation (smaller font)
-        info_label = QLabel('Click System A → intermediate points → System B | ESC/Right-click to cancel')
-        info_label.setStyleSheet("color: #555; font-style: italic; font-size: 9pt;")
-        row1_layout.addWidget(info_label)
-        
-        row1_layout.addStretch()
-        
-        # Add status label (right-aligned, smaller)
-        self.status_label.setStyleSheet("QLabel { padding: 2px; background-color: #f0f0f0; font-size: 9pt; }")
-        row1_layout.addWidget(self.status_label)
-        
-        toolbar_layout.addLayout(row1_layout)
         
         # === Row 2: Route selection and grouping ===
         row2_layout = QHBoxLayout()
@@ -2145,14 +2118,12 @@ class StarMapEditor(QMainWindow):
         
         # Current Route label and dropdown
         route_label = QLabel('Route:')
-        route_label.setStyleSheet("font-size: 9pt;")
         row2_layout.addWidget(route_label)
         
         # Route selection dropdown (more compact)
         self.route_selector = QComboBox()
         self.route_selector.setMinimumWidth(150)
         self.route_selector.setMaximumWidth(250)
-        self.route_selector.setStyleSheet("QComboBox { font-size: 9pt; }")
         self.route_selector.currentIndexChanged.connect(self.on_route_selector_changed)
         row2_layout.addWidget(self.route_selector)
         
@@ -2160,14 +2131,13 @@ class StarMapEditor(QMainWindow):
         
         # Create Route Group button (smaller)
         self.create_group_btn = QPushButton('Create Group')
-        self.create_group_btn.setStyleSheet("QPushButton { font-size: 9pt; padding: 2px 8px; }")
         self.create_group_btn.setToolTip('Create a route group from selected routes (CTRL+Click to select)')
         self.create_group_btn.clicked.connect(self.create_route_group_dialog)
         row2_layout.addWidget(self.create_group_btn)
         
         # Info label for grouping (smaller)
         group_info_label = QLabel('CTRL+Click routes to select')
-        group_info_label.setStyleSheet("color: #555; font-style: italic; font-size: 8pt;")
+        group_info_label.setProperty("role", "hint")
         row2_layout.addWidget(group_info_label)
         
         row2_layout.addStretch()
@@ -2180,43 +2150,37 @@ class StarMapEditor(QMainWindow):
         
         # Compact system chain display (inline text instead of list widget)
         chain_label = QLabel('Systems:')
-        chain_label.setStyleSheet("font-size: 9pt;")
         row3_layout.addWidget(chain_label)
         
         # Use a label instead of QListWidget for compact display
         self.route_system_chain_label = QLabel('(No route selected)')
-        self.route_system_chain_label.setStyleSheet("QLabel { background-color: white; padding: 2px 5px; border: 1px solid #aaa; font-size: 9pt; }")
+        self.route_system_chain_label.setObjectName("routeChain")
+        self.route_system_chain_label.setWordWrap(True)
         self.route_system_chain_label.setMinimumWidth(150)
         row3_layout.addWidget(self.route_system_chain_label)
         
         row3_layout.addSpacing(10)
         
         # Action buttons for route editing (smaller, compact)
-        button_style = "QPushButton { font-size: 9pt; padding: 2px 6px; }"
-        
         self.insert_system_btn = QPushButton('Insert')
-        self.insert_system_btn.setStyleSheet(button_style)
         self.insert_system_btn.setToolTip('Insert selected system into route')
         self.insert_system_btn.clicked.connect(self.insert_system_into_route)
         self.insert_system_btn.setEnabled(False)
         row3_layout.addWidget(self.insert_system_btn)
         
         self.remove_system_btn = QPushButton('Remove')
-        self.remove_system_btn.setStyleSheet(button_style)
         self.remove_system_btn.setToolTip('Remove selected system from route')
         self.remove_system_btn.clicked.connect(self.remove_system_from_route)
         self.remove_system_btn.setEnabled(False)
         row3_layout.addWidget(self.remove_system_btn)
         
         self.split_route_btn = QPushButton('Split')
-        self.split_route_btn.setStyleSheet(button_style)
         self.split_route_btn.setToolTip('Split route at selected system')
         self.split_route_btn.clicked.connect(self.split_route_at_system)
         self.split_route_btn.setEnabled(False)
         row3_layout.addWidget(self.split_route_btn)
         
         self.merge_routes_btn = QPushButton('Merge')
-        self.merge_routes_btn.setStyleSheet(button_style)
         self.merge_routes_btn.setToolTip('Merge two routes (CTRL+Click to select)')
         self.merge_routes_btn.clicked.connect(self.merge_selected_routes)
         self.merge_routes_btn.setEnabled(False)
@@ -2660,11 +2624,13 @@ class StarMapEditor(QMainWindow):
     def update_status_message(self):
         """Update the status label based on current mode."""
         if self.current_mode == 'template':
-            self.status_label.setText("Template mode active: Click to select template, drag to move, Ctrl+wheel to scale.")
+            self.fallback_status_label.setText("Template mode active: Click to select template, drag to move, Ctrl+wheel to scale.")
         elif self.current_mode == 'systems':
             self.fallback_status_label.setText("Mode: System placement – left-click to place a system, right-click to edit")
         elif self.current_mode == 'routes':
-            self.status_label.setText("Routes mode: Click system A → click intermediate points → click system B. ESC or right-click to cancel.")
+            self.fallback_status_label.setText("Routes mode: Click system A → click intermediate points → click system B. ESC or right-click to cancel.")
+        elif self.current_mode == 'stats':
+            self.fallback_status_label.setText("Stats mode: Select a system or route to inspect its statistics.")
         else:
             self.fallback_status_label.setText("Ready")
     
@@ -2674,10 +2640,7 @@ class StarMapEditor(QMainWindow):
         Args:
             text: The status text to display
         """
-        if self.current_mode in ('template', 'routes'):
-            self.status_label.setText(text)
-        else:
-            self.fallback_status_label.setText(text)
+        self.fallback_status_label.setText(text)
     
     def set_mode(self, mode: Optional[str]):
         """Set the current editor mode.
@@ -2693,17 +2656,6 @@ class StarMapEditor(QMainWindow):
         self.routes_btn.setChecked(mode == 'routes')
         self.zones_btn.setChecked(mode == 'zones')
         self.stats_btn.setChecked(mode == 'stats')
-        
-        # Update button styles
-        for btn, btn_mode in [(self.template_btn, 'template'),
-                               (self.systems_btn, 'systems'), 
-                               (self.routes_btn, 'routes'),
-                               (self.zones_btn, 'zones'),
-                               (self.stats_btn, 'stats')]:
-            if mode == btn_mode:
-                btn.setStyleSheet("QPushButton:checked { background-color: #90EE90; }")
-            else:
-                btn.setStyleSheet("")
         
         # Update view mode
         self.view.systems_mode_active = (mode == 'systems')
@@ -2723,14 +2675,12 @@ class StarMapEditor(QMainWindow):
         if mode == 'template':
             self.workspace_toolbar.show()
             self.routes_toolbar.hide()
-            self.fallback_status_widget.hide()
             self.stats_inspector.hide()
             # Collapse stats sidebar (main_splitter is always initialized in __init__)
             self.main_splitter.setSizes([1, 0])
         elif mode == 'routes':
             self.workspace_toolbar.hide()
             self.routes_toolbar.show()
-            self.fallback_status_widget.hide()
             self.stats_inspector.hide()
             # Collapse stats sidebar
             self.main_splitter.setSizes([1, 0])
@@ -2739,7 +2689,6 @@ class StarMapEditor(QMainWindow):
         elif mode == 'stats':
             self.workspace_toolbar.hide()
             self.routes_toolbar.hide()
-            self.fallback_status_widget.hide()
             self.stats_inspector.show()
             # Map : Stats ≈ 3 : 1
             # Calculate reasonable sizes for stats sidebar

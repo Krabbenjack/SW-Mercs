@@ -18,7 +18,9 @@ The common SW-Mercs visual identity is a dark, navy/steel-blue technical console
 | Success | `#81C8A4` | Validated/ready |
 | Warning | `#E2BF83` | Pending/caution |
 
-The launcher loads `resources/styles/launcher.qss` on its own window. The shared design reference is `resources/styles/swmercs.qss`; gradually adopt it across editors after testing their original visual behavior. Do not apply theme colors to the star-map scene, route classes, hazards, system markers, or other semantically color-coded graphics without separate review.
+The shared stylesheet is `resources/styles/swmercs.qss`. The helper `app/shared/theme.py` loads it before the module-specific stylesheet (`launcher.qss` or `starmap.qss`) on the window, so separate tools do not overwrite each other's appearance. Future editors can use the same helper with their own stylesheet (e.g. `starships.qss`). Small UI icons live in `resources/icons/ui/`.
+
+The Star Map Editor now uses this common design for its menus, controls, dialogs, statistics sidebar, and zoom/status displays. Its View → Dark/Light Mode actions still switch the map scene colors, independent of the dark application chrome. Do not apply theme colors to the star-map scene, route classes, hazards, system markers, or other semantically color-coded graphics without separate review.
 
 ## Navigation and planned modules
 
