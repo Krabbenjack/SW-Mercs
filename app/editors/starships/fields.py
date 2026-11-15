@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QSplitter, QMessageBox,
 )
 
-from .schema import DIRECTIONS, WEAPON_SIZE_CLASSES, SILHOUETTE_CLASSES, MIN_SHIP_SILHOUETTE, size_label
+from .schema import (DIRECTIONS, WEAPON_SIZE_CLASSES, SILHOUETTE_CLASSES, MIN_SHIP_SILHOUETTE,
+                     size_label, RANGE_BANDS, MIN_RATING, MAX_RATING)
 from .store import CatalogError
 
 
@@ -85,6 +86,55 @@ def show_silhouette_help(parent):
     source.setWordWrap(True)
     source.setProperty("role", "muted")
     layout.addWidget(source)
+    buttons = QDialogButtonBox(QDialogButtonBox.Close)
+    buttons.rejected.connect(dialog.reject)
+    layout.addWidget(buttons)
+    dialog.exec()
+
+
+def show_range_help(parent):
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Sensor and weapon range · FFG")
+    dialog.resize(500, 340)
+    layout = QVBoxLayout(dialog)
+    hint = QLabel("Select the maximum effective range band. Sensors and weapons use the same "
+                  "ordered scale. Physical distances and combat rules will be defined later.")
+    hint.setWordWrap(True)
+    layout.addWidget(hint)
+    table = QTableWidget(len(RANGE_BANDS), 2)
+    table.setHorizontalHeaderLabels(["ID", "Range band"])
+    table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    table.verticalHeader().hide()
+    table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+    table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+    for row, (key, label) in enumerate(RANGE_BANDS.items()):
+        table.setItem(row, 0, QTableWidgetItem(str(key)))
+        table.setItem(row, 1, QTableWidgetItem(label))
+    layout.addWidget(table)
+    buttons = QDialogButtonBox(QDialogButtonBox.Close)
+    buttons.rejected.connect(dialog.reject)
+    layout.addWidget(buttons)
+    dialog.exec()
+
+
+def show_rating_help(parent, key):
+    tracking = key == "tracking"
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Tracking" if tracking else "Maneuverability")
+    dialog.resize(520, 230)
+    layout = QVBoxLayout(dialog)
+    hint = QLabel(
+        "Tracking measures how well a weapon can follow an agile target. "
+        "0 = minimal tracking; 10 = excellent tracking." if tracking else
+        "Maneuverability measures how well a vessel can change direction and evade fire. "
+        "0 = stationary or effectively immobile; 10 = exceptionally agile.")
+    hint.setWordWrap(True)
+    layout.addWidget(hint)
+    scale = QLabel("0–10 · Higher is better. Unknown is distinct from 0. "
+                   "Tracking will be compared against target maneuverability in a future combat system; "
+                   "no hit chance is calculated yet.")
+    scale.setWordWrap(True)
+    layout.addWidget(scale)
     buttons = QDialogButtonBox(QDialogButtonBox.Close)
     buttons.rejected.connect(dialog.reject)
     layout.addWidget(buttons)
@@ -377,7 +427,8 @@ class WeaponLoadoutDialog(QDialog):
                       else "Too large for this ship." if size > limit else "Compatible size.")
             item.setToolTip(reason + "\n" + ("\n".join(f"{pretty}: {value}" for pretty, value in (
                 ("Type", stats["weapon_type"]), ("Damage", stats["damage"]),
-                ("Range (km)", stats["range_km"]), ("Rate of fire", stats["rate_of_fire"]))
+                ("Range", RANGE_BANDS.get(stats["range"])), ("Tracking", stats["tracking"]),
+                ("Rate of fire", stats["rate_of_fire"]))
                 if value is not None) or "No weapon statistics yet"))
         source_layout.addWidget(self.catalog, 1)
         add = QPushButton("Add selected weapon")
@@ -497,6 +548,23 @@ class FieldInput(QWidget):
         elif kind == "bool":
             self.input = choice({True: "Yes", False: "No"})
             self.input.currentIndexChanged.connect(lambda *_: self.changed.emit())
+        elif kind in ("range_band", "rating"):
+            self.input = (choice(RANGE_BANDS, show_id=True) if kind == "range_band"
+                          else choice({value: str(value) for value in range(MIN_RATING, MAX_RATING + 1)}))
+            self.input.currentIndexChanged.connect(lambda *_: self.changed.emit())
+            row = QHBoxLayout()
+            row.addWidget(self.input, 1)
+            self.help_button = QPushButton("?")
+            self.help_button.setFixedWidth(32)
+            self.help_button.setToolTip(f"Explain {field.label.lower()}")
+            self.help_button.setAccessibleName(f"{field.label} help")
+            if kind == "range_band":
+                self.help_button.clicked.connect(lambda: show_range_help(self))
+            else:
+                self.help_button.clicked.connect(lambda: show_rating_help(self, field.key))
+            row.addWidget(self.help_button)
+            layout.addLayout(row)
+            return
         elif kind in ("size_class", "size_limit"):
             self.input = choice({size: size_label(size) for size in WEAPON_SIZE_CLASSES})
             self.input.setItemText(0, "Unclassified" if kind == "size_class" else "Automatic")

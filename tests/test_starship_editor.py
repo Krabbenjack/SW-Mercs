@@ -54,14 +54,32 @@ def main():
         QTimer.singleShot(0, check_help)
         size_input.help_button.click()
         assert help_results == [True]
+        range_input = weapons.form.inputs[("weapon", "range")]
+        assert range_input.value() is None
+        range_input.set_value(1)
+        weapons.form.inputs[("weapon", "tracking")].set_value(8)
+        def check_range_help():
+            dialog = QApplication.activeModalWidget()
+            try:
+                table = dialog.findChild(QTableWidget)
+                help_results.append(table.rowCount() == 5 and table.item(4, 1).text() == "Extreme")
+            finally:
+                dialog.reject()
+        QTimer.singleShot(0, check_range_help)
+        range_input.help_button.click()
+        assert help_results.pop() is True
         weapons.save_button.click()
         assert store.read(1, True)["weapon"]["damage"] == 15
+        assert store.read(1, True)["weapon"]["range"] == 1
+        assert store.read(1, True)["weapon"]["tracking"] == 8
         heavy = blank_record("weapons", "weapons", 2, "Heavy turbolaser")
         heavy["weapon"]["size_class"] = 5
         store.save([heavy, blank_record("weapons", "weapons", 3, "Unclassified weapon")], weapons=True)
         editor.tabs.setCurrentIndex(0)
         form = ships.form
         form.inputs[("technical", "length_m")].input.setText("12.5")
+        form.inputs[("technical", "sensor_range")].set_value(2)
+        form.inputs[("technical", "maneuverability")].set_value(8)
         silhouette = form.inputs[("technical", "silhouette")]
         assert silhouette.value() is None
         assert all(silhouette.input.findData(size) == -1 for size in (0, 1, 2))
@@ -94,6 +112,8 @@ def main():
             try:
                 assert isinstance(dialog, WeaponLoadoutDialog)
                 assert dialog.catalog.count() == 3
+                assert "Range: Close" in dialog.catalog.item(0).toolTip()
+                assert "Tracking: 8" in dialog.catalog.item(0).toolTip()
                 assert not dialog.catalog.item(1).flags() & Qt.ItemIsEnabled
                 assert not dialog.catalog.item(2).flags() & Qt.ItemIsEnabled
                 dialog.mounts.add_weapon(2)
@@ -145,6 +165,8 @@ def main():
         record = store.read(1001)
         assert record["technical"]["length_m"] == 12.5
         assert record["technical"]["silhouette"] == 3
+        assert record["technical"]["sensor_range"] == 2
+        assert record["technical"]["maneuverability"] == 8
         assert len(record["general"]["factions"]) == 2
         assert record["combat"]["weapons"] == [
             {"weapon_id": 1, "quantity": 4, "direction": "Starboard", "ammunition_capacity": 0}]
@@ -186,8 +208,16 @@ def main():
         silhouette.input.setCurrentIndex(silhouette.input.findData("custom"))
         silhouette.custom_silhouette.setText("12")
         assert silhouette.value() == 12
+        station_rating = ships.form.inputs[("technical", "maneuverability")]
+        assert station_rating.value() is None
+        station_rating.set_value(0)
+        assert station_rating.value() == 0
+        ships.form.inputs[("technical", "sensor_range")].set_value(5)
         ships.save_button.click()
         assert store.read(10001)["technical"]["silhouette"] == 12
+        assert store.read(10001)["technical"]["maneuverability"] == 0
+        assert ships.form.inputs[("technical", "maneuverability")].value() == 0
+        assert ships.form.inputs[("technical", "sensor_range")].value() == 5
         assert ships.form.inputs[("technical", "silhouette")].value() == 12
         ships.tree.setCurrentItem(ships.items[6002])
         assert ships.form.forms["cargo"].isRowVisible(ships.form.inputs[("cargo", "container_slots")])

@@ -12,6 +12,8 @@ The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Com
 
 The Starship Database lists ships, stations and cargo containers by their stable master IDs. Each class has its own editable JSON file. Search, create, edit, save, import and export individual records or batches. Category-aware optional fields keep small craft forms compact without losing data. Ships and stations have an editable FFG silhouette rating (3–10 and higher for exceptional objects). The Component Database manages reusable weapons, which can be assigned through a searchable drag-and-drop equipment popup with count, firing direction and optional ammunition capacity. Six weapon size classes and editable hull limits prevent incompatible equipment, including on import; the question-mark buttons explain the classes.
 
+Sensors and weapons share five FFG-inspired range bands (Close, Short, Medium, Long, Extreme). Weapon tracking and ship/station maneuverability use integer ratings from 0–10. Distance thresholds and combat mechanics will be defined later; each field has in-editor help.
+
 Unknown fields are blank (JSON `null`); zero, false and empty lists are distinct explicit values. Imports validate IDs and references, preserve omitted fields and ask before updating existing records. See [Starship catalog](docs/STARSHIP_CATALOG.md) for the data format.
 
 The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Module-specific styles live in `resources/styles/`; the map's own light/dark rendering remains independently selectable.

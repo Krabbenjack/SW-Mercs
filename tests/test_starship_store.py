@@ -112,6 +112,66 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaises(CatalogError):
             self.store.save([{"id": 1001, "cargo": {"compatible_containers": [1002]}}])
 
+    def test_range_and_tracking_ratings(self):
+        weapon = blank_record("weapons", "weapons", 1, "Medium laser")
+        self.store.save([weapon], weapons=True)
+        for band in range(1, 6):
+            for record_id in (1001, 10001):
+                self.store.save([{"id": record_id, "technical": {"sensor_range": band}}])
+                self.assertEqual(self.store.read(record_id)["technical"]["sensor_range"], band)
+            self.store.save([{"id": 1, "weapon": {"range": band}}], weapons=True)
+            self.assertEqual(self.store.read(1, True)["weapon"]["range"], band)
+        for rating in (0, 10, None):
+            self.store.save([{"id": 1001, "technical": {"maneuverability": rating}}])
+            self.store.save([{"id": 1, "weapon": {"tracking": rating}}], weapons=True)
+            self.assertEqual(self.store.read(1001)["technical"]["maneuverability"], rating)
+            self.assertEqual(self.store.read(1, True)["weapon"]["tracking"], rating)
+        for invalid in (0, 6, -1, True, 1.0, "Close"):
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 1001, "technical": {"sensor_range": invalid}}])
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 1, "weapon": {"range": invalid}}], weapons=True)
+        for invalid in (-1, 11, False, 2.5, "8"):
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 10001, "technical": {"maneuverability": invalid}}])
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 1, "weapon": {"tracking": invalid}}], weapons=True)
+        path = self.root / "invalid-range.json"
+        path.write_bytes(json_bytes({"id": 1001, "technical": {"sensor_range": 6}}))
+        with self.assertRaises(CatalogError):
+            self.store.import_files([path])
+        self.assertEqual(self.store.read(1001)["technical"]["sensor_range"], 5)
+        self.store.save([{"id": 10001, "technical": {"maneuverability": 0}}])
+        self.store.export(path, [10001])
+        tech = self.store.import_files([path])[0]["technical"]
+        self.assertEqual((tech["sensor_range"], tech["maneuverability"]), (5, 0))
+        self.store.export(path, [1], weapons=True)
+        self.assertEqual(self.store.import_files([path], weapons=True)[0]["weapon"]["range"], 5)
+
+    def test_legacy_distances_are_not_converted_or_lost(self):
+        ship = self.store.read(1001)
+        ship["technical"].pop("sensor_range")
+        ship["technical"]["sensor_range_km"] = 12.5
+        ship["technical"]["maneuverability"] = 8.0
+        atomic_write(self.store.path("starships", "starfighters", 1001), json_bytes(ship))
+        weapon = blank_record("weapons", "weapons", 1, "Legacy laser")
+        weapon["weapon"].pop("range")
+        weapon["weapon"].pop("tracking")
+        weapon["weapon"]["range_km"] = 2
+        atomic_write(self.store.path("weapons", "weapons", 1), json_bytes(weapon))
+        self.assertIsNone(self.store.read(1001)["technical"]["sensor_range"])
+        self.assertEqual(type(self.store.read(1001)["technical"]["maneuverability"]), int)
+        self.assertIsNone(self.store.read(1, True)["weapon"]["range"])
+        self.assertIsNone(self.store.read(1, True)["weapon"]["tracking"])
+        self.store.save([{"id": 1001, "technical": {"sensor_range": 2}}])
+        self.store.save([{"id": 1, "weapon": {"range": 1, "tracking": 8}}], weapons=True)
+        self.assertEqual(self.store.read(1001)["technical"]["sensor_range_km"], 12.5)
+        self.assertEqual(self.store.read(1, True)["weapon"]["range_km"], 2)
+        ship["technical"]["maneuverability"] = 15.5
+        atomic_write(self.store.path("starships", "starfighters", 1001), json_bytes(ship))
+        self.assertIsNone(self.store.read(1001)["technical"]["maneuverability"])
+        self.assertEqual(self.store.read(1001)["technical"]["legacy_maneuverability"], 15.5)
+
     def test_invalid_batch_cannot_write(self):
         before = self.store.read(1001)
         for invalid in ({"id": 1002, "technical": {"length_m": -1}},

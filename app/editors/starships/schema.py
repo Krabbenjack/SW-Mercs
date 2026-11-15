@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 VERSION = 1
 DIRECTIONS = ("Front", "Rear", "Port", "Starboard", "Turret")
+# Shared FFG-inspired range bands. Physical distances are deliberately undefined.
+RANGE_BANDS = {1: "Close", 2: "Short", 3: "Medium", 4: "Long", 5: "Extreme"}
+MIN_RATING, MAX_RATING = 0, 10
 # FFG Age of Rebellion, Core Rulebook p. 236: relative size and mass.
 # Labels are UI shorthand, not mandatory hull types or length thresholds.
 MIN_SHIP_SILHOUETTE = 3
@@ -69,12 +72,12 @@ TECHNICAL = (
     F("sublight_mglt", "Sublight speed", "number", "MGLT"),
     F("atmospheric_speed_kmh", "Atmospheric speed", "number", "km/h"),
     F("acceleration", "Acceleration", "number", "game value"),
-    F("maneuverability", "Maneuverability", "number", "game value"),
+    F("maneuverability", "Maneuverability", "rating", "0–10"),
     F("hyperdrive_class", "Hyperdrive class", "number", "multiplier (0 = none)"),
     F("backup_hyperdrive_class", "Backup hyperdrive class", "number", "multiplier (0 = none)"),
     F("atmospheric_capability", "Atmospheric capability", "bool"),
     F("landing_capability", "Landing capability", "bool"),
-    F("sensor_range_km", "Sensor range", "number", "km"),
+    F("sensor_range", "Sensor range", "range_band"),
     F("communication_system", "Communication system"),
     F("tractor_beams", "Tractor beams", "int"),
 )
@@ -152,7 +155,8 @@ CONTAINER = (
 WEAPON = (
     F("weapon_type", "Weapon type"), F("size_class", "Weapon size class", "size_class"),
     F("damage", "Damage", "number", "game value"),
-    F("range_km", "Range", "number", "km"), F("rate_of_fire", "Rate of fire", "number", "shots/s"),
+    F("range", "Range", "range_band"), F("tracking", "Tracking", "rating", "0–10"),
+    F("rate_of_fire", "Rate of fire", "number", "shots/s"),
     F("projectile_speed_km_s", "Projectile speed", "number", "km/s"),
     F("ammunition_type", "Ammunition type"), F("description", "Description", "long"),
 )
@@ -175,7 +179,7 @@ def sections_for(object_type):
         sections = dict(SHIP_SECTIONS)
         # Stations have no assumed propulsion/landing or fuel requirements.
         sections["technical"] = ("Technical", tuple(f for f in TECHNICAL if f.key in
-                                  {"length_m", "silhouette", "sensor_range_km", "communication_system", "tractor_beams"}))
+                                  {"length_m", "silhouette", "maneuverability", "sensor_range", "communication_system", "tractor_beams"}))
         sections["cargo"] = ("Cargo", CARGO[:5])
         sections["station"] = ("Station", STATION)
         return sections

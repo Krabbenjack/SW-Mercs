@@ -8,7 +8,8 @@ from tempfile import NamedTemporaryFile
 
 from app.shared.paths import DATA_DIR
 from .schema import (VERSION, DIRECTIONS, OBJECT_FOLDERS, blank_record, sections_for, visibility_groups,
-                     WEAPON_SIZE_CLASSES, effective_weapon_limit, size_label, MIN_SHIP_SILHOUETTE)
+                     WEAPON_SIZE_CLASSES, effective_weapon_limit, size_label, MIN_SHIP_SILHOUETTE,
+                     RANGE_BANDS, MIN_RATING, MAX_RATING)
 
 
 class CatalogError(ValueError):
@@ -202,6 +203,10 @@ class CatalogStore:
             ok = type(value) is int and value >= MIN_SHIP_SILHOUETTE
         elif kind in ("size_class", "size_limit"):
             ok = type(value) is int and value in WEAPON_SIZE_CLASSES
+        elif kind == "range_band":
+            ok = type(value) is int and value in RANGE_BANDS
+        elif kind == "rating":
+            ok = type(value) is int and MIN_RATING <= value <= MAX_RATING
         elif kind == "bool":
             ok = type(value) is bool
         elif kind in ("goods", "facility"):
@@ -261,9 +266,36 @@ class CatalogStore:
             raise CatalogError(f"Unknown fields: {', '.join(sorted(unknown))}")
         for section, (_, fields) in sections_for(object_type).items():
             supplied = incoming.get(section, {})
-            if not isinstance(supplied, dict) or set(supplied) - {field.key for field in fields}:
+            allowed = {field.key for field in fields}
+            legacy_key = {"technical": "sensor_range_km", "weapon": "range_km"}.get(section)
+            if legacy_key:
+                allowed.add(legacy_key)
+            if section == "technical":
+                allowed.add("legacy_maneuverability")
+            if not isinstance(supplied, dict) or set(supplied) - allowed:
                 raise CatalogError(f"Invalid/unknown fields in {section}")
+            # Old forms wrote unrestricted numeric maneuverability, including 8.0.
+            if (section == "technical" and "sensor_range_km" in supplied
+                    and "sensor_range" not in supplied
+                    and self._number(supplied.get("maneuverability"))):
+                supplied = dict(supplied)
+                value = supplied["maneuverability"]
+                if MIN_RATING <= value <= MAX_RATING and int(value) == value:
+                    supplied["maneuverability"] = int(value)
+                else:
+                    supplied["legacy_maneuverability"] = value
+                    supplied["maneuverability"] = None
             record[section].update(supplied)
+            if ("legacy_maneuverability" in record[section]
+                    and not self._number(record[section]["legacy_maneuverability"])):
+                raise CatalogError("Invalid legacy maneuverability")
+            # Preserve old distance data without guessing a new range band.
+            if legacy_key in record[section]:
+                old = record[section][legacy_key]
+                if old is None:
+                    record[section].pop(legacy_key)
+                elif not self._number(old):
+                    raise CatalogError(f"Invalid legacy distance for {legacy_key}: {old!r}")
             for field in fields:
                 self._validate_field(field, record[section][field.key])
         return record
