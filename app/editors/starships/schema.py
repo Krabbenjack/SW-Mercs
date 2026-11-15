@@ -3,6 +3,34 @@ from dataclasses import dataclass
 
 VERSION = 1
 DIRECTIONS = ("Front", "Rear", "Port", "Starboard", "Turret")
+WEAPON_SIZE_CLASSES = {
+    1: ("Light", "Light laser / ion cannon", "Light fighters"),
+    2: ("Medium", "Medium laser cannon / proton torpedo launcher", "X-Wing, Y-Wing"),
+    3: ("Heavy", "Heavy laser cannon / heavy missile launcher", "Gunships, armed freighters"),
+    4: ("Capital Light", "Light turbolaser / medium naval gun", "Corvettes, frigates"),
+    5: ("Capital Heavy", "Heavy turbolaser battery / heavy ion cannon", "Cruisers, Star Destroyers"),
+    6: ("Super Heavy", "Super-heavy naval gun", "Super Star Destroyers, fortress stations"),
+}
+
+
+def size_label(size):
+    return f"{size} · {WEAPON_SIZE_CLASSES[size][0]}" if size in WEAPON_SIZE_CLASSES else "Unclassified"
+
+
+def default_weapon_limit(record):
+    """Provisional game-design defaults, overridable for each hull."""
+    exceptions = {2001: 1, 9012: 6}
+    return exceptions.get(record["id"], {
+        "starfighters": 2, "imperial_starfighters": 2, "gunships": 3, "shuttles": 2,
+        "freighters_light_medium": 3, "freighters_heavy_logistics": 3,
+        "corvettes_patrol": 4, "frigates_cruisers": 4, "capital_ships": 5,
+        "defense_platforms": 5, "industrial_research": 4,
+    }.get(record["category"], 2))
+
+
+def effective_weapon_limit(record):
+    value = record.get("combat", {}).get("max_weapon_size_class")
+    return default_weapon_limit(record) if value is None else value
 OBJECT_FOLDERS = {"starships": "ships", "stations": "stations", "cargo_containers": "containers"}
 
 
@@ -43,6 +71,7 @@ CREW = tuple(F(key, label, "int") for key, label in (
 COMBAT = (
     F("hull", "Hull strength", "number"), F("armor", "Armor", "number"),
     F("shields", "Shield strength", "number"), F("shield_recharge_rate", "Shield recharge rate", "number"),
+    F("max_weapon_size_class", "Maximum weapon size", "size_limit"),
     F("weapons", "Weapon systems", "weapons"), F("countermeasures", "Countermeasures"),
     F("electronic_warfare", "Electronic warfare"),
 )
@@ -104,7 +133,8 @@ CONTAINER = (
     F("hazardous_goods", "Hazardous goods", "bool"),
 )
 WEAPON = (
-    F("weapon_type", "Weapon type"), F("damage", "Damage", "number", "game value"),
+    F("weapon_type", "Weapon type"), F("size_class", "Weapon size class", "size_class"),
+    F("damage", "Damage", "number", "game value"),
     F("range_km", "Range", "number", "km"), F("rate_of_fire", "Rate of fire", "number", "shots/s"),
     F("projectile_speed_km_s", "Projectile speed", "number", "km/s"),
     F("ammunition_type", "Ammunition type"), F("description", "Description", "long"),
@@ -160,7 +190,8 @@ def visibility_groups(record):
         "hangar": ("Hangar", False, tuple(("hangar", key) for key in
                                          ("starfighter_capacity", "shuttle_capacity", "hangar_capacity"))),
         "repair": ("Repair facilities", False, (("hangar", "repair_capability"),)),
-        "armed": ("Weapons", kind == "starships" or category == "defense_platforms", (("combat", "weapons"),)),
+        "armed": ("Weapons", kind == "starships" or category == "defense_platforms",
+                  (("combat", "max_weapon_size_class"), ("combat", "weapons"))),
         "shielded": ("Shields", True, (("combat", "shields"), ("combat", "shield_recharge_rate"))),
         "tractor_beams": ("Tractor beams", not small, (("technical", "tractor_beams"),)),
     }

@@ -7,7 +7,8 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from app.shared.paths import DATA_DIR
-from .schema import VERSION, DIRECTIONS, OBJECT_FOLDERS, blank_record, sections_for, visibility_groups
+from .schema import (VERSION, DIRECTIONS, OBJECT_FOLDERS, blank_record, sections_for, visibility_groups,
+                     WEAPON_SIZE_CLASSES, effective_weapon_limit, size_label)
 
 
 class CatalogError(ValueError):
@@ -161,6 +162,27 @@ class CatalogStore:
             return {key: value[2] for key, value in self.weapon_entries().items()}
         return {}
 
+    def weapon_sizes(self):
+        return {key: self.read(key, weapons=True)["weapon"]["size_class"]
+                for key in self.weapon_entries()}
+
+    def validate_loadout_sizes(self, mounts, limit, previous=None, sizes=None):
+        """Preserve unchanged legacy unclassified mounts, but never add new ones."""
+        if not mounts:
+            return
+        sizes = self.weapon_sizes() if sizes is None else sizes
+        legacy = list(previous or [])
+        for mount in mounts:
+            weapon_id = mount["weapon_id"]
+            size = sizes.get(weapon_id)
+            if size is None:
+                if mount in legacy:
+                    legacy.remove(mount)
+                    continue
+                raise CatalogError(f"Weapon {weapon_id} needs a size class before assignment.")
+            if size > limit:
+                raise CatalogError(f"Weapon {weapon_id} ({size_label(size)}) exceeds the ship limit ({size_label(limit)}).")
+
     @staticmethod
     def _number(value, integer=False):
         if type(value) is int:
@@ -176,6 +198,8 @@ class CatalogStore:
             ok = isinstance(value, str)
         elif kind in ("number", "int"):
             ok = self._number(value, kind == "int")
+        elif kind in ("size_class", "size_limit"):
+            ok = type(value) is int and value in WEAPON_SIZE_CLASSES
         elif kind == "bool":
             ok = type(value) is bool
         elif kind in ("goods", "facility"):
@@ -262,8 +286,33 @@ class CatalogStore:
                 block = 1000 if record["object_type"] == "starships" else 100
                 if not ids or record_id // block != min(ids) // block:
                     raise CatalogError(f"ID {record_id} is outside its category range")
+            if not weapons and "combat" in record:
+                self.validate_loadout_sizes(record["combat"]["weapons"], effective_weapon_limit(record),
+                                            (base or {}).get("combat", {}).get("weapons"))
             result.append(record)
+        if weapons:
+            self._validate_weapon_size_updates(result)
         return result
+
+    def _validate_weapon_size_updates(self, records):
+        # A catalog edit must not silently invalidate equipment on other hulls.
+        existing = self.weapon_sizes()
+        changed = {record["id"]: record["weapon"]["size_class"] for record in records
+                   if record["id"] in existing and record["weapon"]["size_class"] != existing[record["id"]]}
+        if not changed:
+            return
+        for ship_id, (kind, _, name) in self.entries.items():
+            if kind == "cargo_containers":
+                continue
+            ship = self.read(ship_id)
+            limit = effective_weapon_limit(ship)
+            for mount in ship["combat"]["weapons"] or []:
+                if mount["weapon_id"] not in changed:
+                    continue
+                size = changed[mount["weapon_id"]]
+                if size is None or size > limit:
+                    raise CatalogError(f"Weapon {mount['weapon_id']} is installed on {name} (limit {size_label(limit)}). "
+                                       "Adjust its equipment before changing this weapon size.")
 
     def save(self, incoming, weapons=False):
         records = self.prepare(incoming, weapons)

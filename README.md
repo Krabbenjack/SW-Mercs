@@ -10,7 +10,7 @@ The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Com
 
 ### Starship Editor
 
-The Starship Database lists ships, stations and cargo containers by their stable master IDs. Each class has its own editable JSON file. Search, create, edit, save, import and export individual records or batches. Category-aware optional fields keep small craft forms compact without losing data. The Component Database manages reusable weapons, which can be assigned through a searchable drag-and-drop equipment popup with count, firing direction and optional ammunition capacity.
+The Starship Database lists ships, stations and cargo containers by their stable master IDs. Each class has its own editable JSON file. Search, create, edit, save, import and export individual records or batches. Category-aware optional fields keep small craft forms compact without losing data. The Component Database manages reusable weapons, which can be assigned through a searchable drag-and-drop equipment popup with count, firing direction and optional ammunition capacity. Six weapon size classes and editable hull limits prevent incompatible equipment, including on import; the question-mark buttons explain the classes.
 
 Unknown fields are blank (JSON `null`); zero, false and empty lists are distinct explicit values. Imports validate IDs and references, preserve omitted fields and ask before updating existing records. See [Starship catalog](docs/STARSHIP_CATALOG.md) for the data format.
 

@@ -24,6 +24,19 @@ Weapons are referenced by ID with quantity, direction (Front, Rear, Port, Starbo
 
 In the Combat tab, **Equipment · Open weapon catalog** opens a searchable popup. Drag weapons from the catalog into the ship equipment table (or double-click / use Add selected weapon). Each mount has its own count, firing direction and optional ammo capacity. Apply loadout updates the unsaved ship form; Cancel leaves the form unchanged. Save persists the record.
 
+Weapon size is independent of damage and quantity. Set `weapon.size_class` in Component Database and `combat.max_weapon_size_class` in the ship or station Combat tab. Both have a **?** button with the full guide:
+
+| ID | Class | Example | Typical carriers |
+|---:|---|---|---|
+| 1 | Light | Light laser / ion cannon | Light fighters |
+| 2 | Medium | Medium laser cannon / proton torpedo launcher | X-Wing, Y-Wing |
+| 3 | Heavy | Heavy laser cannon / heavy missile launcher | Gunships, armed freighters |
+| 4 | Capital Light | Light turbolaser | Corvettes, frigates |
+| 5 | Capital Heavy | Heavy turbolaser battery | Cruisers, Star Destroyers |
+| 6 | Super Heavy | Super-heavy naval gun | Super Star Destroyers, fortress stations |
+
+An omitted or null hull limit uses an automatic game-design default: fighter/shuttle 2 (TIE/LN 1), gunship/freighter 3, corvette/frigate/light cruiser 4, capital ship 5 (Executor 6), defense station 5, industrial station 4. Each hull may override the default. Cargo containers have no weapon limit field. Larger and unclassified weapons remain visible but disabled in the equipment catalog; only compatible sizes can be added by any interaction. Save and import enforce the same limit, including changes to the limit or referenced weapon definition. Old records missing the new keys still load; unchanged legacy unclassified mounts remain readable and saveable, but new mounts require a classified weapon.
+
 For example, after weapon 1 has been created:
 
 ```json

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 from app.shared.paths import EXPORTS_DIR
 from app.shared.theme import apply_theme
 from .fields import FieldInput
-from .schema import blank_record, sections_for, visibility_groups, group_is_visible
+from .schema import blank_record, sections_for, visibility_groups, group_is_visible, default_weapon_limit, size_label
 from .store import CatalogStore, CatalogError
 
 
@@ -88,6 +88,12 @@ class RecordForm(QWidget):
             self.tabs.addTab(scroll, title)
             self.pages[section] = scroll
         self.name.textChanged.connect(self._changed)
+        if ("combat", "max_weapon_size_class") in self.inputs:
+            limit_input = self.inputs[("combat", "max_weapon_size_class")]
+            default = default_weapon_limit(record)
+            limit_input.input.setItemText(0, f"Automatic · {size_label(default)}")
+            self.inputs[("combat", "weapons")].input.weapon_limit = (
+                lambda: limit_input.value() if limit_input.value() is not None else default)
         self._apply_visibility()
         self._update_cargo()
 

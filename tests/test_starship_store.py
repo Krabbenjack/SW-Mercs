@@ -70,6 +70,7 @@ class CatalogTests(unittest.TestCase):
     def test_weapon_and_references(self):
         weapon = blank_record("weapons", "weapons", 1, "Medium laser")
         weapon["weapon"]["damage"] = 10
+        weapon["weapon"]["size_class"] = 2
         self.store.save([weapon], weapons=True)
         loadout = [{"weapon_id": 1, "quantity": 4, "direction": "Front", "ammunition_capacity": None}]
         self.store.save([{"id": 1001, "combat": {"weapons": loadout},
@@ -99,6 +100,54 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(self.store.read(1001), before)
         with self.assertRaises(CatalogError):
             self.store.save([{"id": 1001}, {"id": 1001}])
+
+    def test_weapon_size_guards(self):
+        from app.editors.starships.schema import effective_weapon_limit
+        for ship_id, limit in ((1001, 2), (2001, 1), (5001, 3), (7001, 4), (9007, 5), (9012, 6)):
+            self.assertEqual(effective_weapon_limit(self.store.read(ship_id)), limit)
+        weapons = [blank_record("weapons", "weapons", i, f"Weapon {i}") for i in (1, 2, 3)]
+        weapons[0]["weapon"]["size_class"] = 2
+        weapons[1]["weapon"]["size_class"] = 5
+        self.store.save(weapons, weapons=True)
+        mount = {"weapon_id": 1, "quantity": 4, "direction": "Front", "ammunition_capacity": None}
+        self.store.save([{"id": 1001, "combat": {"weapons": [mount]}}])
+        for value in (0, 7, True, 2.0, "2"):
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 1, "weapon": {"size_class": value}}], weapons=True)
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 1001, "combat": {"max_weapon_size_class": value}}])
+        for weapon_id in (2, 3):
+            path = self.root / "invalid-loadout.json"
+            path.write_bytes(json_bytes({"id": 1001, "combat": {"weapons": [dict(mount, weapon_id=weapon_id)]}}))
+            with self.assertRaises(CatalogError):
+                self.store.import_files([path])
+            self.assertEqual(self.store.read(1001)["combat"]["weapons"], [mount])
+        with self.assertRaises(CatalogError):
+            self.store.save([{"id": 1001, "combat": {"max_weapon_size_class": 1}}])
+        for size in (None, 5):
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 1, "weapon": {"size_class": size}}], weapons=True)
+        self.store.save([{"id": 9007, "combat": {"weapons": [mount, dict(mount, weapon_id=2)]}}])
+        self.store.save([{"id": 1001, "combat": {"max_weapon_size_class": 5,
+                                               "weapons": [dict(mount, weapon_id=2)]}}])
+        self.assertEqual(effective_weapon_limit(self.store.read(1001)), 5)
+        with self.assertRaises(CatalogError):
+            self.store.save([{"id": 1001, "combat": {"max_weapon_size_class": None}}])
+
+    def test_legacy_unclassified_mounts_preserved(self):
+        weapon = blank_record("weapons", "weapons", 1, "Legacy")
+        weapon["weapon"].pop("size_class")
+        atomic_write(self.store.path("weapons", "weapons", 1), json_bytes(weapon))
+        record = self.store.read(1001)
+        record["combat"].pop("max_weapon_size_class")
+        mount = {"weapon_id": 1, "quantity": 1, "direction": "Front", "ammunition_capacity": None}
+        record["combat"]["weapons"] = [mount]
+        atomic_write(self.store.path("starships", "starfighters", 1001), json_bytes(record))
+        self.store.save([{"id": 1001, "general": {"manufacturer": "Test"}}])
+        with self.assertRaises(CatalogError):
+            self.store.save([{"id": 1001, "combat": {"weapons": [mount, mount]}}])
+        self.store.save([{"id": 1, "weapon": {"size_class": 2}}], weapons=True)
+        self.assertEqual(self.store.read(1001)["combat"]["weapons"], [mount])
 
     def test_export_and_import_batch(self):
         path = self.root / "export.json"

@@ -7,10 +7,11 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from PySide6.QtCore import Qt, QMimeData, QPoint, QPointF, QTimer
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtWidgets import QApplication, QMessageBox, QTableWidget
 from app.editors.starships.fields import WEAPON_MIME, WeaponLoadoutDialog
 from app.editors.starships.window import StarshipEditor
 from app.editors.starships.store import json_bytes
+from app.editors.starships.schema import blank_record
 from test_starship_store import temporary_catalog
 
 
@@ -40,8 +41,24 @@ def main():
             weapons.new_button.click()
         assert weapons.dirty and weapons.current_id == 1
         weapons.form.inputs[("weapon", "damage")].input.setText("15")
+        size_input = weapons.form.inputs[("weapon", "size_class")]
+        size_input.input.setCurrentIndex(size_input.input.findData(2))
+        help_results = []
+        def check_help():
+            dialog = QApplication.activeModalWidget()
+            try:
+                table = dialog.findChild(QTableWidget)
+                help_results.append(table.rowCount() == 6 and "Super Heavy" in table.item(5, 0).text())
+            finally:
+                dialog.reject()
+        QTimer.singleShot(0, check_help)
+        size_input.help_button.click()
+        assert help_results == [True]
         weapons.save_button.click()
         assert store.read(1, True)["weapon"]["damage"] == 15
+        heavy = blank_record("weapons", "weapons", 2, "Heavy turbolaser")
+        heavy["weapon"]["size_class"] = 5
+        store.save([heavy, blank_record("weapons", "weapons", 3, "Unclassified weapon")], weapons=True)
         editor.tabs.setCurrentIndex(0)
         form = ships.form
         form.inputs[("technical", "length_m")].input.setText("12.5")
@@ -53,12 +70,23 @@ def main():
         factions.select.setCurrentText("Civilian")
         factions.add_button.click()
         loadout = form.inputs[("combat", "weapons")].input
+        limit_input = form.inputs[("combat", "max_weapon_size_class")]
+        assert "Automatic · 2" in limit_input.input.currentText()
         failures = []
         def populate_popup(apply):
             dialog = QApplication.activeModalWidget()
             try:
                 assert isinstance(dialog, WeaponLoadoutDialog)
-                assert dialog.catalog.count() == 1
+                assert dialog.catalog.count() == 3
+                assert not dialog.catalog.item(1).flags() & Qt.ItemIsEnabled
+                assert not dialog.catalog.item(2).flags() & Qt.ItemIsEnabled
+                dialog.mounts.add_weapon(2)
+                assert dialog.mounts.table.rowCount() == 0
+                blocked = QMimeData()
+                blocked.setData(WEAPON_MIME, b"2")
+                blocked_event = QDragEnterEvent(QPoint(15, 15), Qt.CopyAction, blocked, Qt.LeftButton, Qt.NoModifier)
+                QApplication.sendEvent(dialog.mounts.table.viewport(), blocked_event)
+                assert not blocked_event.isAccepted()
                 dialog.search.setText("medium")
                 assert not dialog.catalog.item(0).isHidden()
                 mime = QMimeData()
@@ -70,6 +98,7 @@ def main():
                 drop = QDropEvent(QPointF(15, 15), Qt.CopyAction, mime, Qt.LeftButton, Qt.NoModifier)
                 QApplication.sendEvent(table.viewport(), drop)
                 assert drop.isAccepted() and table.rowCount() == 1
+                assert table.cellWidget(0, 0).findData(2) == -1
                 table.cellWidget(0, 1).setText("4")
                 table.cellWidget(0, 2).setCurrentText("Starboard")
                 table.cellWidget(0, 3).setText("0")
@@ -106,6 +135,10 @@ def main():
         assert record["hangar"]["starfighter_capacity"] == 2
         assert not ships.form.tabs.isTabVisible(ships.form.tabs.indexOf(ships.form.pages["hangar"]))
         assert not ships.dirty
+        limit_input = ships.form.inputs[("combat", "max_weapon_size_class")]
+        limit_input.input.setCurrentIndex(limit_input.input.findData(5))
+        assert ships.form.inputs[("combat", "weapons")].input.weapon_limit() == 5
+        limit_input.input.setCurrentIndex(0)
         ships.form.inputs[("technical", "atmospheric_capability")].input.setCurrentIndex(2)
         assert ships.dirty
         ships.save_button.click()

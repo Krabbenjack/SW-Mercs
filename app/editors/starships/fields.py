@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QSplitter, QMessageBox,
 )
 
-from .schema import DIRECTIONS
+from .schema import DIRECTIONS, WEAPON_SIZE_CLASSES, size_label
 from .store import CatalogError
 
 
@@ -19,6 +19,42 @@ def choice(options, blank=True, show_id=False):
     for key, name in options.items():
         combo.addItem(f"{key} · {name}" if show_id else name, key)
     return combo
+
+
+def size_help_button(parent):
+    button = QPushButton("?")
+    button.setFixedWidth(32)
+    button.setToolTip("Explain weapon size classes")
+    button.setAccessibleName("Weapon size class help")
+    button.clicked.connect(lambda: show_size_help(parent))
+    return button
+
+
+def show_size_help(parent):
+    dialog = QDialog(parent)
+    dialog.setWindowTitle("Weapon size classes")
+    dialog.resize(840, 370)
+    layout = QVBoxLayout(dialog)
+    hint = QLabel("Size measures the required weapon mount, not damage or quantity. "
+                  "A ship can equip weapons up to and including its maximum class. "
+                  "Automatic limits are editable game-design defaults; unclassified weapons cannot be newly assigned.")
+    hint.setWordWrap(True)
+    layout.addWidget(hint)
+    table = QTableWidget(len(WEAPON_SIZE_CLASSES), 3)
+    table.setHorizontalHeaderLabels(["Class", "Example weapons", "Typical carriers"])
+    table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+    table.verticalHeader().hide()
+    table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+    for row, (size, (_, weapons, carriers)) in enumerate(WEAPON_SIZE_CLASSES.items()):
+        for column, value in enumerate((size_label(size), weapons, carriers)):
+            table.setItem(row, column, QTableWidgetItem(value))
+    table.resizeRowsToContents()
+    layout.addWidget(table)
+    buttons = QDialogButtonBox(QDialogButtonBox.Close)
+    buttons.rejected.connect(dialog.reject)
+    layout.addWidget(buttons)
+    dialog.exec()
 
 
 def number(text, integer=False):
@@ -98,18 +134,20 @@ WEAPON_MIME = "application/x-swmercs-weapon-id"
 
 
 class WeaponCatalogList(QListWidget):
-    def __init__(self, options, parent=None):
+    def __init__(self, options, eligible, parent=None):
         super().__init__(parent)
         self.setDragEnabled(True)
         self.setDragDropMode(QAbstractItemView.DragOnly)
         for weapon_id, name in options.items():
             item = QListWidgetItem(f"{weapon_id} · {name}")
             item.setData(Qt.UserRole, weapon_id)
+            if weapon_id not in eligible:
+                item.setFlags(item.flags() & ~(Qt.ItemIsEnabled | Qt.ItemIsDragEnabled))
             self.addItem(item)
 
     def startDrag(self, supported_actions):
         item = self.currentItem()
-        if item is None:
+        if item is None or not item.flags() & Qt.ItemIsEnabled:
             return
         mime = QMimeData()
         mime.setData(WEAPON_MIME, str(item.data(Qt.UserRole)).encode("ascii"))
@@ -162,15 +200,16 @@ class WeaponDropTable(QTableWidget):
 class TableField(QWidget):
     changed = Signal()
 
-    def __init__(self, options, weapons):
+    def __init__(self, options, weapons, eligible=None):
         super().__init__()
         self.options, self.weapons = options, weapons
+        self.eligible = options if eligible is None else eligible
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         self.known = QCheckBox("Known / specified")
         layout.addWidget(self.known)
         headers = ["Weapon", "Count", "Direction", "Ammo capacity"] if weapons else ["Good", "Quantity"]
-        self.table = WeaponDropTable(options, len(headers)) if weapons else QTableWidget(0, len(headers))
+        self.table = WeaponDropTable(self.eligible, len(headers)) if weapons else QTableWidget(0, len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -203,14 +242,20 @@ class TableField(QWidget):
         self.changed.emit()
 
     def add_weapon(self, weapon_id):
-        if weapon_id in self.options:
+        if weapon_id in self.eligible:
             self.known.setChecked(True)
             self._append({"weapon_id": weapon_id})
 
     def _append(self, value):
         row = self.table.rowCount()
         self.table.insertRow(row)
-        ref = choice(self.options, blank=False, show_id=self.weapons)
+        options = self.options
+        if self.weapons:
+            options = dict(self.eligible)
+            current_id = value.get("weapon_id")
+            if current_id in self.options and current_id not in options:
+                options[current_id] = self.options[current_id] + " (existing; incompatible)"
+        ref = choice(options, blank=False, show_id=self.weapons)
         ref.setCurrentIndex(max(0, ref.findData(value.get("weapon_id" if self.weapons else "goods_id"))))
         self.table.setCellWidget(row, 0, ref)
         ref.currentIndexChanged.connect(lambda *_: self.changed.emit())
@@ -261,18 +306,27 @@ class TableField(QWidget):
 
 class WeaponLoadoutDialog(QDialog):
     """Searchable drag source next to the editable ship equipment drop target."""
-    def __init__(self, store, values, parent=None):
+    def __init__(self, store, values, parent=None, limit=2):
         super().__init__(parent)
         self.setWindowTitle("Ship equipment · Weapon catalog")
         self.resize(1040, 540)
         self.setMinimumSize(820, 440)
-        options = store.references("weapons")
+        self.store, self.previous, self.limit = store, values, limit
+        self.sizes = store.weapon_sizes()
+        options = {key: f"{name} [{size_label(self.sizes[key])}]" for key, name in store.references("weapons").items()}
+        eligible = {key: name for key, name in options.items()
+                    if self.sizes[key] is not None and self.sizes[key] <= limit}
         layout = QVBoxLayout(self)
         hint = QLabel("Drag a weapon from the catalog onto the ship's equipment. "
                       "Set count, firing direction and ammunition for each mount.")
         hint.setWordWrap(True)
         hint.setProperty("role", "hint")
         layout.addWidget(hint)
+        limit_row = QHBoxLayout()
+        limit_row.addWidget(QLabel(f"Maximum weapon size: {size_label(limit)} · incompatible weapons are disabled"))
+        limit_row.addWidget(size_help_button(self))
+        limit_row.addStretch()
+        layout.addLayout(limit_row)
         splitter = QSplitter(Qt.Horizontal)
         source = QWidget()
         source_layout = QVBoxLayout(source)
@@ -280,23 +334,26 @@ class WeaponLoadoutDialog(QDialog):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Search weapon name or ID…")
         source_layout.addWidget(self.search)
-        self.catalog = WeaponCatalogList(options)
+        self.catalog = WeaponCatalogList(options, eligible)
         for row in range(self.catalog.count()):
             item = self.catalog.item(row)
             stats = store.read(item.data(Qt.UserRole), weapons=True)["weapon"]
-            item.setToolTip("\n".join(f"{pretty}: {value}" for pretty, value in (
+            size = self.sizes[item.data(Qt.UserRole)]
+            reason = ("Unclassified: assign a size in Component Database first." if size is None
+                      else "Too large for this ship." if size > limit else "Compatible size.")
+            item.setToolTip(reason + "\n" + ("\n".join(f"{pretty}: {value}" for pretty, value in (
                 ("Type", stats["weapon_type"]), ("Damage", stats["damage"]),
                 ("Range (km)", stats["range_km"]), ("Rate of fire", stats["rate_of_fire"]))
-                if value is not None) or "No weapon statistics yet")
+                if value is not None) or "No weapon statistics yet"))
         source_layout.addWidget(self.catalog, 1)
         add = QPushButton("Add selected weapon")
-        add.setEnabled(bool(options))
+        add.setEnabled(bool(eligible))
         source_layout.addWidget(add)
         splitter.addWidget(source)
         target = QWidget()
         target_layout = QVBoxLayout(target)
         target_layout.addWidget(QLabel("SHIP EQUIPMENT · DROP WEAPONS HERE"))
-        self.mounts = TableField(options, weapons=True)
+        self.mounts = TableField(options, weapons=True, eligible=eligible)
         self.mounts.table.setMaximumHeight(16777215)
         header = self.mounts.table.horizontalHeader()
         for column, width in ((1, 72), (2, 138), (3, 118)):
@@ -331,6 +388,7 @@ class WeaponLoadoutDialog(QDialog):
     def _apply(self):
         try:
             values = self.mounts.value()
+            self.store.validate_loadout_sizes(values, self.limit, self.previous, self.sizes)
             for mount in values or []:
                 if mount["quantity"] is None or mount["quantity"] <= 0:
                     raise CatalogError("Weapon count must be a positive integer.")
@@ -349,6 +407,7 @@ class WeaponField(QWidget):
     def __init__(self, store):
         super().__init__()
         self.store = store
+        self.weapon_limit = lambda: 2
         self._values = None
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -361,7 +420,7 @@ class WeaponField(QWidget):
         self.equipment_button.clicked.connect(self.open_catalog)
 
     def open_catalog(self):
-        dialog = WeaponLoadoutDialog(self.store, self._values, self)
+        dialog = WeaponLoadoutDialog(self.store, self._values, self, limit=self.weapon_limit())
         if dialog.exec() == QDialog.Accepted:
             if dialog.result_value != self._values:
                 self.set_value(dialog.result_value)
@@ -404,6 +463,16 @@ class FieldInput(QWidget):
         elif kind == "bool":
             self.input = choice({True: "Yes", False: "No"})
             self.input.currentIndexChanged.connect(lambda *_: self.changed.emit())
+        elif kind in ("size_class", "size_limit"):
+            self.input = choice({size: size_label(size) for size in WEAPON_SIZE_CLASSES})
+            self.input.setItemText(0, "Unclassified" if kind == "size_class" else "Automatic")
+            self.input.currentIndexChanged.connect(lambda *_: self.changed.emit())
+            row = QHBoxLayout()
+            row.addWidget(self.input, 1)
+            self.help_button = size_help_button(self)
+            row.addWidget(self.help_button)
+            layout.addLayout(row)
+            return
         elif kind in ("goods", "facility"):
             self.input = choice(store.references(kind))
             self.input.currentIndexChanged.connect(lambda *_: self.changed.emit())
