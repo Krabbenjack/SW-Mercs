@@ -111,6 +111,7 @@ class Home(QMainWindow):
     def open_editor(self):
         if self.center is None:
             self.center = EditorCenter(self)
+            self.center.setStyleSheet(self.styleSheet())
         self.center.show()
         self.hide()
 
@@ -119,9 +120,9 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("SW-Mercs")
     theme = ROOT / "resources" / "styles" / "launcher.qss"
-    if theme.is_file():
-        app.setStyleSheet(theme.read_text(encoding="utf-8"))
     home = Home()
+    if theme.is_file():
+        home.setStyleSheet(theme.read_text(encoding="utf-8"))
     home.show()
     return app.exec()
 
