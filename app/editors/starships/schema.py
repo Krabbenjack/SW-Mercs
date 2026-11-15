@@ -5,6 +5,7 @@ VERSION = 1
 DIRECTIONS = ("Front", "Rear", "Port", "Starboard", "Turret")
 # FFG Age of Rebellion, Core Rulebook p. 236: relative size and mass.
 # Labels are UI shorthand, not mandatory hull types or length thresholds.
+MIN_SHIP_SILHOUETTE = 3
 SILHOUETTE_CLASSES = {
     0: ("Tiny", "Small objects, astromech droids"),
     1: ("Personal", "Adult humanoids"),

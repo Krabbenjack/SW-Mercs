@@ -69,12 +69,18 @@ class CatalogTests(unittest.TestCase):
 
     def test_silhouette_roundtrip_and_validation(self):
         self.assertIsNone(self.store.read(1001)["technical"]["silhouette"])
-        for record_id, silhouette in ((1001, 3), (10001, 12), (9007, 8), (3001, 0)):
+        for record_id, silhouette in ((1001, 3), (10001, 12), (9007, 8), (3001, 3)):
             self.store.save([{"id": record_id, "technical": {"silhouette": silhouette}}])
             self.assertEqual(self.store.read(record_id)["technical"]["silhouette"], silhouette)
-        for invalid in (-1, 3.0, 1.5, True, "3"):
+        for invalid in (-1, 0, 1, 2, 3.0, 1.5, True, "3"):
             with self.assertRaises(CatalogError):
                 self.store.save([{"id": 1001, "technical": {"silhouette": invalid}}])
+            with self.assertRaises(CatalogError):
+                self.store.save([{"id": 10001, "technical": {"silhouette": invalid}}])
+        invalid_path = self.root / "invalid-silhouette.json"
+        invalid_path.write_bytes(json_bytes({"id": 1001, "technical": {"silhouette": 2}}))
+        with self.assertRaises(CatalogError):
+            self.store.import_files([invalid_path])
         path = self.root / "silhouette.json"
         self.store.export(path, [1001, 10001])
         records = self.store.import_files([path])

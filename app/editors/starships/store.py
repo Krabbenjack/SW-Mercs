@@ -8,7 +8,7 @@ from tempfile import NamedTemporaryFile
 
 from app.shared.paths import DATA_DIR
 from .schema import (VERSION, DIRECTIONS, OBJECT_FOLDERS, blank_record, sections_for, visibility_groups,
-                     WEAPON_SIZE_CLASSES, effective_weapon_limit, size_label)
+                     WEAPON_SIZE_CLASSES, effective_weapon_limit, size_label, MIN_SHIP_SILHOUETTE)
 
 
 class CatalogError(ValueError):
@@ -196,8 +196,10 @@ class CatalogStore:
         ok = False
         if kind in ("text", "long"):
             ok = isinstance(value, str)
-        elif kind in ("number", "int", "silhouette"):
-            ok = self._number(value, kind != "number")
+        elif kind in ("number", "int"):
+            ok = self._number(value, kind == "int")
+        elif kind == "silhouette":
+            ok = type(value) is int and value >= MIN_SHIP_SILHOUETTE
         elif kind in ("size_class", "size_limit"):
             ok = type(value) is int and value in WEAPON_SIZE_CLASSES
         elif kind == "bool":

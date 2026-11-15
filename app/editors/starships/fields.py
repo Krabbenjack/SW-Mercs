@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QSplitter, QMessageBox,
 )
 
-from .schema import DIRECTIONS, WEAPON_SIZE_CLASSES, SILHOUETTE_CLASSES, size_label
+from .schema import DIRECTIONS, WEAPON_SIZE_CLASSES, SILHOUETTE_CLASSES, MIN_SHIP_SILHOUETTE, size_label
 from .store import CatalogError
 
 
@@ -64,6 +64,7 @@ def show_silhouette_help(parent):
     layout = QVBoxLayout(dialog)
     hint = QLabel("Silhouette describes relative size and mass, not a fixed length. "
                   "The classes are approximate; 10 and higher are for exceptional ships and stations. "
+                  "SW-Mercs ships and stations require silhouette 3 or higher; 0–2 are reference only. "
                   "Weapon size limits are separate.")
     hint.setWordWrap(True)
     layout.addWidget(hint)
@@ -75,7 +76,7 @@ def show_silhouette_help(parent):
     table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
     for row, (size, (name, examples)) in enumerate(SILHOUETTE_CLASSES.items()):
         table.setItem(row, 0, QTableWidgetItem(f"{size} · {name}"))
-        table.setItem(row, 1, QTableWidgetItem(examples))
+        table.setItem(row, 1, QTableWidgetItem(examples + (" (reference only)" if size < MIN_SHIP_SILHOUETTE else "")))
     table.setItem(11, 0, QTableWidgetItem("11+ · Custom"))
     table.setItem(11, 1, QTableWidgetItem("Exceptional megastructures / vessels"))
     table.resizeRowsToContents()
@@ -507,7 +508,8 @@ class FieldInput(QWidget):
             layout.addLayout(row)
             return
         elif kind == "silhouette":
-            self.input = choice({size: f"{size} · {label}" for size, (label, _) in SILHOUETTE_CLASSES.items()})
+            self.input = choice({size: f"{size} · {label}" for size, (label, _) in SILHOUETTE_CLASSES.items()
+                                 if size >= MIN_SHIP_SILHOUETTE})
             self.input.addItem("11+ · Custom", "custom")
             self.custom_silhouette = QLineEdit("11")
             self.custom_silhouette.setPlaceholderText("Integer ≥ 11")
