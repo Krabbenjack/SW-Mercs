@@ -1,0 +1,56 @@
+{
+  "status": "working reference; implementation status varies",
+  "travel": {
+    "base_hsu_per_hour": 400,
+    "route_class_multiplier": {
+      "1": 10,
+      "2": 4,
+      "3": 1,
+      "4": 0.5,
+      "5": 0.25
+    },
+    "travel_type_multiplier": {
+      "normal": 1,
+      "express_lane": 1.2,
+      "ancient_hyperlane": 0.8,
+      "backwater": 0.6
+    },
+    "hazard_multiplier": {
+      "nebula": 0.8,
+      "hypershadow": 0.7,
+      "quasar": 0.6,
+      "minefield": 0.85,
+      "pirate_activity": 0.9
+    },
+    "formula": "hours = route_length_hsu / (base_hsu_per_hour * class_multiplier * travel_type_multiplier * product_of_hazard_multipliers) * hyperdrive_rating"
+  },
+  "communications": {
+    "holonet": {
+      "relay_range_hsu": 1500,
+      "design": "relay chains along main hyperspace routes",
+      "corporate_sector_planned_relays": 2
+    },
+    "hyperradio_hsu_per_hour": {
+      "military": 1440000,
+      "commercial": 720000,
+      "private": 180000
+    }
+  },
+  "zones": {
+    "status": "concept",
+    "geometry": "closed polygon with snap",
+    "display": "hatched translucent fill above templates and below other map entities",
+    "properties": [
+      "name",
+      "hazard flags affecting hyperspace and/or sublight travel"
+    ],
+    "open": [
+      "selection/edit interaction",
+      "exact flag effects"
+    ]
+  },
+  "sources": [
+    "../README.md",
+    "Project chats Route Stats, Zones, Datenzugriff und Kommunikation"
+  ]
+}

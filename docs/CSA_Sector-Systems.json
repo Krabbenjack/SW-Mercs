@@ -1,0 +1,2826 @@
+{
+  "schema_version": "0.7",
+  "scope": "Corporate Sector (CSA map project)",
+  "method": "V6 Patch: V5 beibehalten, aber Lore-Upgrade für Orron, Oslumpex, Matra, Ninn, Gaurick, Jerrist, Kail, Fibuli, Duroon. Fokus: Kontrollachsen (Guardian Corridor) + Grenz-/Werftknoten (Oslumpex) + Quarantäne/Crime (Jerrist) + Ressourcenjagd & Piraterieanreize (Duroon) + Agrarkontrolle (Orron) + Post-Konflikt-Diplomatie (Fibuli). | Applied to full V5 dataset to produce V6_full. | V7: Added population estimates for all systems; set Ban-Satir as Imperial Sector Garrison (ISD-I + Arquitens); set Ession as ESPO HQ (analytics-heavy); upgraded Atchorb to Thandon Nebula industrial gas processing; flagged Lo'uran as optional Imperial penal lease backwater; upgraded Duroon as revenue/tax collection node; strengthened Jerrist as piracy/quarantine-crime hub.",
+  "traffic_profiles": {
+    "bulk_goods": "Massengüter/Containerverkehr (Erze, Grundstoffe, Standardfracht)",
+    "industrial_input": "Vorprodukte/Inputs (Erze, Energie, Chemikalien als Kategorie)",
+    "industrial_output": "veredelte Industrieprodukte/Komponenten",
+    "resource_control": "strategische Rohstoffe, Konzessions- & Abbaulogistik",
+    "institutional_flow": "Wissen/Administration (Universitäten, Business Schools, Behördenverkehr)",
+    "passenger_flow": "Personenverkehr (Business, Ausbildung, begrenzt Tourismus)",
+    "security_logistics": "Sicherheitskräfte, Eskorten, Behörden, Militärbedarf",
+    "long_haul_shipping": "Fernhandel/Großfrachter/Schlepperverbände",
+    "military_logistics": "Militärische Versorgung, Sensorik, Stützpunkte",
+    "local_goods": "lokale/regionale Handelswaren (kleine Frachter, kurze Distanzen)",
+    "shadow_trade": "Schmuggel/halb-legale Güter (diskrete Routen)"
+  },
+  "systems": [
+    {
+      "id": "6bc428aa-5c2b-42f4-9921-eb868b427568",
+      "name": "Abo Dreth",
+      "position_hsu": {
+        "x": 1860.1744897191295,
+        "y": -495.7702388389217
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Nitrogen-Rich Resource World",
+        "keywords": [
+          "Stickstoffreiche Atmosphäre",
+          "Seen- und Flusslandschaften",
+          "Atemmasken erforderlich",
+          "Gefährliche Vogel-Fauna"
+        ],
+        "imports": [
+          "Ausrüstung",
+          "Atemtechnik",
+          "Nahrung"
+        ],
+        "exports": [
+          "nitrogen_gas",
+          "industrial_feedstocks"
+        ],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Großer, dunkler Planet mit hunderten silberner Seen und Flüsse. Nutzung vor allem als Gas- und Rohstoffquelle; begrenzte dauerhafte Besiedlung."
+      },
+      "habitability": {
+        "comfort": "low",
+        "atmosphere": "Type III (nitrogen-based)",
+        "breathable": false,
+        "commuting_hint": "industrial_rotation"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 8276400
+    },
+    {
+      "id": "e9831cde-ac5d-48e7-b0f5-a597942ad2e2",
+      "name": "Ammuud",
+      "position_hsu": {
+        "x": 1483.5886034420346,
+        "y": 1531.735796988209
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "ddb846ce-b1c6-472f-b385-8b81fdc83710",
+      "name": "Atchorb",
+      "position_hsu": {
+        "x": 1605.197806483161,
+        "y": -16.89349295588147
+      },
+      "population_id": "medium",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Thandon Nebula Industrial Processing & Gas Compression Hub",
+        "keywords": [
+          "Korridorlage (Shaltiin Tunnels/Verbindungen)",
+          "Zwischenstation für Umlenkung",
+          "geeignet für Staging/Refuel",
+          "Thandon Nebula edge operations",
+          "gas harvesting support",
+          "nebula-grade refining and compression",
+          "staging/refuel + industrial processing"
+        ],
+        "imports": [
+          "Treibstoff",
+          "Ersatzteile",
+          "Versorgungsgüter",
+          "raw_gases",
+          "reactants",
+          "spare_parts",
+          "fuel"
+        ],
+        "exports": [
+          "Transitdienstleistungen",
+          "umgeleitete Fracht",
+          "refined_gases",
+          "compressed_gas_containers",
+          "industrial_feedstocks"
+        ],
+        "traffic_profiles": [
+          "long_haul_shipping",
+          "security_logistics",
+          "local_goods",
+          "industrial_input",
+          "industrial_output",
+          "bulk_goods"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Industrial Processing + Customs",
+        "notes": "Funktional näher an D'ian (Transit), aber rauer/strategischer; guter Piraterie-Kontrast: stark gesichert. V7: Atchorb is positioned as the industrial workhorse on the Thandon Nebula rim—processing harvested gases into standardized containers and feedstocks. Pirate risk is managed via escorted convoy windows."
+      },
+      "habitability": {
+        "comfort": "low",
+        "residential_commuting_hint": "candidate_workworld"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 290136000
+    },
+    {
+      "id": "f2c5dfaa-124e-4ea4-a0f6-062ac33cc090",
+      "name": "Ban-Satir",
+      "position_hsu": {
+        "x": 2360.841077536026,
+        "y": 962.2204867392937
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Imperial Sector Garrison (Primary)",
+        "keywords": [
+          "Imperial Navy primary garrison in-sector",
+          "1× Imperial Star Destroyer (Imperial I-class)",
+          "Arquitens light cruisers (patrol/reaction)",
+          "rapid escalation lever over CSA"
+        ],
+        "imports": [
+          "military_supply",
+          "fuel",
+          "spare_parts",
+          "personnel_rotation"
+        ],
+        "exports": [
+          "security_presence",
+          "rapid_response",
+          "imperial_deterrence"
+        ],
+        "traffic_profiles": [
+          "military_logistics",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Imperial Garrison Screen",
+        "notes": "V7: Ban-Satir is designated as the Empire’s main garrison in the Corporate Sector—a single ISD-I as command symbol plus Arquitens patrol groups. Visible deterrence, low footprint."
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null,
+        "habitation_role": "military"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3327500
+    },
+    {
+      "id": "94ac598c-e200-4b5d-be92-e4ff0962be7c",
+      "name": "Biewa",
+      "position_hsu": {
+        "x": 1359.4827326815075,
+        "y": 1096.977096661705
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3301250
+    },
+    {
+      "id": "b15ab56a-ccda-466d-ab30-2e4bfb2b7413",
+      "name": "Bonadan",
+      "position_hsu": {
+        "x": 1857.8268476514293,
+        "y": 415.84296117498985
+      },
+      "population_id": "high",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 5
+      },
+      "lore_economy": {
+        "role": "Sector Bulk Logistics & Industrial Hub",
+        "keywords": [
+          "Mega-Raumhafen/Spaceport-Komplexe",
+          "Industrie-Sprawl (Orbitlogistik dominiert)",
+          "Massengutumschlag",
+          "Fernhandels-Bündelung (Großcontainerfrachter/Schlepper)",
+          "Waffen- und Industriegüterumschlag"
+        ],
+        "imports": [
+          "Nahrung",
+          "Konsumgüter",
+          "Arbeitskräfte",
+          "Vorprodukte (Industrieinputs)"
+        ],
+        "exports": [
+          "Industriegüter",
+          "Rüstung/Standardteile",
+          "veredelte Materialien",
+          "Fernhandels-Containerfracht"
+        ],
+        "traffic_profiles": [
+          "bulk_goods",
+          "industrial_output",
+          "long_haul_shipping",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Bulk+Customs",
+        "notes": "Sektorweiter Massenknoten: bewegt und containerisiert; nicht primär 'angenehm', sondern effizient."
+      },
+      "habitability": {
+        "comfort": "low",
+        "residential_commuting_hint": "candidate_workworld"
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3200000000
+    },
+    {
+      "id": "70f04b72-77d9-4cca-b78a-2fce3c146dcc",
+      "name": "Brochiib",
+      "position_hsu": {
+        "x": 565.8747340013922,
+        "y": -1071.658704376727
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3301250
+    },
+    {
+      "id": "3fa4087d-6cc0-42c9-9234-5b3ec835ab66",
+      "name": "Brosi",
+      "position_hsu": {
+        "x": 2157.4603479391726,
+        "y": -393.0317437187599
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Resource-Rich Arboreal Homeworld",
+        "keywords": [
+          "Waldplanet",
+          "Heimatwelt der Brosin",
+          "Zinsian- und Hfredium-Vorkommen",
+          "CSA-Extraktionsanlagen",
+          "Brosin-Untergrundbewegung"
+        ],
+        "imports": [
+          "High technology",
+          "Medicines",
+          "Trade goods"
+        ],
+        "exports": [
+          "Zinsian",
+          "Hfredium"
+        ],
+        "traffic_profiles": [
+          "resource_export",
+          "security_operations"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Bewaldete, temperierte Heimatwelt der Brosin mit ca. 19 Mio. Einwohnern. CSA-Extraktion von Zinsian und Hfredium führte zu Vertreibungen und zur Entstehung des Brosin Underground, einer bewaffneten Widerstandsbewegung."
+      },
+      "habitability": {
+        "comfort": "high",
+        "atmosphere": "Type I (breathable)",
+        "breathable": true,
+        "commuting_hint": "local_population"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 19000000
+    },
+    {
+      "id": "5bb73ece-8d87-4b63-a781-cc6adf06f579",
+      "name": "Cadomai",
+      "position_hsu": {
+        "x": -1378.9956969933771,
+        "y": -89.12191030655936
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "fabf4790-3e11-421d-be43-1effbfc86293",
+      "name": "Craci",
+      "position_hsu": {
+        "x": -105.68057798911036,
+        "y": 1015.4227557414835
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3728749
+    },
+    {
+      "id": "981442eb-85f0-488c-be0d-caa0beaa2872",
+      "name": "D'ian",
+      "position_hsu": {
+        "x": 1555.7223073517684,
+        "y": 316.63885378586144
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Local Trade & Control Node (Sorting/Redirect)",
+        "keywords": [
+          "mildes Klima, flache Meere",
+          "bekannt für Blumenexport (D'ian orchid vine)",
+          "erfolgreiche Handelswelt",
+          "mehrere Business Schools der CSA",
+          "Umlenkpunkt zwischen Bonadan / Etti / Shaltiin Tunnels (Atchorb)"
+        ],
+        "imports": [
+          "Konsumgüter",
+          "Nahrung",
+          "Treibstoff",
+          "Ersatzteile",
+          "Bildungs-/Institutionsbedarf"
+        ],
+        "exports": [
+          "regionale Handelswaren (inkl. Florikultur)",
+          "Logistikdienstleistungen",
+          "umgeleitete Transitfracht"
+        ],
+        "traffic_profiles": [
+          "local_goods",
+          "institutional_flow",
+          "passenger_flow",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Sorting+Customs",
+        "notes": "Nicht 'Massenhub' wie Bonadan: D'ian ist der zivile, angenehme Sortier-/Kontrollknoten für regionale Ströme."
+      },
+      "habitability": {
+        "comfort": "high",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Routenanalyse (Savegame)"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 9498500
+    },
+    {
+      "id": "0945acf6-7d8e-44ea-9321-8206f86e9212",
+      "name": "Davirien",
+      "position_hsu": {
+        "x": -579.1903695480848,
+        "y": 453.42448409740234
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "296e4120-d447-4ba0-a144-d5c7a44add11",
+      "name": "Deltooine",
+      "position_hsu": {
+        "x": 2437.7256527145128,
+        "y": 391.4256649308563
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Military Observation Outpost",
+        "keywords": [
+          "CSA-Militärbasis",
+          "Beobachtung/Überwachung Wild Space",
+          "Grenzsicherung"
+        ],
+        "imports": [
+          "Militärversorgung",
+          "Sensorik/Technik",
+          "Ersatzteile",
+          "Nahrung/Med"
+        ],
+        "exports": [
+          "Aufklärung",
+          "Sicherheitspräsenz",
+          "Patrouillenrotation"
+        ],
+        "traffic_profiles": [
+          "military_logistics",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Military Checkpoint",
+        "notes": "Netto-Verbraucher; erzeugt militärisch motivierten Verkehr, nicht Handelsverkehr."
+      },
+      "habitability": {
+        "comfort": "low",
+        "residential_commuting_hint": "candidate_workworld"
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 1100880
+    },
+    {
+      "id": "21f062e4-ff6b-4786-aea0-3ae076833d0b",
+      "name": "Dra",
+      "position_hsu": {
+        "x": -255.85168591303432,
+        "y": 1165.1827516288827
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "61c3b689-c5ea-41c0-911d-32dfa02331cc",
+      "name": "Drog",
+      "position_hsu": {
+        "x": -194.46757374904905,
+        "y": 510.8649375734982
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3301250
+    },
+    {
+      "id": "825e2f23-1937-49d2-bb0b-7a24e4804bf8",
+      "name": "Duroon",
+      "position_hsu": {
+        "x": 1044.7520511634027,
+        "y": 1322.2910788552258
+      },
+      "population_id": "low",
+      "planets": [
+        {
+          "id": "v6-dur",
+          "name": "Duroon",
+          "role": "High-Value Resource Extraction World (Hazardous)",
+          "notes": "Lush jungles + aktive Vulkanfissuren; sensorstörende radioaktive/ferrose Anomalien. Atemluft vorhanden, grauer Himmel; wertvolle Vorkommen (Diamanten, glow-pearls, fire nodes, nova crystals). CSA-Militärinstallation vorhanden. Import historisch auch Zwangs-/Sklavenarbeit (düstere CSA-Seite).",
+          "moons": [
+            {
+              "id": "v6-dur-a",
+              "name": "Duroon-A"
+            },
+            {
+              "id": "v6-dur-b",
+              "name": "Duroon-B"
+            },
+            {
+              "id": "v6-dur-c",
+              "name": "Duroon-C"
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "High-Value Resource Extraction & Revenue Collection Node",
+        "keywords": [
+          "Dschungel + Vulkanfissuren",
+          "Sensoranomalien",
+          "CSA-Militärinstallation",
+          "Diamanten",
+          "Glow-pearls",
+          "Fire nodes",
+          "Nova crystals",
+          "gefährliche Navigation/Verstecke",
+          "sector revenue/tax collection analogue (Aldhani-like)",
+          "sensor interference used for controlled visibility",
+          "permanent interceptor wing (Cygnus starfighters with hyperdrive)"
+        ],
+        "imports": [
+          "Arbeitskräfte (auch Zwang, düster)",
+          "Bergbaugerät",
+          "Ersatzteile",
+          "Sicherheitsmaterial",
+          "Medizin"
+        ],
+        "exports": [
+          "diamonds",
+          "glow_pearls",
+          "fire_nodes",
+          "nova_crystals"
+        ],
+        "traffic_profiles": [
+          "resource_control",
+          "bulk_goods",
+          "security_logistics",
+          "shadow_trade",
+          "institutional_flow"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Revenue Node + Military Resource Screen",
+        "notes": "Piraten/Schmuggel: sehr hoch plausibel. Sensorstörungen + unwirtliche Zonen = ideale Piratenverstecke/Absetzpunkte. Wertfracht aus Minen zieht Überfälle an; Schmuggler nutzen Minen-Frontfirmen, um Kristalle 'abzuzweigen'. CSA reagiert mit Eskorten, Patrol Patterns und harten Boarding-Korridoren. V7: Beyond extraction, Duroon serves as a discreet revenue collection/transfer node—rare, high-value convoys under heavy escort. Pirate action here tends to be 'heist-grade' with insider access, not random raids.",
+        "security": {
+          "fighters": [
+            "Cygnus starfighters (hyperdrive-capable interceptor wing)"
+          ],
+          "mission": [
+            "convoy_escort",
+            "rapid_intercept",
+            "revenue_transfer_security"
+          ]
+        }
+      },
+      "habitability": {
+        "comfort": "medium",
+        "atmosphere": "Type I (breathable)",
+        "breathable": true,
+        "commuting_hint": "industrial_rotation"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 20763600
+    },
+    {
+      "id": "3d8ae9bd-0844-4fcb-8291-49728d02fd83",
+      "name": "Ekibo",
+      "position_hsu": {
+        "x": -569.1963892162589,
+        "y": -774.7498574969784
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "95e8b910-7405-41b5-81dc-79e5353997e8",
+      "name": "Erysthes",
+      "position_hsu": {
+        "x": 2068.8615532926688,
+        "y": 531.4784163208744
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "21af4404-9d0c-4f52-a7fa-43605c11a091",
+      "name": "Ession",
+      "position_hsu": {
+        "x": 1424.1938908543625,
+        "y": 794.5490767777612
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "ESPO Headquarters & Regional Distribution Node",
+        "keywords": [
+          "mehrfach angebunden (Verteilerfunktion)",
+          "Bindeglied zwischen Etti-Cluster und östlichen Systemen",
+          "ESPO sector headquarters",
+          "analytics-heavy routing & interdiction planning",
+          "escort scheduling and checkpoint coordination"
+        ],
+        "imports": [
+          "Konsumgüter",
+          "Treibstoff",
+          "Versorgung"
+        ],
+        "exports": [
+          "regionale Umverteilung",
+          "Transitfracht"
+        ],
+        "traffic_profiles": [
+          "local_goods",
+          "bulk_goods",
+          "security_logistics",
+          "institutional_flow"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "ESPO HQ + Customs",
+        "notes": "Nicht so groß wie Bonadan; eher regionaler Verteiler und Sammelpunkt. V7: Ession hosts ESPO HQ (operations + analysts). ESPO escalates major incidents to Imperial authorities rather than running full covert action."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 5612749
+    },
+    {
+      "id": "8c0f0ade-b443-41b1-a4c6-5ca41bfd8f6e",
+      "name": "Etti",
+      "position_hsu": {
+        "x": 1431.547001287142,
+        "y": 576.9803595160913
+      },
+      "population_id": "medium",
+      "planets": [
+        {
+          "id": "620a4b21-244d-4af7-a471-01543570005a",
+          "name": "Etti IV",
+          "moons": [
+            {
+              "id": "19adf259-0c31-4190-9e6c-ef6fd266e1d7",
+              "name": "Etti IV Moon I"
+            }
+          ]
+        },
+        {
+          "id": "ac6defd2-7197-42cc-a54e-590cbf1e81ac",
+          "name": "Etti V",
+          "moons": [
+            {
+              "id": "83c6dea2-e004-4287-b1e0-ff75cdbc119d",
+              "name": "Etti V Moon I"
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "planets_count": 2,
+        "moons_count": 2,
+        "route_degree": 5
+      },
+      "lore_economy": {
+        "role": "Administrative Metropole / Governance Hub",
+        "keywords": [
+          "Sitz der Corporate Sector Authority (CSA)",
+          "Verwaltung",
+          "Bürokratie",
+          "Regulierung",
+          "Kapital- und Konzessionssteuerung"
+        ],
+        "imports": [
+          "Nahrung",
+          "Konsumgüter",
+          "Luxusgüter",
+          "Hightech",
+          "Sicherheitsmaterial"
+        ],
+        "exports": [
+          "Verwaltungsleistungen",
+          "Konzessionen/Lizenzen",
+          "Kapitalfluss",
+          "Kontroll- und Auditprozesse"
+        ],
+        "traffic_profiles": [
+          "institutional_flow",
+          "passenger_flow",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Regulatory",
+        "notes": "Netto-Verbraucher materieller Güter; erzeugt starken Verwaltungs- und Personentransfer."
+      },
+      "habitability": {
+        "comfort": "high",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 85000000
+    },
+    {
+      "id": "2ab71606-7f1c-4c26-a436-ac2ec3dc8129",
+      "name": "Farana",
+      "position_hsu": {
+        "x": 2428.2074082580843,
+        "y": -667.0789930727053
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "98f4126b-6d6f-4fe7-91f6-7032637758cf",
+      "name": "Fether",
+      "position_hsu": {
+        "x": 2580.679984138611,
+        "y": 371.47854891819134
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Secondary Market / Merchant Route Node",
+        "keywords": [
+          "Anbindung an Merchant Route",
+          "regionaler Markt/Handel"
+        ],
+        "imports": [
+          "Konsumgüter",
+          "Nahrung",
+          "Treibstoff"
+        ],
+        "exports": [
+          "Regionalwaren",
+          "Transitfracht"
+        ],
+        "traffic_profiles": [
+          "local_goods",
+          "passenger_flow"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Gut als Handelsast; weniger Kontrolle als CSA-Kernknoten."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3735875
+    },
+    {
+      "id": "00fd6942-3562-4f1c-8e0c-0fe8b56c3da5",
+      "name": "Fibuli",
+      "position_hsu": {
+        "x": 604.9378361928618,
+        "y": -926.3772094178166
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Post-Conflict Neutral Ground & Diplomatic World",
+        "keywords": [
+          "Trianii Space (annexiert)",
+          "ehem. große Kolonie",
+          "nach Kämpfen verwüstet/neutral",
+          "nach Yavin: Friedensgespräche Trianii ↔ CSA",
+          "Stadt: Knanan"
+        ],
+        "imports": [
+          "Versorgung",
+          "Wiederaufbau-Material",
+          "Sicherheitskräfte/Beobachter",
+          "Diplomatie-/Administrationsbedarf"
+        ],
+        "exports": [
+          "N/A (political function)",
+          "treaty_services",
+          "neutral_meeting_facilities"
+        ],
+        "traffic_profiles": [
+          "institutional_flow",
+          "passenger_flow",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Neutral Zone Security Screen",
+        "notes": "Schmuggel/Piraten: paradox hoch trotz Diplomatie. Neutralzonen ziehen 'Fixer', Waffenhändler & Informationsschmuggel an. Piraten agieren eher als 'Söldner' oder über Stellvertreter, nicht als offene Räuber."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null,
+        "habitation_role": "institutional"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 4325750
+    },
+    {
+      "id": "113b35d1-204f-49a6-b000-8b84d3ff942d",
+      "name": "Gaurick",
+      "position_hsu": {
+        "x": 2505.385396468382,
+        "y": 1173.255192380533
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Religious Autonomy World under CSA Oversight",
+        "keywords": [
+          "religiöser Kult: Renouncers",
+          "Führung: Muftis",
+          "Kult kontrolliert lokale Ordnung",
+          "Konflikt: Arbeiterkultur vs. religiöse Regeln"
+        ],
+        "imports": [
+          "Nahrung (je nach Autarkie)",
+          "Werkzeuge/Industriebedarf",
+          "Medizin",
+          "Treibstoff (limitiert)"
+        ],
+        "exports": [
+          "local_goods",
+          "contract_labor (informal)"
+        ],
+        "traffic_profiles": [
+          "passenger_flow",
+          "local_goods",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Schmuggel: hoch plausibel (Substanzen/Tabus, Umgehung religiöser Regeln). Piraten: eher niedrig direkt, aber 'Abfang & Erpressung' auf Zuläufen möglich."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 15449850
+    },
+    {
+      "id": "5497d780-41ba-4574-8c51-7fcf9b5b3454",
+      "name": "Hiit",
+      "position_hsu": {
+        "x": 664.7667172833471,
+        "y": -643.9519020435284
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Protectorate / Control World",
+        "keywords": [
+          "annektiert/unter Kontrolle der CSA",
+          "politisch sensibel",
+          "strategische Lage an Korridoren"
+        ],
+        "imports": [
+          "Verwaltung",
+          "Konsumgüter",
+          "Sicherheitskräfte",
+          "Technik/Ersatzteile"
+        ],
+        "exports": [
+          "Rohstoffe",
+          "Arbeitskraft",
+          "Tribut/Abgaben (abstrakt)"
+        ],
+        "traffic_profiles": [
+          "security_logistics",
+          "institutional_flow",
+          "bulk_goods"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Gut als Ort für Behördenpräsenz, Eskortenrotation und 'ruhige' Rohstoffabflüsse."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 4847374
+    },
+    {
+      "id": "8a1d2adf-4d51-4c85-a2ee-90b9b34678b7",
+      "name": "Hull's Star",
+      "position_hsu": {
+        "x": 2223.978752554176,
+        "y": -989.543076791256
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "cbe50c0c-abc4-4534-8c2a-669e346732c8",
+      "name": "Issagra",
+      "position_hsu": {
+        "x": 2196.060553953141,
+        "y": 690.4771671464653
+      },
+      "population_id": "high",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Regional Logistics Hub",
+        "keywords": [
+          "Regionalknoten",
+          "Sammelstelle Ostcluster",
+          "Vorstufe zu Grenz-/Außenästen",
+          "typischer Schmuggel-Abzweigpunkt"
+        ],
+        "imports": [
+          "Konsumgüter",
+          "Treibstoff",
+          "Versorgung"
+        ],
+        "exports": [
+          "Umverteilte Güter",
+          "Transitfracht"
+        ],
+        "traffic_profiles": [
+          "bulk_goods",
+          "local_goods",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Regional Customs",
+        "notes": "V6-Nachschärfung: Issagra bleibt regionaler Hub, bekommt aber explizit 'shadow_trade' als realistisches Nebenprodukt (Schmuggler nutzen Verteilerhubs als Tarnung)."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 4041180000
+    },
+    {
+      "id": "ec51da26-e797-4d7d-9b67-32845ebe5a74",
+      "name": "Jerrist",
+      "position_hsu": {
+        "x": 695.4407359067807,
+        "y": 1153.2574451126802
+      },
+      "population_id": "very_low",
+      "planets": [
+        {
+          "id": "v6-jer-vi",
+          "name": "Jerrist VI",
+          "role": "Quarantined Factory & Mining World",
+          "notes": "Fabrik- und Bergbauwelt. CSA-Quarantäne nach Ausbruch einer Seuche/Plage: offiziell Sperrzone, praktisch Magnet für Schmuggler, die 'Hilfslieferungen' oder Schwarzmarktware hinein/ hinaus bewegen.",
+          "moons": []
+        }
+      ],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Quarantine World & Piracy/Smuggling Magnet",
+        "keywords": [
+          "Factory world",
+          "Mining world",
+          "CSA-Quarantäne",
+          "Plage/Seuche",
+          "Schwarzmarkt / illegale Evakuierungen",
+          "pirate haven in practice (quarantine loopholes)",
+          "fake aid convoys and forged certificates",
+          "blockade-running and extortion economy"
+        ],
+        "imports": [
+          "Medizin (kontrolliert/knapp)",
+          "Ersatzteile",
+          "Nahrung",
+          "Sicherheitskräfte"
+        ],
+        "exports": [
+          "raw_ores",
+          "industrial_output (restricted)",
+          "salvage (gray)"
+        ],
+        "traffic_profiles": [
+          "industrial_input",
+          "industrial_output",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Quarantine Screen (High Risk)",
+        "notes": "Expliziter Crime-Hotspot: Schmuggelrouten, Bestechung, gefälschte Zertifikate. Piraten können als 'Blockadebrecher' auftreten oder Konvois erpressen, die Quarantäne-Engpässe umgehen wollen. V7: Jerrist is the sector’s most plausible pirate operating environment—'legal chaos' around quarantine creates cover for runners, fixers, and armed opportunists."
+      },
+      "habitability": {
+        "comfort": "low",
+        "residential_commuting_hint": "candidate_workworld"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 1243440
+    },
+    {
+      "id": "a78651b0-da8b-4e08-866e-7fe582e09819",
+      "name": "Joodrudda",
+      "position_hsu": {
+        "x": 2581.4380483603104,
+        "y": 1256.9176473544576
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "d2aefbff-1041-4d1d-b765-c5b54ad8975b",
+      "name": "Kail",
+      "position_hsu": {
+        "x": -712.1711429658528,
+        "y": 464.9880296119906
+      },
+      "population_id": "medium",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Privatized Agricultural Holdings World",
+        "keywords": [
+          "Kail Ranges",
+          "unabhängige Landbesitzer unter CSA",
+          "Landnutzungsrechte & Preisstreit",
+          "Verschwundene Familienmitglieder (Druck/Repression)"
+        ],
+        "imports": [
+          "Agrar-Technik",
+          "Konsumgüter",
+          "Sicherheitsdienstleistungen (inoffiziell)"
+        ],
+        "exports": [
+          "foodstuffs",
+          "livestock_products"
+        ],
+        "traffic_profiles": [
+          "bulk_goods",
+          "local_goods",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Schmuggel/Piraten: mittel. Piraten selten am Boden, aber häufige 'Abfang'-Erpressung auf Frachtrouten (Lebensmittel = verlässlich). Schmuggel: Dokumentenfälschung/Preismanipulation, versteckte Ausfuhr, Schutzgelderpressung."
+      },
+      "habitability": {
+        "comfort": "high",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 82032500
+    },
+    {
+      "id": "2631db3b-bb3a-4744-9238-f7ec5c06f4da",
+      "name": "Kalla",
+      "position_hsu": {
+        "x": 1597.4965411085414,
+        "y": 954.8299610733377
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Strategic Resource & Knowledge Hub (Control, not bulk)",
+        "keywords": [
+          "Universität",
+          "Headquarters: Unlimited Horizons Inc. (UHI)",
+          "Kontrolle über Pallodenit-Reserven",
+          "Pallodenit = Erz (strategischer Rohstoff)",
+          "Imperiale Botschaft mit angeschlossener Militärbasis (offiziell Beobachtungsposten)"
+        ],
+        "imports": [
+          "Nahrung",
+          "Konsumgüter",
+          "Hightech/Forschungsausrüstung",
+          "Sicherheitsmaterial"
+        ],
+        "exports": [
+          "Pallodenit (Erz)",
+          "Forschung/Know-how",
+          "Konzernentscheidungen/Verträge"
+        ],
+        "traffic_profiles": [
+          "resource_control",
+          "institutional_flow",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Lenkt und kontrolliert Lieferketten; eher hochwertige/strategische Konvois als Massengut."
+      },
+      "habitability": {
+        "comfort": "high",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 39375600
+    },
+    {
+      "id": "3b0b764d-5534-4880-8dfd-7ccfdb6728c1",
+      "name": "Kamar",
+      "position_hsu": {
+        "x": 2732.9527370014853,
+        "y": 330.00110771593035
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "caed8826-f046-46c9-b45e-b0940a5452af",
+      "name": "Kir",
+      "position_hsu": {
+        "x": 2233.6420768755534,
+        "y": 355.13434722340065
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Corner Military Presence / Convoy Screen",
+        "keywords": [
+          "CSA Navy Detachment",
+          "Konvoi-Sammelpunkt am Sektor-Rand (Ecke Kir/Deltooine/Fether)",
+          "Patrouillen- und Abfangraum",
+          "Zoll- und Sicherheitskontrollen (militärisch unterstützt)",
+          "Eskortenrotation für Hochwertfracht"
+        ],
+        "imports": [
+          "Treibstoff",
+          "Ersatzteile",
+          "Nahrung/Versorgung",
+          "Sensorik/Kommunikation"
+        ],
+        "exports": [
+          "Sicherheitspräsenz",
+          "Konvoi-Eskorten",
+          "Aufklärung/Screening"
+        ],
+        "traffic_profiles": [
+          "security_logistics",
+          "military_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Military Customs Screen",
+        "notes": "Kir fungiert als militärisch gestützter Eck-Kontrollraum nahe Deltooine/Fether. Hier laufen Eskorten zusammen; Handelskonvois können im Schutz der CSA-Navy ihren Cooldown absolvieren und werden geprüft.",
+        "security": {
+          "capital_presence": [
+            "Victory Star Destroyer (rotational detachment)"
+          ],
+          "fighters": [
+            "TIE/mg Mining Guild Starfighter (commercial TIE variant)"
+          ],
+          "mission": [
+            "convoy_screening",
+            "piracy_deterrence",
+            "customs_support"
+          ]
+        }
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null,
+        "habitation_role": "mixed",
+        "commuting_hint": "military_rotation"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 1834800
+    },
+    {
+      "id": "99d65b2e-67d0-4153-b4de-ea167b26474c",
+      "name": "Knolstee",
+      "position_hsu": {
+        "x": -761.3162114028528,
+        "y": 259.7350967280459
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "98cd9177-49db-450a-8165-e2133db5600a",
+      "name": "Lafra",
+      "position_hsu": {
+        "x": -773.7600253245612,
+        "y": 1551.6829130008741
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "482dc233-4a94-4606-92b2-a3def96cd168",
+      "name": "Lo'uran",
+      "position_hsu": {
+        "x": -486.3088242666622,
+        "y": -496.5057671053853
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Border Backwater (Optional Imperial Penal Lease)",
+        "keywords": [
+          "backwater border world",
+          "minor hyperspace route access",
+          "optional Imperial penal labor lease (CSA-allowed)"
+        ],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "V7: CSA can lease Lo'uran infrastructure to the Empire for penal labor use without surrendering core-route worlds (e.g., Hydian Way)."
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "f5ba6959-5203-49f3-83e0-5361d29e3068",
+      "name": "Lur",
+      "position_hsu": {
+        "x": -1166.053306906974,
+        "y": 664.0362504372787
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "ba561b64-9ee6-4aa5-b62d-23b6130b3421",
+      "name": "Lythos",
+      "position_hsu": {
+        "x": 691.9165067703397,
+        "y": 138.07510935943017
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 5
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 4156250
+    },
+    {
+      "id": "5d12f626-013f-4781-bd8b-96f832a4b44f",
+      "name": "Mall'ordian",
+      "position_hsu": {
+        "x": -163.86461775580938,
+        "y": 3.7302382569538395
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3728749
+    },
+    {
+      "id": "d6ed23f4-bcdc-41a9-930e-6236e8c9c177",
+      "name": "maryo",
+      "position_hsu": {
+        "x": 706.481263996472,
+        "y": 629.9037044622635
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "5fd4538d-b797-489d-909b-886876ed821b",
+      "name": "Matra",
+      "position_hsu": {
+        "x": 2078.677564486541,
+        "y": 1422.026658918551
+      },
+      "population_id": "medium",
+      "planets": [
+        {
+          "id": "v6-mat-vi",
+          "name": "Matra VI",
+          "role": "Isolated Industrial Refuge World",
+          "notes": "Relativ isoliert, aber wirtschaftlich erfolgreich. Mehrheitsbevölkerung nicht-menschlich; Anziehungspunkt für Leute, die im Corporate Sector Abstand zur imperialen Ausbeutung/Verfolgung suchen.",
+          "moons": []
+        }
+      ],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Isolated Industrial Refuge World",
+        "keywords": [
+          "Industriewelt (Matra VI)",
+          "isoliert",
+          "nicht-menschliche Mehrheit",
+          "Migrations-/Refugee-Pull",
+          "soziale Spannungen möglich"
+        ],
+        "imports": [
+          "Rohstoffe",
+          "Nahrung",
+          "Energiekomponenten",
+          "Medizin/Sozialgüter"
+        ],
+        "exports": [
+          "industrial_goods",
+          "components",
+          "machinery_parts"
+        ],
+        "traffic_profiles": [
+          "industrial_input",
+          "industrial_output",
+          "passenger_flow",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Schmuggel/Piraten: eher indirekt (Arbeitsmigration, Ausfuhr hochwertiger Komponenten). Piraten bevorzugen Abfang auf den wenigen Zubringer-Routen (isolation = planbare Engpässe)."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null,
+        "habitation_role": "mixed"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 418418000
+    },
+    {
+      "id": "7ced18c7-498a-4f95-9572-a56496d9e1a1",
+      "name": "Media",
+      "position_hsu": {
+        "x": 1094.6328436885915,
+        "y": 887.057440894469
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "e0903b46-b975-4744-8a46-c001ae54d72c",
+      "name": "Ninn",
+      "position_hsu": {
+        "x": 50.35607419686971,
+        "y": -361.31930823383436
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Cultural/Religious Refuge World under Corridor Control",
+        "keywords": [
+          "kleiner Planet",
+          "historisch verwüstet",
+          "CSA-inkorporiert nach 19 BBY",
+          "Authority Guardian Corridor",
+          "Priests of Ninn",
+          "Besucher: Ryn (gelegentlich)"
+        ],
+        "imports": [
+          "Lebensnotwendiges",
+          "Medizin",
+          "Bau-/Erhaltungsmaterial",
+          "Treibstoff (limitiert)"
+        ],
+        "exports": [
+          "N/A (soft power only)",
+          "pilgrimage_services"
+        ],
+        "traffic_profiles": [
+          "passenger_flow",
+          "institutional_flow",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Corridor Control + Cultural Oversight",
+        "notes": "Ninn ist ideologisch sensibel: Pilger-/Refuge-Verkehr unter CSA-Aufsicht. Schmuggel/Piraten: attraktiv als 'ruhiger Umschlag' (Pilgerdeckung), aber riskant wegen Korridor-Patrouillen. Piraten nutzen eher Nebenrouten zwischen Ninn ↔ Lo'Uran ↔ Lythos, nicht den Hauptkorridor."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null,
+        "habitation_role": "refuge"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 20205899
+    },
+    {
+      "id": "5b48e222-0a44-4784-b4ca-e7372b714459",
+      "name": "Ocsin",
+      "position_hsu": {
+        "x": 2649.8875707341194,
+        "y": 345.30258571255024
+      },
+      "population_id": "low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 4
+      },
+      "lore_economy": {
+        "role": "Route Intersection Maintenance Node",
+        "keywords": [
+          "Routenkreuzung (mehrfacher Anschluss)",
+          "geeignet für Wartung/Refuel",
+          "Nähe zu Peripherieästen"
+        ],
+        "imports": [
+          "Treibstoff",
+          "Ersatzteile",
+          "Versorgung"
+        ],
+        "exports": [
+          "Wartungs- und Transitdienstleistungen"
+        ],
+        "traffic_profiles": [
+          "long_haul_shipping",
+          "security_logistics",
+          "local_goods"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Maintenance+Customs",
+        "notes": "Begründet regelmäßige Stopps ohne große planetare Produktion."
+      },
+      "habitability": {
+        "comfort": "low",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 8289600
+    },
+    {
+      "id": "95035b56-16f2-4d46-910e-4b22e04de984",
+      "name": "Orron",
+      "position_hsu": {
+        "x": 2191.711221891644,
+        "y": 1551.6829130008741
+      },
+      "population_id": "low",
+      "planets": [
+        {
+          "id": "v6-orr-iii",
+          "name": "Orron III",
+          "role": "Controlled Agricultural Production World",
+          "notes": "Agrarwelt unter harter CSA-Regulierung. Authority Data Center auf der Oberfläche; Anflug/Andockverkehr stark eingeschränkt (Drohnen-Bargen + Authority-Flotteneinheiten).",
+          "moons": [
+            {
+              "id": "v6-orr-iii-a",
+              "name": "Orron III-A"
+            },
+            {
+              "id": "v6-orr-iii-b",
+              "name": "Orron III-B"
+            },
+            {
+              "id": "v6-orr-iii-c",
+              "name": "Orron III-C"
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Controlled Agricultural Production World",
+        "keywords": [
+          "Agrarwelt (Orron III)",
+          "Authority Data Center",
+          "Drohnen-Bargen",
+          "Zutritts-/Verkehrsbeschränkungen",
+          "Abschöpfung & Rationslogik möglich"
+        ],
+        "imports": [
+          "Agrar-Maschinen/Ersatzteile",
+          "Droid maintenance",
+          "Sicherheitsmaterial",
+          "Medizin/Notfallversorgung (minimal)"
+        ],
+        "exports": [
+          "bulk_foodstuffs",
+          "standardized_crops"
+        ],
+        "traffic_profiles": [
+          "bulk_goods",
+          "institutional_flow",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Agri-Control + Authority Access",
+        "notes": "Orron ist keine Markt- oder Passagierwelt: Output läuft in standardisierten, überwachten Chargen. Piraterie/Schmuggel: attraktiv wegen Nahrung, aber extrem schwer wegen Drohnenlogistik + Authority-Only-Verkehr."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null,
+        "habitation_role": "restricted"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 36822500
+    },
+    {
+      "id": "c09d7da2-9be5-4554-8d74-c18642f59d55",
+      "name": "Oslumpex",
+      "position_hsu": {
+        "x": 1819.3650563218962,
+        "y": 1328.9401175261144
+      },
+      "population_id": "high",
+      "planets": [
+        {
+          "id": "v6-osl-v",
+          "name": "Oslumpex V",
+          "role": "Shipyard Megahub & Border Gateway",
+          "notes": "Kreuzung Authority Arc + Shaltin Tunnels; nahe CSA-Grenze (Richtung Wyl). Reich durch Außenwaren-Zulauf. Größter CSA-Schiffswerftkomplex; Gewerkschafts-HQ der Werftarbeiter; große Docks, auch für Tramp-Frachter & Schmuggler-Schiffe (inoffiziell/halb-legal).",
+          "moons": []
+        }
+      ],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Shipyard Megahub & Border Gateway",
+        "keywords": [
+          "Hyperlane-Kreuzung: Authority Arc + Shaltin Tunnels",
+          "Grenznah (Wyl Sector)",
+          "größte CSA-Schiffswerft",
+          "Gewerkschaften/Starshipwrights",
+          "Drydocks",
+          "Tramp- & Schmugglerverkehr (Grauzone)"
+        ],
+        "imports": [
+          "Erze/Legierungen",
+          "Komponenten",
+          "Treibstoff",
+          "Außenwaren (Border inflow)",
+          "Arbeitskräfte/Contractors"
+        ],
+        "exports": [
+          "ship_construction",
+          "ship_refit_services",
+          "spare_parts",
+          "drydock_services"
+        ],
+        "traffic_profiles": [
+          "long_haul_shipping",
+          "industrial_output",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Shipyard + Border Customs + Maintenance",
+        "notes": "Oslumpex V ist der perfekte 'schmutzige' Knoten: offiziell Hochkontrolle, praktisch ständige Grauzone. Schmuggel/Piraten: viel Zielvolumen (Ersatzteile, Legierungen, Reparaturen), viele 'Tramps' als Deckung; aber CSA-Zoll & Werft-Security machen direkte Piraterie riskant. Piraten operieren eher als Abfangjäger auf Zulaufstrecken oder via Insider/Union-Korruption."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": "candidate_residential_world"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2100000000
+    },
+    {
+      "id": "346a49bb-26c7-4529-96b7-91082b40c7e4",
+      "name": "Perin",
+      "position_hsu": {
+        "x": 1067.586493881696,
+        "y": -934.4628929281803
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "adf1df34-a264-4898-8226-7eb76f3b4418",
+      "name": "Pondut Station",
+      "position_hsu": {
+        "x": 1695.9372104471913,
+        "y": 1031.6017598268245
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Station Hub / Orbital Freight Node",
+        "keywords": [
+          "Raumstation",
+          "Umschlag & Andockkapazität",
+          "kein planetarer Hinterraum nötig"
+        ],
+        "imports": [
+          "Alles Lebensnotwendige",
+          "Treibstoff",
+          "Ersatzteile"
+        ],
+        "exports": [
+          "Logistikdienstleistungen",
+          "Containerumschlag"
+        ],
+        "traffic_profiles": [
+          "bulk_goods",
+          "long_haul_shipping",
+          "security_logistics"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Orbital Freight Checkpoint",
+        "notes": "Ideal für Bündelung ohne planetare Reibung; eignet sich als 'sicherer Cooldown'-Ort."
+      },
+      "habitability": {
+        "comfort": "n/a",
+        "residential_commuting_hint": "orbital_hub"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 420000
+    },
+    {
+      "id": "f660fab7-1597-4fb4-9855-ef7f9fa4f725",
+      "name": "Pypin",
+      "position_hsu": {
+        "x": -265.91663599138496,
+        "y": -897.7336612274753
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "fcce215e-9a84-4a60-b367-35c5cff6fc4b",
+      "name": "R'alla",
+      "position_hsu": {
+        "x": 2138.2428263801994,
+        "y": 418.73384755363685
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3301250
+    },
+    {
+      "id": "a7f1052e-f43f-49fc-a37b-2c534775de7a",
+      "name": "Rampa",
+      "position_hsu": {
+        "x": 2193.1696675744943,
+        "y": 519.9148708062859
+      },
+      "population_id": "very_low",
+      "planets": [
+        {
+          "id": "586bfb92-c04a-4cca-ba3c-0503070695e0",
+          "name": "Rampa I",
+          "role": "Coaxium Refinery World",
+          "notes": "Raffinerie- und Stabilisationsplanet. Roh-Coaxium wird nur kurzzeitig und unter schwerer Sicherung von Rampa II hergebracht.",
+          "moons": [
+            {
+              "id": "51ddc1bd-5f61-495b-b487-d24035ca1aed",
+              "name": "Rampa I-A",
+              "role": "cooling_energy",
+              "outputs": [
+                "coolant_mass",
+                "buffer_energy_cells"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "e4abcf19-17ee-40e6-a5b8-752ca2bee599",
+          "name": "Rampa II",
+          "role": "Coaxium Mega-Generation World",
+          "catastrophe_risk": "extreme",
+          "notes": "Primäranlage für industrielle Coaxium-Erzeugung. Mega-Komplex im Orbit/auf den Monden; extrem gefährlich. Ein schwerer Unfall hätte planetenweite Auswirkungen (Einschlags-/Extinktionsniveau).",
+          "moons": [
+            {
+              "id": "2ff26802-0362-400a-98ea-e348e890a602",
+              "name": "Rampa II-A",
+              "role": "tidal_energy_generator",
+              "outputs": [
+                "industrial_coaxium_feedstock"
+              ]
+            },
+            {
+              "id": "85ab8f4a-24b9-4eee-a9ba-95f02de60572",
+              "name": "Rampa II-B",
+              "role": "tidal_energy_generator",
+              "outputs": [
+                "industrial_coaxium_feedstock"
+              ]
+            },
+            {
+              "id": "ea621a12-c322-481a-a2da-04e2f4ee382a",
+              "name": "Rampa II-C",
+              "role": "resonance_stabilizer",
+              "notes": "Orbitresonanz/Gravitationskoppelung zur Erzeugung starker interstellarer Energiebedingungen."
+            },
+            {
+              "id": "98f18697-8601-4429-8a7f-31b5547d45cd",
+              "name": "Rampa II-D",
+              "role": "security_control",
+              "notes": "Sensor-/Kontrollmond, Sperrzone, Boarding-Korridore."
+            }
+          ]
+        },
+        {
+          "id": "174ea8d1-39e4-4060-b7f4-31b99e4fa8db",
+          "name": "Rampa III",
+          "role": "Logistics & Container Hub",
+          "notes": "Umladung, Containerparks, Schlepperkoordination. Sichtbarer Dauerverkehr zwischen Generation (II), Raffinerie (I) und Lager (IV).",
+          "moons": [
+            {
+              "id": "4ed90d61-1aae-471c-be51-949782292141",
+              "name": "Rampa III-A",
+              "role": "container_storage",
+              "outputs": [
+                "sealed_container_capacity"
+              ]
+            },
+            {
+              "id": "8849814e-28f5-4999-b59c-117969a7e487",
+              "name": "Rampa III-B",
+              "role": "tug_marshalling",
+              "notes": "Schlepper- & Konvoi-Sammelpunkt für kontinuierlichen Containerverkehr."
+            }
+          ]
+        },
+        {
+          "id": "471010ce-d098-4ade-8062-f2d8c6df861d",
+          "name": "Rampa IV",
+          "role": "High-Security Strategic Storage",
+          "notes": "Eines der sichersten Frachtlager im Sektor. Bewacht durch CSA-Einheit (Victory-Star-Destroyer) + kommerzielle TIE/mg-Staffeln.",
+          "moons": [
+            {
+              "id": "1ec99788-849c-4693-bf59-c690f49c4cb9",
+              "name": "Rampa IV-A",
+              "role": "vault_orbital",
+              "notes": "Hochsicheres Frachtlager/Vault. Langzeitlagerung und strategische Reserve."
+            }
+          ]
+        }
+      ],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Primary Industrial Coaxium System",
+        "keywords": [
+          "Coaxium-Großanlagen (industriell, nicht astatisch)",
+          "Trennung: Generation (Rampa II) / Raffinerie (Rampa I) / Lager (Rampa IV)",
+          "Stetiger Container-Schlepperverkehr",
+          "Sperrzonen & Boarding-Korridore",
+          "Katastrophenrisiko: Extinktionsniveau bei Großunfall"
+        ],
+        "imports": [
+          "Maschinen/Anlagen",
+          "Ersatzteile",
+          "Sicherheitsmaterial",
+          "Kühlmittel",
+          "Nahrung (Personal)"
+        ],
+        "exports": [
+          "industrial_coaxium",
+          "refined_coaxium_products",
+          "sealed_energy_containers"
+        ],
+        "traffic_profiles": [
+          "industrial_output",
+          "security_logistics",
+          "long_haul_shipping"
+        ],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Restricted Industrial+Customs",
+        "notes": "Rampa ist der CSA-Flaggschiff-Standort für industrielle Coaxium-Erzeugung. Roh-Coaxium/Feedstock bleibt lokal und wird zur Raffinerie auf Rampa I verlegt; strategische Reserve auf Rampa IV."
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 1800000
+    },
+    {
+      "id": "ef537ef3-a358-40da-b8e3-8f6cc623e582",
+      "name": "Reltooine",
+      "position_hsu": {
+        "x": -741.0800067523228,
+        "y": -69.82595043772477
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 3301250
+    },
+    {
+      "id": "3d321bb2-5d3a-431c-b2fb-84900bea7286",
+      "name": "Sacias",
+      "position_hsu": {
+        "x": 915.0957970810803,
+        "y": 1441.9737749312162
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    },
+    {
+      "id": "b51a77cb-f068-4a4d-8249-51eb5fb80117",
+      "name": "Saffalore",
+      "position_hsu": {
+        "x": 1713.2825287190735,
+        "y": 728.0586900688778
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "7856d1f8-c61c-4065-b398-621107335d73",
+      "name": "Tirsa",
+      "position_hsu": {
+        "x": 803.9664407309217,
+        "y": 736.1375509036511
+      },
+      "population_id": "medium",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Armaments / Industrial Specialty World",
+        "keywords": [
+          "Rüstungsproduktion (z.B. Tirsa Wargear)",
+          "Industrie-Spezialisierung",
+          "mögliche Spice-Nebenwirtschaft (halb-legal)"
+        ],
+        "imports": [
+          "Metalle/Legierungen",
+          "Chemikalien (Kategorie)",
+          "Energie",
+          "Nahrung"
+        ],
+        "exports": [
+          "Waffen/Militärgüter",
+          "Spezialausrüstung",
+          "ggf. diskrete Schmuggelfracht"
+        ],
+        "traffic_profiles": [
+          "industrial_output",
+          "military_logistics",
+          "security_logistics",
+          "shadow_trade"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Erzeugt wertige, sicherheitsrelevante Frachten; gute Begründung für Eskorten."
+      },
+      "habitability": {
+        "comfort": "medium",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 480662000
+    },
+    {
+      "id": "bc91e6f2-c705-4f6b-a86d-3de1d19f025b",
+      "name": "Tothis",
+      "position_hsu": {
+        "x": 1938.7716662535486,
+        "y": 178.7902781259267
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Heavy Industry World",
+        "keywords": [
+          "industriell geprägt",
+          "Fertigungsschwerpunkt",
+          "Standardproduktion"
+        ],
+        "imports": [
+          "Erze",
+          "Energie",
+          "Nahrung",
+          "Industrieinputs"
+        ],
+        "exports": [
+          "Standard-Industriegüter",
+          "Komponenten",
+          "veredelte Materialien"
+        ],
+        "traffic_profiles": [
+          "industrial_input",
+          "industrial_output",
+          "bulk_goods"
+        ],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": "Klassischer Input-zu-Output-Generator; plausibel als Zulieferer für Bonadan/Armaments."
+      },
+      "habitability": {
+        "comfort": "low",
+        "residential_commuting_hint": "candidate_workworld"
+      },
+      "sources": {
+        "seed_v1_sources": [
+          "Wookieepedia",
+          "Jedipedia"
+        ],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 1980750
+    },
+    {
+      "id": "e06cc7b7-7127-4176-917d-9412658948a2",
+      "name": "Trian",
+      "position_hsu": {
+        "x": -592.4680245643674,
+        "y": -834.5912055349734
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 1
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2446250
+    },
+    {
+      "id": "30f58632-e041-47f2-890e-eb85984a39db",
+      "name": "Ulicia",
+      "position_hsu": {
+        "x": 1728.6129046254848,
+        "y": -536.9891060335854
+      },
+      "population_id": "medium",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 3
+      },
+      "lore_economy": {
+        "role": "Industrial Hyperlane World",
+        "keywords": [
+          "Schwerindustrie",
+          "Shaltin Tunnels Hyperroute",
+          "CSA-Verwaltungspräsenz",
+          "Commex-Konzernstandort"
+        ],
+        "imports": [
+          "Rohstoffe",
+          "Arbeitskräfte",
+          "Energie"
+        ],
+        "exports": [
+          "Industriegüter",
+          "Konzernlogistik"
+        ],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": true,
+        "checkpoint_kind": "Industrial Hyperlane Customs",
+        "notes": "Wichtige Industrie- und Konzernwelt an den Shaltin Tunnels. Dichte CSA-Präsenz und strenge Kontrollen entlang der Hyperroute."
+      },
+      "habitability": {
+        "comfort": "low",
+        "atmosphere": "Type I (breathable)",
+        "breathable": true,
+        "commuting_hint": "industrial_rotation"
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 256872000
+    },
+    {
+      "id": "91ecb02b-5a6a-4d1d-9089-c1ec6743a091",
+      "name": "Urdur",
+      "position_hsu": {
+        "x": 1649.8145702142435,
+        "y": 1362.185310880556
+      },
+      "population_id": "very_low",
+      "planets": [],
+      "stats": {
+        "planets_count": 0,
+        "moons_count": 0,
+        "route_degree": 2
+      },
+      "lore_economy": {
+        "role": "Unclassified / TBD",
+        "keywords": [],
+        "imports": [],
+        "exports": [],
+        "traffic_profiles": [],
+        "mandatory_checkpoint": false,
+        "checkpoint_kind": "N/A",
+        "notes": ""
+      },
+      "habitability": {
+        "comfort": "unknown",
+        "residential_commuting_hint": null
+      },
+      "sources": {
+        "seed_v1_sources": [],
+        "notes": "Lore fields derived via CSA_Sector-Systems_V2 where available; stubs otherwise."
+      },
+      "population_estimate": 2873750
+    }
+  ],
+  "method_base": "Merge of: (a) map geometry (.swmproj systems/routes) + (b) lore-derived functional roles (CSA_Sector-Systems_V2) + (c) seed sources (CSA_Sector-Systems v0.1) + V4: Rampa als Coaxium-Flaggschiff (Generation≠Raffinerie≠Lager) und Militärpräsenz-Ecke auf Kir. + V5: Erweiterte Lore-Integration für Abo Dreth, Ulicia und Brosi (Atmosphäre, Industrie, Bevölkerung, Konflikte).",
+  "generated_at": "2025-12-20T10:10:26",
+  "v6_patch_applied_systems": [
+    "Orron",
+    "Oslumpex",
+    "Matra",
+    "Ninn",
+    "Issagra",
+    "Gaurick",
+    "Jerrist",
+    "Kail",
+    "Fibuli",
+    "Duroon"
+  ]
+}
