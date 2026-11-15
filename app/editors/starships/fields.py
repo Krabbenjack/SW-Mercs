@@ -1,9 +1,11 @@
 """Nullable Qt input controls and reference editors used by the catalog."""
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QMimeData
+from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QPlainTextEdit, QPushButton, QTableWidget,
-    QVBoxLayout, QWidget,
+    QVBoxLayout, QWidget, QDialog, QDialogButtonBox, QTableWidgetItem,
+    QAbstractItemView, QSplitter, QMessageBox,
 )
 
 from .schema import DIRECTIONS
@@ -92,6 +94,71 @@ class ListField(QWidget):
         return [self.items.item(row).data(Qt.UserRole) for row in range(self.items.count())]
 
 
+WEAPON_MIME = "application/x-swmercs-weapon-id"
+
+
+class WeaponCatalogList(QListWidget):
+    def __init__(self, options, parent=None):
+        super().__init__(parent)
+        self.setDragEnabled(True)
+        self.setDragDropMode(QAbstractItemView.DragOnly)
+        for weapon_id, name in options.items():
+            item = QListWidgetItem(f"{weapon_id} · {name}")
+            item.setData(Qt.UserRole, weapon_id)
+            self.addItem(item)
+
+    def startDrag(self, supported_actions):
+        item = self.currentItem()
+        if item is None:
+            return
+        mime = QMimeData()
+        mime.setData(WEAPON_MIME, str(item.data(Qt.UserRole)).encode("ascii"))
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        drag.exec(Qt.CopyAction)
+
+
+class WeaponDropTable(QTableWidget):
+    weapon_dropped = Signal(int)
+
+    def __init__(self, options, columns):
+        super().__init__(0, columns)
+        self.options = options
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QAbstractItemView.DropOnly)
+        self.setDefaultDropAction(Qt.CopyAction)
+        self.setDropIndicatorShown(True)
+
+    def _weapon_id(self, event):
+        if event.mimeData().hasFormat(WEAPON_MIME):
+            try:
+                weapon_id = int(bytes(event.mimeData().data(WEAPON_MIME)))
+                if weapon_id in self.options:
+                    return weapon_id
+            except (ValueError, TypeError):
+                pass
+        return None
+
+    def dragEnterEvent(self, event):
+        if self._weapon_id(event) is not None:
+            event.setDropAction(Qt.CopyAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event):
+        self.dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        weapon_id = self._weapon_id(event)
+        if weapon_id is None:
+            event.ignore()
+            return
+        self.weapon_dropped.emit(weapon_id)
+        event.setDropAction(Qt.CopyAction)
+        event.accept()
+
+
 class TableField(QWidget):
     changed = Signal()
 
@@ -103,7 +170,7 @@ class TableField(QWidget):
         self.known = QCheckBox("Known / specified")
         layout.addWidget(self.known)
         headers = ["Weapon", "Count", "Direction", "Ammo capacity"] if weapons else ["Good", "Quantity"]
-        self.table = QTableWidget(0, len(headers))
+        self.table = WeaponDropTable(options, len(headers)) if weapons else QTableWidget(0, len(headers))
         self.table.setHorizontalHeaderLabels(headers)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -125,12 +192,20 @@ class TableField(QWidget):
         self.known.toggled.connect(self._toggle)
         self.add_button.clicked.connect(lambda: self._append({}))
         self.remove_button.clicked.connect(self._remove)
+        if weapons:
+            self.add_button.hide()
+            self.table.weapon_dropped.connect(self.add_weapon)
 
     def _toggle(self, checked):
-        self.table.setEnabled(checked)
+        self.table.setEnabled(checked or self.weapons)
         self.add_button.setEnabled(checked and bool(self.options))
         self.remove_button.setEnabled(checked)
         self.changed.emit()
+
+    def add_weapon(self, weapon_id):
+        if weapon_id in self.options:
+            self.known.setChecked(True)
+            self._append({"weapon_id": weapon_id})
 
     def _append(self, value):
         row = self.table.rowCount()
@@ -184,6 +259,130 @@ class TableField(QWidget):
         return rows
 
 
+class WeaponLoadoutDialog(QDialog):
+    """Searchable drag source next to the editable ship equipment drop target."""
+    def __init__(self, store, values, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Ship equipment · Weapon catalog")
+        self.resize(1040, 540)
+        self.setMinimumSize(820, 440)
+        options = store.references("weapons")
+        layout = QVBoxLayout(self)
+        hint = QLabel("Drag a weapon from the catalog onto the ship's equipment. "
+                      "Set count, firing direction and ammunition for each mount.")
+        hint.setWordWrap(True)
+        hint.setProperty("role", "hint")
+        layout.addWidget(hint)
+        splitter = QSplitter(Qt.Horizontal)
+        source = QWidget()
+        source_layout = QVBoxLayout(source)
+        source_layout.addWidget(QLabel("WEAPON CATALOG"))
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search weapon name or ID…")
+        source_layout.addWidget(self.search)
+        self.catalog = WeaponCatalogList(options)
+        for row in range(self.catalog.count()):
+            item = self.catalog.item(row)
+            stats = store.read(item.data(Qt.UserRole), weapons=True)["weapon"]
+            item.setToolTip("\n".join(f"{pretty}: {value}" for pretty, value in (
+                ("Type", stats["weapon_type"]), ("Damage", stats["damage"]),
+                ("Range (km)", stats["range_km"]), ("Rate of fire", stats["rate_of_fire"]))
+                if value is not None) or "No weapon statistics yet")
+        source_layout.addWidget(self.catalog, 1)
+        add = QPushButton("Add selected weapon")
+        add.setEnabled(bool(options))
+        source_layout.addWidget(add)
+        splitter.addWidget(source)
+        target = QWidget()
+        target_layout = QVBoxLayout(target)
+        target_layout.addWidget(QLabel("SHIP EQUIPMENT · DROP WEAPONS HERE"))
+        self.mounts = TableField(options, weapons=True)
+        self.mounts.table.setMaximumHeight(16777215)
+        header = self.mounts.table.horizontalHeader()
+        for column, width in ((1, 72), (2, 138), (3, 118)):
+            header.setSectionResizeMode(column, QHeaderView.Interactive)
+            header.resizeSection(column, width)
+        self.mounts.set_value(values)
+        target_layout.addWidget(self.mounts, 1)
+        splitter.addWidget(target)
+        splitter.setSizes([310, 730])
+        splitter.setStretchFactor(1, 1)
+        layout.addWidget(splitter, 1)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.button(QDialogButtonBox.Ok).setText("Apply loadout")
+        buttons.accepted.connect(self._apply)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.result_value = values
+        self.search.textChanged.connect(self._filter)
+        self.catalog.itemDoubleClicked.connect(lambda item: self.mounts.add_weapon(item.data(Qt.UserRole)))
+        add.clicked.connect(self._add_selected)
+
+    def _filter(self, text):
+        for row in range(self.catalog.count()):
+            item = self.catalog.item(row)
+            item.setHidden(text.casefold() not in item.text().casefold())
+
+    def _add_selected(self):
+        item = self.catalog.currentItem()
+        if item is not None and not item.isHidden():
+            self.mounts.add_weapon(item.data(Qt.UserRole))
+
+    def _apply(self):
+        try:
+            values = self.mounts.value()
+            for mount in values or []:
+                if mount["quantity"] is None or mount["quantity"] <= 0:
+                    raise CatalogError("Weapon count must be a positive integer.")
+                ammo = mount["ammunition_capacity"]
+                if ammo is not None and ammo < 0:
+                    raise CatalogError("Ammunition capacity cannot be negative.")
+            self.result_value = values
+            self.accept()
+        except (CatalogError, ValueError) as exc:
+            QMessageBox.warning(self, "Invalid equipment", str(exc))
+
+
+class WeaponField(QWidget):
+    changed = Signal()
+
+    def __init__(self, store):
+        super().__init__()
+        self.store = store
+        self._values = None
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.equipment_button = QPushButton("Equipment · Open weapon catalog")
+        layout.addWidget(self.equipment_button)
+        self.summary = QLabel()
+        self.summary.setProperty("role", "muted")
+        self.summary.setWordWrap(True)
+        layout.addWidget(self.summary)
+        self.equipment_button.clicked.connect(self.open_catalog)
+
+    def open_catalog(self):
+        dialog = WeaponLoadoutDialog(self.store, self._values, self)
+        if dialog.exec() == QDialog.Accepted:
+            if dialog.result_value != self._values:
+                self.set_value(dialog.result_value)
+                self.changed.emit()
+
+    def set_value(self, values):
+        self._values = values
+        names = self.store.references("weapons")
+        if values is None:
+            self.summary.setText("Unknown weapon loadout")
+        elif not values:
+            self.summary.setText("No weapons installed")
+        else:
+            self.summary.setText("\n".join(
+                f"{mount['quantity']} × {names.get(mount['weapon_id'], mount['weapon_id'])} · {mount['direction']}"
+                for mount in values))
+
+    def value(self):
+        return self._values
+
+
 FACTIONS = {text: text for text in ("Galactic Empire", "Rebel Alliance", "Corporate Sector Authority",
                                    "Corporations", "Planetary Militias", "Civilian", "Pirates", "Independent")}
 
@@ -213,7 +412,7 @@ class FieldInput(QWidget):
             self.input = ListField(options, free_text=kind == "strings")
             self.input.changed.connect(lambda *_: self.changed.emit())
         elif kind in ("weapons", "materials"):
-            self.input = TableField(store.references(kind), kind == "weapons")
+            self.input = WeaponField(store) if kind == "weapons" else TableField(store.references(kind), False)
             self.input.changed.connect(lambda *_: self.changed.emit())
         else:
             self.input = QLineEdit()
@@ -222,7 +421,7 @@ class FieldInput(QWidget):
         layout.addWidget(self.input)
 
     def set_value(self, value):
-        if isinstance(self.input, (ListField, TableField)):
+        if isinstance(self.input, (ListField, TableField, WeaponField)):
             self.input.set_value(value)
         elif isinstance(self.input, QComboBox):
             self.input.setCurrentIndex(max(0, self.input.findData(value)))
@@ -232,7 +431,7 @@ class FieldInput(QWidget):
             self.input.setText("" if value is None else str(value))
 
     def value(self):
-        if isinstance(self.input, (ListField, TableField)):
+        if isinstance(self.input, (ListField, TableField, WeaponField)):
             return self.input.value()
         if isinstance(self.input, QComboBox):
             return self.input.currentData()

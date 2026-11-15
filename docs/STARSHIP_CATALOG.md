@@ -18,7 +18,13 @@ Each record has `schema_version: 1`, integer `id`, `name`, `object_type` and `ca
 
 Blank fields use JSON null. Explicit zero, false and empty lists are not unknown. A checked "Known / specified" list can be empty. No hyperdrive is expressed as class 0, not null.
 
-Weapons are referenced by ID with quantity, direction (Front, Rear, Port, Starboard, Turret) and optional ammunition capacity. For example, after weapon 1 has been created:
+The General tab offers optional field groups. Small craft (starfighters, gunships and shuttles) default to reduced external cargo controls; fighters also hide expanded crew and troop fields. Passenger capacity remains available for every ship. Hangar and repair fields can be enabled on any ship or station. Existing populated groups are visible by default, and explicit per-record display overrides are saved in the optional `field_visibility` map. These booleans only control the editor display: hidden statistics are preserved, and no capabilities are assumed from the category.
+
+Weapons are referenced by ID with quantity, direction (Front, Rear, Port, Starboard, Turret) and optional ammunition capacity.
+
+In the Combat tab, **Equipment · Open weapon catalog** opens a searchable popup. Drag weapons from the catalog into the ship equipment table (or double-click / use Add selected weapon). Each mount has its own count, firing direction and optional ammo capacity. Apply loadout updates the unsaved ship form; Cancel leaves the form unchanged. Save persists the record.
+
+For example, after weapon 1 has been created:
 
 ```json
 {

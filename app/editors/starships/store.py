@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from app.shared.paths import DATA_DIR
-from .schema import VERSION, DIRECTIONS, OBJECT_FOLDERS, blank_record, sections_for
+from .schema import VERSION, DIRECTIONS, OBJECT_FOLDERS, blank_record, sections_for, visibility_groups
 
 
 class CatalogError(ValueError):
@@ -223,6 +223,13 @@ class CatalogStore:
         if base:
             record.update(deepcopy(base))
             record["name"] = name.strip()
+        groups = visibility_groups(record)
+        if "field_visibility" in incoming:
+            overrides = incoming["field_visibility"]
+            if (not groups or not isinstance(overrides, dict) or set(overrides) - set(groups)
+                    or any(type(value) is not bool for value in overrides.values())):
+                raise CatalogError("Invalid field visibility overrides")
+            record["field_visibility"] = dict(record.get("field_visibility", {}), **overrides)
         unknown = set(incoming) - set(record)
         if unknown:
             raise CatalogError(f"Unknown fields: {', '.join(sorted(unknown))}")

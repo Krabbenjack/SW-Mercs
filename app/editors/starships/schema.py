@@ -141,3 +141,38 @@ def blank_record(object_type, category, record_id, name):
     for section, (_, fields) in sections_for(object_type).items():
         record[section] = {field.key: None for field in fields}
     return record
+
+
+def visibility_groups(record):
+    """Presentation defaults only; never infer or delete ship statistics."""
+    kind, category = record["object_type"], record["category"]
+    if kind not in ("starships", "stations"):
+        return {}
+    fighter = category in ("starfighters", "imperial_starfighters")
+    small = fighter or category in ("gunships", "shuttles")
+    groups = {
+        "expanded_crew": ("Expanded crew", not fighter,
+                          (("crew", "officers"), ("crew", "engineers"), ("crew", "support_personnel"))),
+        "troops": ("Troop transport", not fighter, (("crew", "troop_capacity"),)),
+        "external_cargo": ("External cargo / containers", not small,
+                           tuple(("cargo", key) for key in
+                                 ("external_cargo_cu", "container_slots", "compatible_containers", "loading_rate_cu_h"))),
+        "hangar": ("Hangar", False, tuple(("hangar", key) for key in
+                                         ("starfighter_capacity", "shuttle_capacity", "hangar_capacity"))),
+        "repair": ("Repair facilities", False, (("hangar", "repair_capability"),)),
+        "armed": ("Weapons", kind == "starships" or category == "defense_platforms", (("combat", "weapons"),)),
+        "shielded": ("Shields", True, (("combat", "shields"), ("combat", "shield_recharge_rate"))),
+        "tractor_beams": ("Tractor beams", not small, (("technical", "tractor_beams"),)),
+    }
+    if kind == "starships":
+        groups["hyperdrive"] = ("Hyperdrive", True, (("technical", "hyperdrive_class"),
+                                                   ("technical", "backup_hyperdrive_class")))
+    return groups
+
+
+def group_is_visible(record, group):
+    _, default, fields = visibility_groups(record)[group]
+    override = record.get("field_visibility", {}).get(group)
+    if override is not None:
+        return override
+    return default or any(record.get(section, {}).get(key) is not None for section, key in fields)

@@ -109,6 +109,17 @@ class CatalogTests(unittest.TestCase):
         with self.assertRaises(CatalogError):
             self.store.export(self.store.enum_path, [1001])
 
+    def test_visibility_override_does_not_remove_values(self):
+        self.store.save([{"id": 1001, "field_visibility": {"hangar": False},
+                          "hangar": {"starfighter_capacity": 2}}])
+        record = self.store.read(1001)
+        self.assertEqual(record["hangar"]["starfighter_capacity"], 2)
+        self.assertFalse(record["field_visibility"]["hangar"])
+        self.store.save([{"id": 1001, "field_visibility": {"armed": True}}])
+        self.assertEqual(self.store.read(1001)["field_visibility"], {"hangar": False, "armed": True})
+        with self.assertRaises(CatalogError):
+            self.store.save([{"id": 1001, "field_visibility": {"unknown": True}}])
+
     def test_rollback_on_failed_write(self):
         original = self.store.read(1001)
         writes = []

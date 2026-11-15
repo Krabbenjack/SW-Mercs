@@ -5,7 +5,10 @@ import tempfile
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from PySide6.QtCore import Qt, QMimeData, QPoint, QPointF, QTimer
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from PySide6.QtWidgets import QApplication, QMessageBox
+from app.editors.starships.fields import WEAPON_MIME, WeaponLoadoutDialog
 from app.editors.starships.window import StarshipEditor
 from app.editors.starships.store import json_bytes
 from test_starship_store import temporary_catalog
@@ -22,6 +25,10 @@ def main():
         ships = editor.ship_panel
         assert len(ships.items) == 96 and ships.current_id == 1001
         assert ships.form.tabs.count() == 8
+        assert not ships.form.tabs.isTabVisible(ships.form.tabs.indexOf(ships.form.pages["hangar"]))
+        assert ships.form.forms["crew"].isRowVisible(ships.form.inputs[("crew", "passenger_capacity")])
+        assert not ships.form.forms["crew"].isRowVisible(ships.form.inputs[("crew", "officers")])
+        assert not ships.form.forms["cargo"].isRowVisible(ships.form.inputs[("cargo", "container_slots")])
         assert not ships.save_button.isEnabled()
         ships.search.setText("6002")
         assert not ships.items[6002].isHidden() and ships.items[1001].isHidden()
@@ -46,11 +53,45 @@ def main():
         factions.select.setCurrentText("Civilian")
         factions.add_button.click()
         loadout = form.inputs[("combat", "weapons")].input
-        loadout.known.setChecked(True)
-        loadout.add_button.click()
-        loadout.table.cellWidget(0, 1).setText("4")
-        loadout.table.cellWidget(0, 2).setCurrentText("Starboard")
-        loadout.table.cellWidget(0, 3).setText("0")
+        failures = []
+        def populate_popup(apply):
+            dialog = QApplication.activeModalWidget()
+            try:
+                assert isinstance(dialog, WeaponLoadoutDialog)
+                assert dialog.catalog.count() == 1
+                dialog.search.setText("medium")
+                assert not dialog.catalog.item(0).isHidden()
+                mime = QMimeData()
+                mime.setData(WEAPON_MIME, b"1")
+                table = dialog.mounts.table
+                enter = QDragEnterEvent(QPoint(15, 15), Qt.CopyAction, mime, Qt.LeftButton, Qt.NoModifier)
+                QApplication.sendEvent(table.viewport(), enter)
+                assert enter.isAccepted()
+                drop = QDropEvent(QPointF(15, 15), Qt.CopyAction, mime, Qt.LeftButton, Qt.NoModifier)
+                QApplication.sendEvent(table.viewport(), drop)
+                assert drop.isAccepted() and table.rowCount() == 1
+                table.cellWidget(0, 1).setText("4")
+                table.cellWidget(0, 2).setCurrentText("Starboard")
+                table.cellWidget(0, 3).setText("0")
+                if apply:
+                    dialog._apply()
+                else:
+                    dialog.reject()
+            except BaseException as exc:
+                failures.append(exc)
+                dialog.reject()
+        QTimer.singleShot(0, lambda: populate_popup(False))
+        loadout.equipment_button.click()
+        assert not failures and loadout.value() is None
+        QTimer.singleShot(0, lambda: populate_popup(True))
+        loadout.equipment_button.click()
+        if failures:
+            raise failures[0]
+        form.group_checks["hangar"].setChecked(True)
+        assert form.tabs.isTabVisible(form.tabs.indexOf(form.pages["hangar"]))
+        form.inputs[("hangar", "starfighter_capacity")].input.setText("2")
+        form.group_checks["hangar"].setChecked(False)
+        assert not form.tabs.isTabVisible(form.tabs.indexOf(form.pages["hangar"]))
         assert ships.dirty
         with patch("PySide6.QtWidgets.QMessageBox.question", return_value=QMessageBox.Cancel):
             ships.tree.setCurrentItem(ships.items[1002])
@@ -61,6 +102,9 @@ def main():
         assert len(record["general"]["factions"]) == 2
         assert record["combat"]["weapons"] == [
             {"weapon_id": 1, "quantity": 4, "direction": "Starboard", "ammunition_capacity": 0}]
+        assert record["field_visibility"]["hangar"] is False
+        assert record["hangar"]["starfighter_capacity"] == 2
+        assert not ships.form.tabs.isTabVisible(ships.form.tabs.indexOf(ships.form.pages["hangar"]))
         assert not ships.dirty
         ships.form.inputs[("technical", "atmospheric_capability")].input.setCurrentIndex(2)
         assert ships.dirty
@@ -87,6 +131,9 @@ def main():
         ships.search.clear()
         ships.tree.setCurrentItem(ships.items[10001])
         assert ships.form.tabs.count() == 9 and ("station", "special_function") in ships.form.inputs
+        ships.tree.setCurrentItem(ships.items[6002])
+        assert ships.form.forms["cargo"].isRowVisible(ships.form.inputs[("cargo", "container_slots")])
+        assert not ships.form.tabs.isTabVisible(ships.form.tabs.indexOf(ships.form.pages["hangar"]))
         ships.tree.setCurrentItem(ships.items[11001])
         assert ships.form.tabs.count() == 4 and ("container", "cargo_capacity_cu") in ships.form.inputs
         with patch("PySide6.QtWidgets.QInputDialog.getItem", return_value=("Starships / Starfighters", True)), \

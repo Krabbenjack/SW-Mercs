@@ -6,12 +6,13 @@ from PySide6.QtWidgets import (
     QWidget, QMainWindow, QTabWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QSplitter, QTreeWidget, QTreeWidgetItem, QLabel, QPushButton, QLineEdit,
     QScrollArea, QFileDialog, QInputDialog, QMessageBox,
+    QCheckBox, QGroupBox, QGridLayout,
 )
 
 from app.shared.paths import EXPORTS_DIR
 from app.shared.theme import apply_theme
 from .fields import FieldInput
-from .schema import blank_record, sections_for
+from .schema import blank_record, sections_for, visibility_groups, group_is_visible
 from .store import CatalogStore, CatalogError
 
 
@@ -26,6 +27,10 @@ class RecordForm(QWidget):
         super().__init__()
         self.record, self.store = record, store
         self.inputs = {}
+        self.forms, self.pages = {}, {}
+        self.groups = visibility_groups(record)
+        self.visibility_overrides = dict(record.get("field_visibility", {}))
+        self.group_checks = {}
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 0, 0, 0)
         heading = QLabel(f"{record['id']}  ·  {pretty(record['category'])}")
@@ -46,6 +51,7 @@ class RecordForm(QWidget):
             form.setLabelAlignment(Qt.AlignLeft | Qt.AlignTop)
             form.setRowWrapPolicy(QFormLayout.WrapLongRows)
             form.setVerticalSpacing(12)
+            self.forms[section] = form
             content.addLayout(form)
             for field in fields:
                 label = QLabel(f"{field.label}" + (f" ({field.unit})" if field.unit else ""))
@@ -55,6 +61,20 @@ class RecordForm(QWidget):
                 self.inputs[(section, field.key)] = widget
                 form.addRow(label, widget)
                 widget.changed.connect(self._changed)
+            if section == "general" and self.groups:
+                box = QGroupBox("Optional fields / capabilities")
+                grid = QGridLayout(box)
+                hint = QLabel("Choose which optional fields to display. Hidden values are preserved.")
+                hint.setWordWrap(True)
+                hint.setProperty("role", "hint")
+                grid.addWidget(hint, 0, 0, 1, 3)
+                for index, (key, (label, _, _)) in enumerate(self.groups.items()):
+                    check = QCheckBox(label)
+                    check.setChecked(group_is_visible(record, key))
+                    check.toggled.connect(lambda checked, group=key: self._visibility_changed(group, checked))
+                    self.group_checks[key] = check
+                    grid.addWidget(check, 1 + index // 3, index % 3)
+                content.insertWidget(0, box)
             if section == "cargo":
                 self.cargo_summary = QLabel()
                 self.cargo_summary.setProperty("role", "section")
@@ -66,8 +86,26 @@ class RecordForm(QWidget):
             scroll.setWidget(page)
             scroll.setObjectName("recordScroll")
             self.tabs.addTab(scroll, title)
+            self.pages[section] = scroll
         self.name.textChanged.connect(self._changed)
+        self._apply_visibility()
         self._update_cargo()
+
+    def _visibility_changed(self, group, checked):
+        self.visibility_overrides[group] = checked
+        self._apply_visibility()
+        self.changed.emit()
+
+    def _apply_visibility(self):
+        for group, (_, _, fields) in self.groups.items():
+            visible = self.group_checks[group].isChecked()
+            for section, key in fields:
+                widget = self.inputs.get((section, key))
+                if widget is not None:
+                    self.forms[section].setRowVisible(widget, visible)
+        if "hangar" in self.pages:
+            visible = self.group_checks["hangar"].isChecked() or self.group_checks["repair"].isChecked()
+            self.tabs.setTabVisible(self.tabs.indexOf(self.pages["hangar"]), visible)
 
     def _changed(self, *args):
         self._update_cargo()
@@ -100,6 +138,8 @@ class RecordForm(QWidget):
     def value(self):
         result = dict(self.record)
         result["name"] = self.name.text().strip()
+        if self.visibility_overrides:
+            result["field_visibility"] = dict(self.visibility_overrides)
         for (section, key), widget in self.inputs.items():
             if section not in result or result[section] is self.record[section]:
                 result[section] = dict(result.get(section, {}))
