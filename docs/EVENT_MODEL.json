@@ -1,0 +1,47 @@
+{
+  "status": "concept recovery; not complete executable schema",
+  "event_concepts": [
+    "piracy",
+    "smuggling",
+    "sabotage",
+    "strikes",
+    "industrial accidents"
+  ],
+  "participants": {
+    "derived_participants": "UNIT_OF + ALL_MEMBERS",
+    "selection": "participant selection preceding resolve"
+  },
+  "resolve": {
+    "window": {
+      "header": [
+        "event",
+        "ID",
+        "date"
+      ],
+      "left": "participants",
+      "right": [
+        "checks",
+        "effects"
+      ],
+      "footer": [
+        "Resolve",
+        "Close"
+      ]
+    },
+    "execution_log_fields": [
+      "event_id",
+      "participants",
+      "checks",
+      "effects"
+    ]
+  },
+  "state": {
+    "base": "read-only",
+    "session": "persistent event changes",
+    "effective": "base + session overlay"
+  },
+  "open": [
+    "Recover original schema and distinguish character-event implementation from sector simulation",
+    "Define event triggers, checks, effects and persistence"
+  ]
+}

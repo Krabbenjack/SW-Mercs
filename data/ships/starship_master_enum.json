@@ -1,0 +1,130 @@
+{
+  "starships": {
+    "starfighters": {
+      "1001": "T-65B X-Wing",
+      "1002": "BTL-A4 Y-Wing",
+      "1003": "BTL-B Y-Wing",
+      "1004": "RZ-1 A-Wing",
+      "1005": "A/SF-01 B-Wing",
+      "1006": "Z-95 Headhunter",
+      "1007": "R-41 Starchaser",
+      "1008": "Toscan Fighter",
+      "1009": "CloakShape Fighter",
+      "1010": "R-22 Spearhead",
+      "1011": "T-Wing Interceptor",
+      "1012": "StarViper-class Starfighter",
+      "1013": "Supa Fighter"
+    },
+    "imperial_starfighters": {
+      "2001": "TIE/LN Fighter",
+      "2002": "TIE/IN Interceptor",
+      "2003": "TIE/SA Bomber",
+      "2004": "TIE Advanced x1",
+      "2005": "TIE/D Defender",
+      "2006": "TIE/rb Brute",
+      "2007": "TIE/sk x1 Experimental Fighter",
+      "2008": "Assault Gunboat",
+      "2009": "Missile Boat",
+      "2010": "TIE Shuttle"
+    },
+    "gunships": {
+      "3001": "UT-60D U-Wing",
+      "3002": "Braha'tok-class Gunship",
+      "3003": "LAAT/i Gunship",
+      "3004": "LAAT/c Transport"
+    },
+    "shuttles": {
+      "4001": "Lambda-class Shuttle",
+      "4002": "Sentinel-class Landing Craft",
+      "4003": "Escort Shuttle",
+      "4004": "Stormtrooper Transport",
+      "4005": "Assault Transport",
+      "4006": "Nu-class Attack Shuttle",
+      "4007": "Sheathipede-class Shuttle"
+    },
+    "freighters_light_medium": {
+      "5001": "YT-1300 Light Freighter",
+      "5002": "YT-2000 Transport",
+      "5003": "YT-2400 Light Freighter",
+      "5004": "VCX-100 Light Freighter",
+      "5005": "Firespray-31 Patrol Craft",
+      "5006": "Barloz-class Transport"
+    },
+    "freighters_heavy_logistics": {
+      "6001": "GR-75 Medium Transport",
+      "6002": "BFF-1 Bulk Freighter",
+      "6003": "Baleen-class Heavy Freighter",
+      "6004": "Cargo Ferry",
+      "6005": "Light Tug",
+      "6006": "Heavy Tug",
+      "6007": "Eta-class Supply Barge",
+      "6008": "Zeta-class Heavy Cargo Shuttle",
+      "6009": "Imperial Cargo Freighter (Rebels-type)"
+    },
+    "corvettes_patrol": {
+      "7001": "CR90 Corvette",
+      "7002": "CR70 Corvette",
+      "7003": "Raider-class Corvette",
+      "7004": "Marauder-class Corvette",
+      "7005": "Sphyrna-class Hammerhead Corvette",
+      "7006": "System Patrol Craft"
+    },
+    "frigates_cruisers": {
+      "8001": "Nebulon-B Frigate",
+      "8002": "Lancer-class Frigate",
+      "8003": "Carrack-class Cruiser",
+      "8004": "Strike Cruiser",
+      "8005": "Escort Carrier",
+      "8006": "Arquitens-class Light Cruiser",
+      "8007": "Pelta-class Frigate",
+      "8008": "Quasar Fire-class Carrier"
+    },
+    "capital_ships": {
+      "9001": "MC40 Light Cruiser",
+      "9002": "MC75 Star Cruiser",
+      "9003": "MC80 Liberty-type Star Cruiser",
+      "9004": "MC80 Home One-type Star Cruiser",
+      "9005": "Victory I-class Star Destroyer",
+      "9006": "Victory II-class Star Destroyer",
+      "9007": "Imperial I-class Star Destroyer",
+      "9008": "Imperial II-class Star Destroyer",
+      "9009": "Interdictor-class Cruiser",
+      "9010": "Cantwell-class Arrestor Cruiser",
+      "9011": "Dreadnought-class Heavy Cruiser",
+      "9012": "Executor-class Star Dreadnought"
+    }
+  },
+  "stations": {
+    "defense_platforms": {
+      "10001": "XQ1 Platform",
+      "10002": "XQ2 Platform",
+      "10003": "XQ3 Platform",
+      "10004": "XQ4 Platform",
+      "10010": "Golan I Defense Platform",
+      "10011": "Golan II Defense Platform",
+      "10012": "Golan III Defense Platform",
+      "10030": "Scarif Shield Gate"
+    },
+    "industrial_research": {
+      "10101": "Industrial Complex",
+      "10102": "Imperial Research Center",
+      "10103": "Cargo Facility II"
+    }
+  },
+  "cargo_containers": {
+    "generic": {
+      "11001": "Generic Cargo Container"
+    },
+    "xizor_classes": {
+      "11101": "Class-A Cargo Container",
+      "11102": "Class-D Cargo Container",
+      "11103": "Class-E Cargo Container",
+      "11104": "Class-F Cargo Container",
+      "11105": "Class-G Cargo Container",
+      "11106": "Class-H Cargo Container",
+      "11107": "Class-J Cargo Container",
+      "11108": "Class-K Cargo Container",
+      "11109": "Class-L Cargo Container"
+    }
+  }
+}

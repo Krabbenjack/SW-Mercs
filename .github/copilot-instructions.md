@@ -6,8 +6,9 @@ This repository contains **Star Map Editor**, a Python desktop application for c
 
 - **Technology Stack**: Python 3.10+, PySide6
 - **Application Type**: Desktop GUI application
-- **Main Entry Point**: `star-map-editor/main.py`
-- **Primary GUI Module**: `star-map-editor/gui.py`
+- **Main Entry Point**: `swmercs.py` (Windows: `swmercs.bat`)
+- **Launcher**: `app/launcher/window.py`
+- **Map GUI Module**: `app/editors/starmap/gui.py`
 
 ## Project Vision
 
@@ -29,14 +30,17 @@ The Star Map Editor is a tool for creating 2D galactic maps with the following c
 
 Keep the codebase well-organized and maintainable:
 
-- **`star-map-editor/main.py`**: Minimal application startup and window creation only
-- **`star-map-editor/gui.py`**: All PySide6 UI logic (windows, widgets, views, dialogs)
-- **`star-map-editor/core/project_model.py`**: Core data structures (MapProject, TemplateData)
-- **`star-map-editor/core/systems.py`**: System data structures and graphics (SystemData, SystemItem, SystemDialog)
-- **`star-map-editor/core/routes.py`**: Route data structures and graphics (RouteData, RouteItem, RouteHandleItem)
-- **`star-map-editor/core/templates.py`**: Template graphics management (TemplateItem)
-- **`star-map-editor/core/project_io.py`**: Project save/load/export functionality
-- **`star-map-editor/core/__init__.py`**: Core module exports
+- **`swmercs.py`**: Minimal application entry point
+- **`app/launcher/window.py`**: Main menu and editor command center
+- **`app/editors/starmap/gui.py`**: Map PySide6 UI logic (windows, widgets, views, dialogs)
+- **`app/editors/starmap/project_model.py`**: Core data structures (MapProject, TemplateData)
+- **`app/editors/starmap/systems.py`**: System data structures and graphics (SystemData, SystemItem, SystemDialog)
+- **`app/editors/starmap/routes.py`**: Route data structures and polyline graphics (RouteData, RouteItem)
+- **`app/editors/starmap/templates.py`**: Template graphics management (TemplateItem)
+- **`app/editors/starmap/project_io.py`**: Project save/load/export functionality
+- **`app/editors/starmap/__init__.py`**: Map module exports
+- **`app/shared/paths.py`**: Root-relative runtime paths
+- **`app/editors/starships/`, `app/editors/industry/`, `app/simulation/`**: Reserved modules
 
 ### Separation of Concerns
 
@@ -44,7 +48,7 @@ Keep the codebase well-organized and maintainable:
 - Domain logic should not depend on PySide6 (except for Qt types like QPointF)
 - UI components should consume domain models, not define them
 - Use clear interfaces between layers
-- Graphics items (SystemItem, TemplateItem, RouteItem) are in core/ modules as they're tightly coupled with data models
+- Graphics items (SystemItem, TemplateItem, RouteItem) are in the starmap modules as they're tightly coupled with data models
 
 ## Coding Guidelines
 
@@ -270,7 +274,7 @@ When requirements are unclear:
 ### Adding a New System to the Map
 
 ```python
-# In core/systems.py
+# In app/editors/starmap/systems.py
 from dataclasses import dataclass
 from PySide6.QtCore import QPointF
 
@@ -301,7 +305,7 @@ class SystemItem(QGraphicsEllipseItem):
 ### Handling File Operations
 
 ```python
-# In core/project_io.py
+# In app/editors/starmap/project_io.py
 import json
 from pathlib import Path
 from typing import Optional
@@ -350,29 +354,21 @@ Design with extensibility in mind, but don't over-engineer for features that don
 
 ## Running the Application
 
-To run the Star Map Editor:
+To launch SW-Mercs from the repository root:
 
 ```bash
-cd star-map-editor
-python main.py
+python swmercs.py
 ```
 
 To verify installation:
 
 ```bash
-cd star-map-editor
-python verify_installation.py
+python tools/verify_installation.py
 ```
 
 ## Testing
 
-Currently there are no automated tests. Testing is done manually:
-
-1. Run the application (`python main.py`)
-2. Follow test procedures in `star-map-editor/TESTING.md`
-3. Verify each feature works as documented
-
-Future improvement: Add automated tests for core data models and I/O operations.
+Run the automated regression suite via `python tools/verify_installation.py`, then start `python swmercs.py` and manually check changed workflows. Historical manual testing notes are preserved in `docs/archive/starmap/TESTING.md`.
 
 ## Summary
 
@@ -389,3 +385,4 @@ When working on this project:
 - ❌ Don't add unnecessary dependencies
 - ❌ Don't hardcode absolute paths
 - ❌ Don't break existing features
+

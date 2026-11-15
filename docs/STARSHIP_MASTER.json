@@ -1,0 +1,11 @@
+{
+  "status": "authoritative enum recovered from project chat",
+  "enum": "../data/ships/starship_master_enum.json",
+  "counts": {
+    "starships": 75,
+    "stations": 11,
+    "cargo_containers": 10
+  },
+  "id_policy": "Preserve existing numeric IDs; reference them from future ship statistics and faction assignments.",
+  "faction_assignments": "Not included in the original enum; maintain separately when available."
+}

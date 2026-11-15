@@ -1,0 +1,7 @@
+{
+  "status": "index; authoritative existing data in repository",
+  "goods": "../data/goods/goods.json",
+  "production_chains": "../data/goods/production_chains.json",
+  "facilities": "../data/facilities/facility_flags.json",
+  "population": "../data/population/population_levels.json"
+}

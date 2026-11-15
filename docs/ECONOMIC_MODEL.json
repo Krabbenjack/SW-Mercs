@@ -1,0 +1,89 @@
+{
+  "project": "Corporate Sector Authority – Economic & Traffic Model",
+  "version": "README.v1",
+  "created": "2025-12-19",
+  "purpose": "Dieses Dokument fasst die im Chat entwickelten Konzepte, Rollen und Mechaniken zusammen. Es dient als Wissensanker, um die Arbeit in neuen Chats konsistent fortzuführen.",
+  "core_concepts": {
+    "coaxium_model": {
+      "summary": "Coaxium ist industriell herstellbar, nicht zwingend astatisch. Natürliche Bildung erfolgt in Zonen starker interstellarer Energie (z.B. Kessel). Im Corporate Sector wird Coaxium künstlich durch großskalige gravitative und energetische Installationen erzeugt.",
+      "key_rules": [
+        "Astatisches Coaxium ist extrem selten (praktisch nur Kessel)",
+        "Industrielles Coaxium ist stabiler, aber energieintensiv herzustellen",
+        "Großanlagen lohnen sich nur im industriellen Maßstab",
+        "Generation, Raffinerie und Langzeitlagerung sind strikt getrennt"
+      ],
+      "rampa_example": {
+        "generation": "Rampa II (Planet + 4 Monde, gravitative Resonanz, extrem hohes Risiko)",
+        "refinery": "Rampa I (separater Planet, Sicherheitsabstand)",
+        "storage": "Rampa IV (strategisches Hochsicherheitslager)",
+        "logistics": "Stetiger Container-Schlepperverkehr zwischen allen Teilstandorten"
+      },
+      "risk_model": [
+        "Roh-Coaxium ist volatil und instabil",
+        "Großunfälle haben planetare bis extinction-level Auswirkungen",
+        "Deshalb massive Sperrzonen, Boarding-Korridore und militärische Sicherung"
+      ]
+    },
+    "commuter_worlds": {
+      "summary": "Unwohnliche Industrie- oder Ödlandwelten können durch Pendler aus angenehmeren Nachbarsystemen betrieben werden.",
+      "rules": [
+        "Kurze Hyperraumdistanzen (~30–60 Minuten) ermöglichen Pendelverkehr",
+        "Pendler bewegen sich über Konzern-Shuttles oder CSA-Transportlinien",
+        "Wohnwelten behalten hohe Lebensqualität, Arbeitswelten hohe Produktivität"
+      ],
+      "examples": [
+        "Bonadan (Ödland/Industrie) ← Pendler aus angenehmeren Systemen",
+        "Ulicia als Industrieplanet mit rotierendem Arbeitskräftepool"
+      ]
+    },
+    "hyperdrive_cooldown": {
+      "summary": "Schiffe können Hyperrouten durchfliegen, ohne in jedem System zu stoppen. Nach einer gewissen Zeit im Hyperraum ist jedoch ein Cooldown im Normalraum nötig.",
+      "mechanics": [
+        "Nach X Tagen Hyperraum: Zwangsaustritt in den Normalraum",
+        "Cooldown dauert Stunden bis Tage (Skalierung rundenbasiert möglich)",
+        "Cooldown-Zonen liegen oft an Routenknoten oder Kontrollpunkten"
+      ],
+      "gameplay_implications": [
+        "Piraten können bei Sensorkontakt während Cooldowns angreifen",
+        "Konvois bevorzugen gesicherte Checkpoints für Cooldowns"
+      ]
+    },
+    "route_nodes_and_checkpoints": {
+      "summary": "Bestimmte Systeme oder Orbitalkomplexe fungieren als verpflichtende Routenknotenpunkte.",
+      "functions": [
+        "Zoll- und Sicherheitskontrollen durch CSA",
+        "Bündelung von Fracht aus umliegenden Systemen",
+        "Umladung auf Großfrachter für Fernreisen",
+        "Sicherer Cooldown-Ort für Hyperraumsprünge"
+      ],
+      "examples": [
+        "D’ian als Handels- und Umschlagwelt",
+        "Bonadan als massiver Orbital-Warenumschlag",
+        "Kir als militärisch gestützter Eck-Kontrollraum"
+      ]
+    },
+    "military_presence_model": {
+      "summary": "Die CSA nutzt veraltete, aber robuste Militärtechnik zur Sicherung wirtschaftlich kritischer Systeme.",
+      "assets": [
+        "Victory-Klasse Star Destroyer (Objektschutz, Eskorten, Abschreckung)",
+        "Kommerzielle TIE/mg (Mining Guild) statt vollmilitärischer IRD-Jäger"
+      ],
+      "design_philosophy": [
+        "Industrie- und Sicherheitspräsenz statt Frontkrieg",
+        "Abschreckung ohne imperiale Eskalationssignale"
+      ]
+    }
+  },
+  "design_principles": [
+    "Lore-Kohärenz vor Detailtiefe",
+    "Großskalige Mechaniken statt Einzelgüter-Mikromanagement",
+    "Wirtschaft erzeugt automatisch Verkehrsströme",
+    "Konflikte entstehen aus Ausbeutung, nicht aus Zufall"
+  ],
+  "next_steps_suggestions": [
+    "Fraktionsmodell (CSA, Konzerne, Widerstandsgruppen)",
+    "Ereignissysteme (Sabotage, Streiks, Unfälle, Piraterie)",
+    "Quantifizierung von Durchsatz und Verkehrsvolumen",
+    "Hotspot-Definition für erzählerische oder spielmechanische Nutzung"
+  ]
+}
