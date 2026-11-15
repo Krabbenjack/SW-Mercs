@@ -1,0 +1,30 @@
+/* Star Map Editor-specific chrome. QGraphicsScene colors remain in gui.py. */
+QWidget[role="toolbar"] {
+    background: #1B2C3B;
+    border: 1px solid #3B5366;
+    border-radius: 6px;
+}
+QWidget[role="toolbar"] QLabel { background: transparent; border: none; }
+QWidget[role="toolbar"] QPushButton { padding: 4px 9px; min-height: 18px; }
+QWidget[role="toolbar"] QComboBox { padding: 3px 24px 3px 5px; }
+QLabel#mapStatus { color: #B3C4D2; font-size: 9pt; padding: 3px 8px; }
+QLabel#routeChain {
+    background: #101923;
+    color: #9CCCF2;
+    border: 1px solid #3B5366;
+    border-radius: 4px;
+    padding: 3px 6px;
+}
+QLabel#zoomIndicator {
+    background: rgba(16, 25, 35, 220);
+    color: #E6EDF5;
+    border: 1px solid #3B5366;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 11px;
+}
+QWidget#statsInspector QTabBar::tab { padding: 7px 10px; }
+QWidget#statsInspector QTabWidget::pane { border-radius: 5px; }
+QScrollArea#statsScroll { border: 0; background: transparent; }
+QGraphicsView#mapView { border: 1px solid #3B5366; }

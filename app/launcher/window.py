@@ -5,7 +5,7 @@ import traceback
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (QApplication, QLabel, QMainWindow, QMessageBox,
                                QPushButton, QStackedWidget, QVBoxLayout, QWidget)
-from app.shared.paths import RESOURCES_DIR
+from app.shared.theme import apply_theme
 
 
 class Launcher(QMainWindow):
@@ -44,10 +44,7 @@ class Launcher(QMainWindow):
         center.addStretch()
         self.back_button = self._button(center, "← Back to Main Menu", self.show_home, height=35)
         self.show_home()
-        try:
-            self.setStyleSheet((RESOURCES_DIR / "styles" / "launcher.qss").read_text(encoding="utf-8"))
-        except (OSError, UnicodeError) as exc:
-            print(f"Could not load launcher theme: {exc}", file=sys.stderr)
+        apply_theme(self, "launcher")
 
     def _page(self, x, y):
         widget = QWidget()

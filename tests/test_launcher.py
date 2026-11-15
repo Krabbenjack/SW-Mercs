@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from PySide6.QtCore import QPointF
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QApplication
 from app.launcher.window import Launcher
 from app.editors.starmap import SystemData, RouteData, TemplateData
@@ -39,12 +39,20 @@ def main():
             editor = window.map_window
             assert editor is not None and editor.isVisible()
             assert not app.styleSheet()  # launcher styling is local
+            assert "#101923" in editor.styleSheet() and "#101923" in window.styleSheet()
+            assert "#mapView" in editor.styleSheet()
+            assert "@icons/" not in editor.styleSheet()
             assert DATA_DIR == ROOT / "data"
             loader = get_data_loader()
             assert loader.get_goods() and loader.get_population_levels() and loader.get_facility_categories()
             for mode in ("template", "systems", "routes", "stats", None):
                 editor.set_mode(mode)
                 app.processEvents()
+                assert editor.fallback_status_label.isVisible()
+                assert editor.view.height() > editor.height() / 2
+                assert editor.template_btn.isChecked() == (mode == "template")
+                assert editor.routes_btn.isChecked() == (mode == "routes")
+                assert editor.stats_inspector.isVisible() == (mode == "stats")
             image = QPixmap(100, 100)
             image.fill()
             image_path = Path(directory) / "template.png"
@@ -65,10 +73,17 @@ def main():
             editor.set_mode("stats")
             item.setSelected(True)
             app.processEvents()
+            assert editor.stats_inspector.tab_widget.currentWidget() is editor.stats_inspector.route_scroll
+            assert editor.stats_inspector.route_scroll.widget() is editor.stats_inspector.route_stats_widget
+            chrome = editor.styleSheet()
             editor.light_mode_action.setChecked(True)
             editor.apply_light_mode()
+            assert editor.scene.backgroundBrush().color() == QColor(240, 240, 240)
+            assert editor.styleSheet() == chrome
             editor.dark_mode_action.setChecked(True)
             editor.apply_dark_mode()
+            assert editor.scene.backgroundBrush().color() == QColor(5, 8, 20)
+            assert editor.styleSheet() == chrome
             project_path = Path(directory) / "test.swmproj"
             export_path = Path(directory) / "test.json"
             assert save_project(editor.project, project_path)
@@ -78,6 +93,7 @@ def main():
             assert restored.routes[route.id].control_points == [(50, 50)]
             assert export_map_data(restored, export_path)
             assert len(json.loads(export_path.read_text())["routes"]) == 1
+            editor.scene.clearSelection()
             editor.unsaved_changes = False
             assert editor.close()
             window.open_map()
