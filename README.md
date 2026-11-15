@@ -6,11 +6,19 @@ SW-Mercs is a desktop toolkit for galactic maps, ship databases and economic sim
 
 From the **repository root**, double-click `swmercs.bat` on Windows or run `python swmercs.py` in a terminal. If PySide6 is missing or too old, the launcher offers to install dependencies into a local virtual environment (`.venv`). Internet access is required for the first installation. Subsequent launches reuse the environment automatically.
 
-The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the existing Star Map Editor; Starship and Industry modules are placeholders for future development.
+The launcher shows **Play** (not yet implemented) and **Editor**. The Editor Command Center opens the Star Map Editor and Starship Editor. Industry and the Fleet Manager are planned.
+
+### Starship Editor
+
+The Starship Database lists ships, stations and cargo containers by their stable master IDs. Each class has its own editable JSON file. Search, create, edit, save, import and export individual records or batches. Category-aware optional fields keep small craft forms compact without losing data. Ships and stations have an editable FFG silhouette rating (3–10 and higher for exceptional objects). The Component Database manages reusable weapons, which can be assigned through a searchable drag-and-drop equipment popup with count, firing direction and optional ammunition capacity. Six weapon size classes and editable hull limits prevent incompatible equipment, including on import; the question-mark buttons explain the classes.
+
+Sensors and weapons share five FFG-inspired range bands (Close, Short, Medium, Long, Extreme). Weapon tracking and ship/station maneuverability use integer ratings from 0–10. Distance thresholds and combat mechanics will be defined later; each field has in-editor help.
+
+Unknown fields are blank (JSON `null`); zero, false and empty lists are distinct explicit values. Imports validate IDs and references, preserve omitted fields and ask before updating existing records. See [Starship catalog](docs/STARSHIP_CATALOG.md) for the data format.
 
 The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Module-specific styles live in `resources/styles/`; the map's own light/dark rendering remains independently selectable.
 
-The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. New saves and exports default to the root `saves/` and `exports/` directories.
+The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. The launcher creates `saves/starmaps/` and `saves/shipsets/` on startup. New star maps default to `saves/starmaps/`; the shipsets folder is reserved for whole-database saves. Exports default to the root `exports/` directory. Personal saves are ignored by Git; curated examples can be versioned in the respective `examples/` subfolders.
 
 ## Quick Start
 
@@ -53,13 +61,15 @@ SW-Mercs/
 │   ├── launcher/               # Main menu and command center
 │   ├── editors/
 │   │   ├── starmap/            # Working map editor and models
-│   │   ├── starships/          # Planned database and fleet tools
+│   │   ├── starships/          # Ship and weapon catalogs; fleet tools planned
 │   │   └── industry/           # Planned production and goods tools
 │   ├── simulation/             # Reserved for game simulation
 │   └── shared/                 # Central application paths
 ├── data/                       # Master JSON data
 ├── resources/                  # QSS, icons and templates
-├── saves/                      # Local projects, created on demand
+├── saves/                      # Standard save directories (created on startup)
+│   ├── starmaps/               # Star map projects (.swmproj)
+│   └── shipsets/               # Reserved for complete ship databases
 ├── exports/                    # Local exports, created on demand
 ├── tests/                      # Automated regression tests
 ├── tools/                      # Installation verifier

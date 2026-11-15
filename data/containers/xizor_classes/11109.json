@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": 11109,
+  "name": "Class-L Cargo Container",
+  "object_type": "cargo_containers",
+  "category": "xizor_classes",
+  "general": {
+    "manufacturer": null,
+    "role": null,
+    "factions": null,
+    "legality": null,
+    "description": null,
+    "image": null
+  },
+  "container": {
+    "cargo_capacity_cu": null,
+    "maximum_weight_t": null,
+    "empty_weight_t": null,
+    "length_m": null,
+    "width_m": null,
+    "height_m": null,
+    "allowed_goods": null,
+    "refrigeration": null,
+    "pressurization": null,
+    "hazardous_goods": null
+  },
+  "economy": {
+    "purchase_price": null,
+    "construction_cost": null,
+    "construction_days": null,
+    "required_facility": null,
+    "construction_materials": null,
+    "technology_requirements": null,
+    "market_availability": null
+  },
+  "maintenance": {
+    "maintenance_interval_days": null,
+    "maintenance_duration_hours": null,
+    "maintenance_cost": null,
+    "maintenance_materials": null,
+    "maintenance_personnel": null,
+    "required_maintenance_facility": null,
+    "operating_costs": null,
+    "reliability": null,
+    "service_life_years": null
+  }
+}

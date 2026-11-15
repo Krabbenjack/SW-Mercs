@@ -1,1 +1,1 @@
-"""Future ship database and fleet manager."""
+"""Starship, station, container and weapon class catalogs."""

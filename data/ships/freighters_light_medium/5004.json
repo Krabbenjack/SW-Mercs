@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "id": 5004,
+  "name": "VCX-100 Light Freighter",
+  "object_type": "starships",
+  "category": "freighters_light_medium",
+  "general": {
+    "manufacturer": null,
+    "role": null,
+    "factions": null,
+    "legality": null,
+    "description": null,
+    "image": null
+  },
+  "technical": {
+    "length_m": null,
+    "sublight_mglt": null,
+    "atmospheric_speed_kmh": null,
+    "acceleration": null,
+    "maneuverability": null,
+    "hyperdrive_class": null,
+    "backup_hyperdrive_class": null,
+    "atmospheric_capability": null,
+    "landing_capability": null,
+    "sensor_range_km": null,
+    "communication_system": null,
+    "tractor_beams": null
+  },
+  "crew": {
+    "minimum_crew": null,
+    "standard_crew": null,
+    "pilots": null,
+    "officers": null,
+    "gunners": null,
+    "engineers": null,
+    "support_personnel": null,
+    "passenger_capacity": null,
+    "troop_capacity": null,
+    "consumables_days": null
+  },
+  "combat": {
+    "hull": null,
+    "armor": null,
+    "shields": null,
+    "shield_recharge_rate": null,
+    "weapons": null,
+    "countermeasures": null,
+    "electronic_warfare": null
+  },
+  "cargo": {
+    "internal_cargo_cu": null,
+    "external_cargo_cu": null,
+    "container_slots": null,
+    "compatible_containers": null,
+    "loading_rate_cu_h": null,
+    "fuel_capacity": null,
+    "fuel_type": null,
+    "fuel_consumption_sublight": null,
+    "fuel_consumption_hyperspace": null,
+    "fuel_consumption_idle": null
+  },
+  "hangar": {
+    "starfighter_capacity": null,
+    "shuttle_capacity": null,
+    "hangar_capacity": null,
+    "repair_capability": null
+  },
+  "economy": {
+    "purchase_price": null,
+    "construction_cost": null,
+    "construction_days": null,
+    "required_facility": null,
+    "construction_materials": null,
+    "technology_requirements": null,
+    "market_availability": null
+  },
+  "maintenance": {
+    "maintenance_interval_days": null,
+    "maintenance_duration_hours": null,
+    "maintenance_cost": null,
+    "maintenance_materials": null,
+    "maintenance_personnel": null,
+    "required_maintenance_facility": null,
+    "operating_costs": null,
+    "reliability": null,
+    "service_life_years": null
+  }
+}

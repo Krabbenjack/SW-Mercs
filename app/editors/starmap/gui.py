@@ -7,7 +7,7 @@ map view, and workspace controls.
 from pathlib import Path
 from typing import Dict, Optional, List
 
-from app.shared.paths import SAVES_DIR, EXPORTS_DIR, open_project_directory
+from app.shared.paths import STARMAPS_DIR, EXPORTS_DIR, open_project_directory
 from app.shared.theme import apply_theme
 
 from PySide6.QtWidgets import (
@@ -2401,7 +2401,7 @@ class StarMapEditor(QMainWindow):
     def save_project_as(self):
         """Save the current project with a new name."""
         # Default to Saves directory
-        saves_dir = SAVES_DIR
+        saves_dir = STARMAPS_DIR
         saves_dir.mkdir(parents=True, exist_ok=True)
         
         file_path, _ = QFileDialog.getSaveFileName(

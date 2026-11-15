@@ -1,0 +1,13 @@
+/* Starship and weapon database specific UI. */
+QLabel#databaseHeading {
+    color: #9CCCF2;
+    font-size: 20pt;
+    font-weight: bold;
+    padding: 6px 4px;
+}
+QPushButton#primary { border-color: #75B6E4; background: #273F54; }
+QPushButton#primary:disabled { border-color: #344657; background: #1B2C3B; }
+QScrollArea#recordScroll { border: 0; }
+QTreeWidget::item { padding: 4px 2px; }
+QTreeWidget::item:selected { background: #365674; }
+QSplitter::handle:horizontal { width: 5px; }
