@@ -24,6 +24,8 @@ def _system_details(system: SystemData) -> dict:
              "moons": [{"id": moon.id, "name": moon.name} for moon in planet.moons]}
             for planet in system.planets
         ]
+    if system.system_map:
+        result["system_map"] = system.system_map
     if system.fluff_text:
         result["fluff_text"] = system.fluff_text
     return result
@@ -153,7 +155,8 @@ def load_project(file_path: Path) -> Optional[MapProject]:
                                planet_type=p.get("planet_type"))
                     for p in s_dict.get("planets", [])
                 ],
-                fluff_text=s_dict.get("fluff_text", "")
+                fluff_text=s_dict.get("fluff_text", ""),
+                system_map=s_dict.get("system_map", {})
             )
             project.systems[system.id] = system
         
