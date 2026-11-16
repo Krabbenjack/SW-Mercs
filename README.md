@@ -236,3 +236,6 @@ Grid-cell inspector: left-click a cell to highlight it in amber and edit its opt
 
 
 Map navigation: hold the **middle mouse button** and drag to pan without using scrollbars; wheel zooms. Zoom-independent map markers now use local symbol geometry anchored with `setPos` at the actual floating-point scene coordinate, avoiding visually misplaced icons at grid intersections after zooming.
+
+
+**Clear Cell** below the selected-cell name removes every facility placement whose fractional grid coordinates fall inside that selected cell and clears the optional cell name, after a confirmation dialog. Planets and moons remain in place. The action edits only the dialog working copy until Save; Cancel discards the changes.
