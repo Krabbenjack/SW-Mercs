@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from app.editors.starmap.system_map import distance_au, environment_at, allowed_placements
+from app.editors.starmap.system_map import distance_au, environment_at, allowed_placements, grid_cell
 from app.shared.paths import DATA_DIR
 
 
@@ -40,3 +40,14 @@ def test_all_facilities_have_placement_policy():
         modes = allowed_placements(facility_id)
         assert modes
         assert set(modes) <= {"surface", "orbit", "deep_space"}
+
+
+def test_grid_cell_ids_and_subcell_offsets():
+    assert grid_cell(0.25, 0.75, 0.1, 5.0) == ("5151", 0.25, 0.75)
+    assert grid_cell(-0.75, -0.25, 0.1, 5.0) == ("5050", 0.25, 0.75)
+    assert grid_cell(0.25, 0.75, 0.2, 5.0)[0] == "2626"
+
+
+def test_grid_cell_border_coordinate_width():
+    cell_id, _, _ = grid_cell(0, 0, 0.00001, 5.0)
+    assert cell_id == "500001500001"
