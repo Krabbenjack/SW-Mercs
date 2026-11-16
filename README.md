@@ -20,6 +20,15 @@ The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Mod
 
 The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. The launcher creates `saves/starmaps/` and `saves/shipsets/` on startup. New star maps default to `saves/starmaps/`; the shipsets folder is reserved for whole-database saves. Exports default to the root `exports/` directory. Personal saves are ignored by Git; curated examples can be versioned in the respective `examples/` subfolders.
 
+
+### In-system map (initial implementation in PR #30)
+
+In **Stats**, select a star system and click **Open System Map...**. A separate, static system grid opens without replacing the galactic view. Drag existing planets, moons or system-authorized facilities from the left list onto the grid. The star is at (0,0); the physical grid scale is editable in AU per cell and saved per system. Habitable-zone inner/outer radii are also editable. Objects use provisional circle icons.
+
+A facility dropped onto a planet or moon icon prompts for surface or orbit (subject to the allowed modes in `data/facilities/facility_placements.json`); a drop on empty space creates a deep-space facility only when permitted. The original facility IDs and system-level selections remain unchanged. The spatial map is stored as optional `system_map` data within each system in `.swmproj`; old saves without it remain valid.
+
+**Known limitations of this initial increment:** placed icons are not yet individually draggable for repositioning, object removal is currently last-placement-only, the habitable zone is a configurable guide rather than stellar-physics-derived, and tactical/facility detail editors are not implemented. The dialog's Save commits its working copy to the project model; save the overall project to write the `.swmproj` file.
+
 ## Quick Start
 
 ### Installation
