@@ -5,18 +5,17 @@ from app.shared.paths import DATA_DIR
 import math
 import uuid
 
-from PySide6.QtCore import Qt, QPointF, QMimeData, QEvent
-from PySide6.QtGui import QColor, QBrush, QPen, QDrag, QPainter, QPixmap, QIcon, QPolygonF
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QColor, QBrush, QPen, QPainter, QPixmap, QIcon, QPolygonF
 from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
     QGraphicsEllipseItem, QGraphicsTextItem, QDoubleSpinBox, QMessageBox,
-    QInputDialog, QDialogButtonBox, QAbstractItemView,
+    QInputDialog, QDialogButtonBox,
 )
 from app.editors.starmap.data_loader import get_data_loader
 
 CELL_PX = 32
-MIME = "application/x-swmercs-system-object"
 
 
 def sun_polygon(cx=0, cy=0, outer_radius=12, inner_radius=8, points=12):
@@ -104,28 +103,6 @@ class SourceList(QListWidget):
             if item is not None:
                 self.setCurrentItem(item)
                 self.window().arm_source(item.data(Qt.UserRole))
-    def startDrag(self, supportedActions):
-        item = self.currentItem()
-        if item is None:
-            return
-        mime = QMimeData()
-        mime.setData(MIME, item.data(Qt.UserRole).encode("utf-8"))
-        drag = QDrag(self)
-        drag.setMimeData(mime)
-        # Visible feedback while dragging, independent of any external SVG assets.
-        preview = QPixmap(132, 34)
-        preview.fill(QColor("#23334b"))
-        painter = QPainter(preview)
-        painter.setPen(QColor("#ffffff"))
-        payload = item.data(Qt.UserRole)
-        draw_symbol(painter, payload.split(":", 1)[0], 14, 17, 8,
-                    self.window().planet_type_for(payload),
-                    payload.split(":", 1)[1] if payload.startswith("facility:") else None)
-        painter.drawText(29, 23, item.text()[:19])
-        painter.end()
-        drag.setPixmap(preview)
-        drag.setHotSpot(QPointF(8, 17).toPoint())
-        drag.exec(Qt.CopyAction)
 
 
 class SystemCanvas(QGraphicsView):
@@ -133,11 +110,6 @@ class SystemCanvas(QGraphicsView):
         self.scene_model = QGraphicsScene()
         super().__init__(self.scene_model)
         self.owner = owner
-        self.setAcceptDrops(True)
-        # The QGraphicsView viewport receives native DnD events; intercept them
-        # before QGraphicsScene forwards them to a scene with no drop targets.
-        self.viewport().setAcceptDrops(True)
-        self.viewport().installEventFilter(self)
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.NoDrag)
         self.setMouseTracking(True)
@@ -186,6 +158,11 @@ class SystemCanvas(QGraphicsView):
             label.setPos(x+10, y-12)
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.RightButton:
+            point = self.mapToScene(event.position().toPoint())
+            self.owner.arm_map_object(point.x() / CELL_PX, point.y() / CELL_PX)
+            event.accept()
+            return
         if event.button() == Qt.LeftButton and self.owner.armed_payload:
             point = self.mapToScene(event.position().toPoint())
             self.owner.place(self.owner.armed_payload,
@@ -202,42 +179,6 @@ class SystemCanvas(QGraphicsView):
                 "left click to place; Esc to cancel")
         super().mouseMoveEvent(event)
 
-    def eventFilter(self, watched, event):
-        if watched is self.viewport() and event.type() in (
-                QEvent.Type.DragEnter, QEvent.Type.DragMove, QEvent.Type.Drop):
-            if not event.mimeData().hasFormat(MIME):
-                return False
-            if event.type() == QEvent.Type.Drop:
-                point = self.mapToScene(event.position().toPoint())
-                x = round(point.x() / CELL_PX)
-                y = round(point.y() / CELL_PX)
-                payload = bytes(event.mimeData().data(MIME)).decode("utf-8")
-                self.owner.place(payload, x, y)
-            event.acceptProposedAction()
-            return True
-        return super().eventFilter(watched, event)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasFormat(MIME):
-            event.acceptProposedAction()
-        else:
-            super().dragEnterEvent(event)
-
-    def dragMoveEvent(self, event):
-        if event.mimeData().hasFormat(MIME):
-            event.acceptProposedAction()
-        else:
-            super().dragMoveEvent(event)
-
-    def dropEvent(self, event):
-        if event.mimeData().hasFormat(MIME):
-            point = self.mapToScene(event.position().toPoint())
-            self.owner.place(bytes(event.mimeData().data(MIME)).decode("utf-8"),
-                             round(point.x() / CELL_PX), round(point.y() / CELL_PX))
-            event.acceptProposedAction()
-        else:
-            super().dropEvent(event)
-
     def wheelEvent(self, event):
         factor = 1.15 if event.angleDelta().y() > 0 else 1/1.15
         self.scale(factor, factor)
@@ -249,6 +190,7 @@ class SystemMapDialog(QDialog):
         super().__init__(parent)
         self.system = system
         self.armed_payload = None
+        self.moving_id = None
         self.original = copy.deepcopy(getattr(system, "system_map", None) or DEFAULT_MAP)
         self.working = copy.deepcopy(self.original)
         self.setWindowTitle("System Map — " + system.name)
@@ -256,10 +198,8 @@ class SystemMapDialog(QDialog):
         layout = QHBoxLayout(self)
         sidebar = QWidget()
         side = QVBoxLayout(sidebar)
-        side.addWidget(QLabel("Right-click to pick up; left-click grid to place. Drag & drop also supported."))
+        side.addWidget(QLabel("Right-click a list or map object to pick it up; left-click the grid to place. Esc cancels."))
         self.sources = SourceList()
-        self.sources.setDragEnabled(True)
-        self.sources.setDragDropMode(QAbstractItemView.DragOnly)
         self.sources.setContextMenuPolicy(Qt.NoContextMenu)
         side.addWidget(self.sources)
         self._populate_sources()
@@ -304,14 +244,30 @@ class SystemMapDialog(QDialog):
         return None
 
     def arm_source(self, payload):
+        self.moving_id = None
         self.armed_payload = payload
         self.status.setText("Picked up: " + payload.replace(":", " — ") +
                             " | Left-click the grid to place; Esc cancels.")
         self.canvas.viewport().setCursor(Qt.CrossCursor)
 
+    def arm_map_object(self, x, y):
+        """Pick the nearest existing marker; preserve its placement UUID."""
+        candidates = [(math.hypot(obj["x"] - x, obj["y"] - y), obj)
+                      for obj in self.working["objects"]]
+        if not candidates:
+            return
+        distance, obj = min(candidates, key=lambda entry: entry[0])
+        if distance > 0.65:
+            return
+        self.arm_source(obj["kind"] + ":" + obj["ref_id"])
+        self.moving_id = obj["id"]
+        self.status.setText("Moving " + obj["name"] +
+                            " — left-click to relocate; Esc cancels.")
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape and self.armed_payload:
             self.armed_payload = None
+            self.moving_id = None
             self.canvas.viewport().unsetCursor()
             self.status.setText("Placement cancelled")
             event.accept()
@@ -344,7 +300,7 @@ class SystemMapDialog(QDialog):
                     payload.split(":", 1)[1] if payload.startswith("facility:") else None)
         painter.end()
         item.setIcon(QIcon(icon))
-        item.setToolTip("Right-click to pick up, then left-click on grid (or drag)")
+        item.setToolTip("Right-click to pick up, then left-click on grid")
         self.sources.addItem(item)
 
     def update_scale(self):
@@ -369,6 +325,7 @@ class SystemMapDialog(QDialog):
 
     def place(self, payload, x, y):
         kind, ref = payload.split(":", 1)
+        moving = next((o for o in self.working["objects"] if o["id"] == self.moving_id), None)
         if kind == "facility":
             name = ref.replace("_", " ").title()
             target = next((o for o in reversed(self.working["objects"])
@@ -392,7 +349,7 @@ class SystemMapDialog(QDialog):
                 QMessageBox.information(self, "Invalid placement",
                     "This facility requires a planet or moon. Drop it on a body.")
                 return
-            obj = {"id": str(uuid.uuid4()), "kind": kind, "ref_id": ref,
+            obj = {"id": moving["id"] if moving else str(uuid.uuid4()), "kind": kind, "ref_id": ref,
                    "name": name, "x": x, "y": y, "placement": placement,
                    "parent_body_id": parent_id, "influence_cells": 0}
         else:
@@ -400,15 +357,21 @@ class SystemMapDialog(QDialog):
             if name is None:
                 QMessageBox.warning(self, "Missing body", "Object no longer exists")
                 return
-            self.working["objects"] = [o for o in self.working["objects"]
-                                      if not (o["kind"] == kind and o["ref_id"] == ref)]
+
             obj = {"id": str(uuid.uuid4()), "kind": kind, "ref_id": ref,
                    "name": name, "x": x, "y": y, "parent_body_id": parent_id,
                    "influence_cells": 1}
+        if moving:
+            obj = {**moving, **obj}
+            self.working["objects"] = [o for o in self.working["objects"] if o["id"] != moving["id"]]
+        elif kind != "facility":
+            self.working["objects"] = [o for o in self.working["objects"]
+                                      if not (o["kind"] == kind and o["ref_id"] == ref)]
         self.working["objects"].append(obj)
         self.status.setText(f"{name}: ({x}, {y}) — {distance_au((0,0),(x,y),self.working['cell_au']):.3f} AU")
         self.canvas.redraw()
         self.armed_payload = None
+        self.moving_id = None
         self.canvas.viewport().unsetCursor()
 
     def remove_last(self):
