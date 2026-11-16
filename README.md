@@ -227,3 +227,6 @@ See [LICENSE](LICENSE) file for details.
 
 
 In-system map placement uses **continuous floating-point grid-cell coordinates** (no snap to grid intersections), allowing multiple facilities within one cell. Map markers, labels, and the central star retain a constant on-screen size while zooming; the grid and habitable-zone geometry still zoom normally. Right-click hit testing adjusts for zoom.
+
+
+System-map grid: the **System border** field defines a finite circular radius (AU); the grid runs continuously through the central star and is clipped at that border. The habitable-zone inner/outer rings are outlines only and no longer mask the grid. Left-click an empty map cell (while no placement is armed) to inspect its BattleTech-style positive column/row ID and normalized in-cell X/Y offsets. Cell IDs are derived from the current AU/cell and border settings and may change when either changes; object positions retain their physical AU coordinates when AU/cell changes. Placing new objects outside the border is rejected. Persisted map objects retain continuous coordinates for backward compatibility. Cell-specific metadata/editing is planned, not yet implemented.
