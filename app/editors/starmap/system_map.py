@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
     QGraphicsEllipseItem, QGraphicsTextItem, QDoubleSpinBox, QMessageBox,
-    QInputDialog, QDialogButtonBox,
+    QInputDialog, QDialogButtonBox, QGraphicsItem,
 )
 from app.editors.starmap.data_loader import get_data_loader
 
@@ -139,8 +139,9 @@ class SystemCanvas(QGraphicsView):
             QPen(QColor("#44885b"), 1), QBrush(QColor(25, 115, 50, 28)))
         self.scene_model.addEllipse(-inner, -inner, 2*inner, 2*inner,
             QPen(QColor("#44885b"), 1), QBrush(QColor("#0b1526")))
-        self.scene_model.addPolygon(sun_polygon(),
+        sun = self.scene_model.addPolygon(sun_polygon(),
             QPen(QColor("#ffe69a"), 1.4), QBrush(QColor("#ffbd3d")))
+        sun.setFlag(QGraphicsItem.ItemIgnoresTransformations)
         for obj in data["objects"]:
             x, y = obj["x"]*CELL_PX, obj["y"]*CELL_PX
             color = body_color(obj["kind"], self.owner.planet_type_for(
@@ -149,24 +150,27 @@ class SystemCanvas(QGraphicsView):
                 from PySide6.QtGui import QPolygonF
                 polygon = QPolygonF([QPointF(x, y-10), QPointF(x-10, y+9),
                                      QPointF(x+10, y+9)])
-                self.scene_model.addPolygon(polygon, QPen(QColor(color)), QBrush(QColor(color)))
+                marker = self.scene_model.addPolygon(polygon, QPen(QColor(color)), QBrush(QColor(color)))
             else:
-                self.scene_model.addEllipse(x-8, y-8, 16, 16,
+                marker = self.scene_model.addEllipse(x-8, y-8, 16, 16,
                     QPen(QColor(color)), QBrush(QColor(color)))
+            marker.setFlag(QGraphicsItem.ItemIgnoresTransformations)
             label = self.scene_model.addText(obj["name"])
             label.setDefaultTextColor(QColor("#e7edf6"))
             label.setPos(x+10, y-12)
+            label.setFlag(QGraphicsItem.ItemIgnoresTransformations)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.RightButton:
             point = self.mapToScene(event.position().toPoint())
-            self.owner.arm_map_object(point.x() / CELL_PX, point.y() / CELL_PX)
+            self.owner.arm_map_object(point.x() / CELL_PX, point.y() / CELL_PX,
+                                      12 / (CELL_PX * self.transform().m11()))
             event.accept()
             return
         if event.button() == Qt.LeftButton and self.owner.armed_payload:
             point = self.mapToScene(event.position().toPoint())
             self.owner.place(self.owner.armed_payload,
-                             round(point.x() / CELL_PX), round(point.y() / CELL_PX))
+                             point.x() / CELL_PX, point.y() / CELL_PX)
             event.accept()
             return
         super().mousePressEvent(event)
@@ -175,7 +179,7 @@ class SystemCanvas(QGraphicsView):
         if self.owner.armed_payload:
             point = self.mapToScene(event.position().toPoint())
             self.owner.status.setText(
-                f"Ready to place at ({round(point.x()/CELL_PX)}, {round(point.y()/CELL_PX)}) — "
+                f"Ready to place at ({point.x()/CELL_PX:.2f}, {point.y()/CELL_PX:.2f}) — "
                 "left click to place; Esc to cancel")
         super().mouseMoveEvent(event)
 
@@ -250,14 +254,14 @@ class SystemMapDialog(QDialog):
                             " | Left-click the grid to place; Esc cancels.")
         self.canvas.viewport().setCursor(Qt.CrossCursor)
 
-    def arm_map_object(self, x, y):
+    def arm_map_object(self, x, y, hit_radius=0.65):
         """Pick the nearest existing marker; preserve its placement UUID."""
         candidates = [(math.hypot(obj["x"] - x, obj["y"] - y), obj)
                       for obj in self.working["objects"]]
         if not candidates:
             return
         distance, obj = min(candidates, key=lambda entry: entry[0])
-        if distance > 0.65:
+        if distance > hit_radius:
             return
         self.arm_source(obj["kind"] + ":" + obj["ref_id"])
         self.moving_id = obj["id"]
@@ -358,7 +362,7 @@ class SystemMapDialog(QDialog):
                 QMessageBox.warning(self, "Missing body", "Object no longer exists")
                 return
 
-            obj = {"id": str(uuid.uuid4()), "kind": kind, "ref_id": ref,
+            obj = {"id": moving["id"] if moving else str(uuid.uuid4()), "kind": kind, "ref_id": ref,
                    "name": name, "x": x, "y": y, "parent_body_id": parent_id,
                    "influence_cells": 1}
         if moving:
@@ -368,7 +372,7 @@ class SystemMapDialog(QDialog):
             self.working["objects"] = [o for o in self.working["objects"]
                                       if not (o["kind"] == kind and o["ref_id"] == ref)]
         self.working["objects"].append(obj)
-        self.status.setText(f"{name}: ({x}, {y}) — {distance_au((0,0),(x,y),self.working['cell_au']):.3f} AU")
+        self.status.setText(f"{name}: ({x:.2f}, {y:.2f}) — {distance_au((0,0),(x,y),self.working['cell_au']):.3f} AU")
         self.canvas.redraw()
         self.armed_payload = None
         self.moving_id = None
