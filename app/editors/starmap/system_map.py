@@ -503,7 +503,7 @@ class SystemMapDialog(QDialog):
             return
         response = QMessageBox.question(
             self, "Clear Cell",
-            f"Clear cell {cell_id}?\\n\\nRemove {facilities} facility placement(s) "
+            f"Clear cell {cell_id}?\n\nRemove {facilities} facility placement(s) "
             "and reset the cell name? Planets and moons will be kept.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if response != QMessageBox.Yes:
