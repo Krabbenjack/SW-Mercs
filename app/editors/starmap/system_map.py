@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
     QGraphicsEllipseItem, QGraphicsTextItem, QDoubleSpinBox, QMessageBox,
-    QInputDialog, QDialogButtonBox, QGraphicsItem,
+    QInputDialog, QDialogButtonBox, QGraphicsItem, QLineEdit, QTextEdit, QComboBox,
 )
 from app.editors.starmap.data_loader import get_data_loader
 
@@ -76,6 +76,34 @@ def grid_cell(x, y, cell_au, border_au):
     col, row = math.floor(x) + n + 1, math.floor(y) + n + 1
     digits = max(2, len(str(2 * n + 1)))
     return f"{col:0{digits}d}{row:0{digits}d}", x % 1, y % 1
+
+
+def cell_key(x, y):
+    """Stable sparse storage key within the current grid scale."""
+    return f"{math.floor(x)},{math.floor(y)}"
+
+
+def rescale_cell_metadata(cells, old_scale, new_scale):
+    """Map annotated cell centers to the new grid, preserving all annotations."""
+    updated = {}
+    for key, metadata in cells.items():
+        try:
+            col, row = (int(v) for v in key.split(","))
+        except (ValueError, AttributeError):
+            continue
+        target = cell_key((col + 0.5) * old_scale / new_scale,
+                          (row + 0.5) * old_scale / new_scale)
+        if target in updated:
+            # Preserve both notes if multiple old cells collapse into one.
+            previous = updated[target]
+            for field in ("name", "notes"):
+                if metadata.get(field) and metadata[field] != previous.get(field):
+                    previous[field] = (previous.get(field, "") + "\\n" + metadata[field]).strip()
+            if metadata.get("traffic") != "normal":
+                previous["traffic"] = metadata["traffic"]
+        else:
+            updated[target] = dict(metadata)
+    return updated
 
 
 def distance_au(a, b, cell_au):
@@ -145,6 +173,12 @@ class SystemCanvas(QGraphicsView):
     def redraw(self):
         self.scene_model.clear()
         data = self.owner.working
+        if self.owner.selected_cell is not None:
+            cx, cy = self.owner.selected_cell
+            selection = self.scene_model.addRect(cx*CELL_PX, cy*CELL_PX,
+                CELL_PX, CELL_PX, QPen(QColor("#f7c65e"), 2),
+                QBrush(QColor(247, 198, 94, 55)))
+            selection.setZValue(5)
         border = data["system_border_au"] / data["cell_au"] * CELL_PX
         self.setSceneRect(-border, -border, 2 * border, 2 * border)
         self.scene_model.addEllipse(-border, -border, 2*border, 2*border,
@@ -220,6 +254,8 @@ class SystemMapDialog(QDialog):
         self.original = copy.deepcopy(getattr(system, "system_map", None) or DEFAULT_MAP)
         self.working = copy.deepcopy(self.original)
         self.working.setdefault("system_border_au", max(5.0, self.working["habitable_outer_au"] * 2))
+        self.working.setdefault("cells", {})
+        self.selected_cell = None
         self.setWindowTitle("System Map — " + system.name)
         self.resize(1150, 750)
         layout = QHBoxLayout(self)
@@ -256,6 +292,22 @@ class SystemMapDialog(QDialog):
         self.border.valueChanged.connect(self.update_border)
         settings.addRow("System border", self.border)
         side.addLayout(settings)
+        side.addWidget(QLabel("Selected grid cell"))
+        self.cell_id_label = QLabel("None")
+        side.addWidget(self.cell_id_label)
+        self.cell_name = QLineEdit()
+        self.cell_name.setPlaceholderText("Cell name (optional)")
+        self.cell_name.editingFinished.connect(self.save_cell_metadata)
+        side.addWidget(self.cell_name)
+        self.cell_traffic = QComboBox()
+        self.cell_traffic.addItems(["normal", "busy", "restricted", "clear_corridor"])
+        self.cell_traffic.currentTextChanged.connect(self.save_cell_metadata)
+        side.addWidget(self.cell_traffic)
+        self.cell_notes = QTextEdit()
+        self.cell_notes.setPlaceholderText("Cell notes / future traffic rules")
+        self.cell_notes.setMaximumHeight(85)
+        self.cell_notes.textChanged.connect(self.save_cell_metadata)
+        side.addWidget(self.cell_notes)
         self.status = QLabel("Star at (0,0); positions are static")
         self.status.setWordWrap(True)
         side.addWidget(self.status)
@@ -347,7 +399,15 @@ class SystemMapDialog(QDialog):
             obj["y"] *= old_scale / new_scale
             if "influence_cells" in obj:
                 obj["influence_cells"] *= old_scale / new_scale
+        self.working["cells"] = rescale_cell_metadata(
+            self.working["cells"], old_scale, new_scale)
+        if self.selected_cell is not None:
+            col, row = self.selected_cell
+            self.selected_cell = (
+                math.floor((col + 0.5) * old_scale / new_scale),
+                math.floor((row + 0.5) * old_scale / new_scale))
         self.working["cell_au"] = new_scale
+        self.load_selected_cell()
         self.canvas.redraw()
 
     def update_border(self):
@@ -360,10 +420,46 @@ class SystemMapDialog(QDialog):
         if math.hypot(x, y) * scale > border:
             self.status.setText("Outside system border")
             return
+        self.selected_cell = (math.floor(x), math.floor(y))
+        self.load_selected_cell()
+        self.canvas.redraw()
         cell_id, local_x, local_y = grid_cell(x, y, scale, border)
         self.status.setText(
             f"Cell {cell_id} | within cell: ({local_x:.3f}, {local_y:.3f})"
             f" | AU: ({x*scale:.3f}, {y*scale:.3f})")
+
+    def load_selected_cell(self):
+        selected = self.selected_cell
+        self.cell_name.blockSignals(True)
+        self.cell_traffic.blockSignals(True)
+        self.cell_notes.blockSignals(True)
+        if selected is None:
+            self.cell_id_label.setText("None")
+            metadata = {}
+        else:
+            x, y = selected
+            cell_id, _, _ = grid_cell(x, y, self.working["cell_au"],
+                                      self.working["system_border_au"])
+            self.cell_id_label.setText(cell_id)
+            metadata = self.working["cells"].get(cell_key(x, y), {})
+        self.cell_name.setText(metadata.get("name", ""))
+        self.cell_traffic.setCurrentText(metadata.get("traffic", "normal"))
+        self.cell_notes.setPlainText(metadata.get("notes", ""))
+        for widget in (self.cell_name, self.cell_traffic, self.cell_notes):
+            widget.setEnabled(selected is not None)
+            widget.blockSignals(False)
+
+    def save_cell_metadata(self):
+        if self.selected_cell is None:
+            return
+        key = cell_key(*self.selected_cell)
+        metadata = {"name": self.cell_name.text().strip(),
+                    "traffic": self.cell_traffic.currentText(),
+                    "notes": self.cell_notes.toPlainText().strip()}
+        if not metadata["name"] and not metadata["notes"] and metadata["traffic"] == "normal":
+            self.working["cells"].pop(key, None)
+        else:
+            self.working["cells"][key] = metadata
 
     def update_zone(self):
         if self.inner.value() >= self.outer.value():
