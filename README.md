@@ -224,3 +224,6 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for:
 
 See [LICENSE](LICENSE) file for details.
 
+
+
+In-system map placement uses **continuous floating-point grid-cell coordinates** (no snap to grid intersections), allowing multiple facilities within one cell. Map markers, labels, and the central star retain a constant on-screen size while zooming; the grid and habitable-zone geometry still zoom normally. Right-click hit testing adjusts for zoom.
