@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from app.editors.starmap.system_map import distance_au, environment_at, allowed_placements, grid_cell, cell_key, rescale_cell_metadata
+from app.editors.starmap.system_map import distance_au, environment_at, allowed_placements, grid_cell, cell_key, rescale_cell_metadata, clear_cell_facilities
 from app.shared.paths import DATA_DIR
 
 
@@ -63,3 +63,19 @@ def test_cell_metadata_collision_keeps_names():
     cells = {"0,0": {"name": "Alpha"}, "1,0": {"name": "Beta"}}
     merged = rescale_cell_metadata(cells, 0.1, 0.2)
     assert merged == {"0,0": {"name": "Alpha / Beta"}}
+
+
+def test_clear_cell_only_removes_facilities_in_selected_cell():
+    data = {"cells": {"1,2": {"name": "Crowded"}, "2,2": {"name": "Other"}},
+            "objects": [
+                {"kind": "facility", "x": 1.1, "y": 2.8},
+                {"kind": "facility", "x": 1.9, "y": 2.1},
+                {"kind": "facility", "x": 2.1, "y": 2.1},
+                {"kind": "planet", "x": 1.5, "y": 2.5},
+                {"kind": "moon", "x": 1.2, "y": 2.4},
+            ]}
+    assert clear_cell_facilities(data, 1, 2) == 2
+    assert len(data["objects"]) == 3
+    assert "1,2" not in data["cells"]
+    assert data["cells"]["2,2"]["name"] == "Other"
+    assert clear_cell_facilities(data, 1, 2) == 0
