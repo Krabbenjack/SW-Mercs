@@ -6,7 +6,7 @@ import math
 import uuid
 
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QColor, QBrush, QPen, QPainter, QPixmap, QIcon, QPolygonF
+from PySide6.QtGui import QColor, QBrush, QPen, QPainter, QPixmap, QIcon, QPolygonF, QPainterPath
 from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
@@ -68,7 +68,14 @@ def allowed_placements(facility_id):
 
 
 DEFAULT_MAP = {"cell_au": 0.1, "habitable_inner_au": 0.8,
-               "habitable_outer_au": 1.5, "objects": []}
+               "habitable_outer_au": 1.5, "system_border_au": 5.0, "objects": []}
+
+
+def grid_cell(x, y, cell_au, border_au):
+    n = math.ceil(border_au / cell_au)
+    col, row = math.floor(x) + n + 1, math.floor(y) + n + 1
+    digits = max(2, len(str(2 * n + 1)))
+    return f"{col:0{digits}d}{row:0{digits}d}", x % 1, y % 1
 
 
 def distance_au(a, b, cell_au):
@@ -119,6 +126,11 @@ class SystemCanvas(QGraphicsView):
 
     def drawBackground(self, painter, rect):
         painter.fillRect(rect, QColor("#0b1526"))
+        border = self.owner.working["system_border_au"] / self.owner.working["cell_au"] * CELL_PX
+        painter.save()
+        clip = QPainterPath()
+        clip.addEllipse(QPointF(0, 0), border, border)
+        painter.setClipPath(clip)
         painter.setPen(QPen(QColor("#263449"), 0))
         left = math.floor(rect.left() / CELL_PX)
         right = math.ceil(rect.right() / CELL_PX)
@@ -128,17 +140,22 @@ class SystemCanvas(QGraphicsView):
             painter.drawLine(x * CELL_PX, rect.top(), x * CELL_PX, rect.bottom())
         for y in range(top, bottom + 1):
             painter.drawLine(rect.left(), y * CELL_PX, rect.right(), y * CELL_PX)
+        painter.restore()
 
     def redraw(self):
         self.scene_model.clear()
         data = self.owner.working
+        border = data["system_border_au"] / data["cell_au"] * CELL_PX
+        self.setSceneRect(-border, -border, 2 * border, 2 * border)
+        self.scene_model.addEllipse(-border, -border, 2*border, 2*border,
+            QPen(QColor("#86b8d9"), 2), QBrush(Qt.NoBrush))
         scale = data["cell_au"]
         inner = data["habitable_inner_au"] / scale * CELL_PX
         outer = data["habitable_outer_au"] / scale * CELL_PX
         self.scene_model.addEllipse(-outer, -outer, 2*outer, 2*outer,
-            QPen(QColor("#44885b"), 1), QBrush(QColor(25, 115, 50, 28)))
+            QPen(QColor("#44885b"), 1), QBrush(Qt.NoBrush))
         self.scene_model.addEllipse(-inner, -inner, 2*inner, 2*inner,
-            QPen(QColor("#44885b"), 1), QBrush(QColor("#0b1526")))
+            QPen(QColor("#44885b"), 1), QBrush(Qt.NoBrush))
         sun = self.scene_model.addPolygon(sun_polygon(),
             QPen(QColor("#ffe69a"), 1.4), QBrush(QColor("#ffbd3d")))
         sun.setFlag(QGraphicsItem.ItemIgnoresTransformations)
@@ -173,6 +190,11 @@ class SystemCanvas(QGraphicsView):
                              point.x() / CELL_PX, point.y() / CELL_PX)
             event.accept()
             return
+        if event.button() == Qt.LeftButton:
+            point = self.mapToScene(event.position().toPoint())
+            self.owner.select_cell(point.x() / CELL_PX, point.y() / CELL_PX)
+            event.accept()
+            return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
@@ -197,6 +219,7 @@ class SystemMapDialog(QDialog):
         self.moving_id = None
         self.original = copy.deepcopy(getattr(system, "system_map", None) or DEFAULT_MAP)
         self.working = copy.deepcopy(self.original)
+        self.working.setdefault("system_border_au", max(5.0, self.working["habitable_outer_au"] * 2))
         self.setWindowTitle("System Map — " + system.name)
         self.resize(1150, 750)
         layout = QHBoxLayout(self)
@@ -225,6 +248,13 @@ class SystemMapDialog(QDialog):
             spin.valueChanged.connect(self.update_zone)
         settings.addRow("Habitable inner (AU)", self.inner)
         settings.addRow("Habitable outer (AU)", self.outer)
+        self.border = QDoubleSpinBox()
+        self.border.setDecimals(3)
+        self.border.setRange(0.001, 100000)
+        self.border.setSuffix(" AU")
+        self.border.setValue(self.working["system_border_au"])
+        self.border.valueChanged.connect(self.update_border)
+        settings.addRow("System border", self.border)
         side.addLayout(settings)
         self.status = QLabel("Star at (0,0); positions are static")
         self.status.setWordWrap(True)
@@ -308,8 +338,32 @@ class SystemMapDialog(QDialog):
         self.sources.addItem(item)
 
     def update_scale(self):
-        self.working["cell_au"] = self.cell.value()
+        old_scale = self.working["cell_au"]
+        new_scale = self.cell.value()
+        if old_scale == new_scale:
+            return
+        for obj in self.working["objects"]:
+            obj["x"] *= old_scale / new_scale
+            obj["y"] *= old_scale / new_scale
+            if "influence_cells" in obj:
+                obj["influence_cells"] *= old_scale / new_scale
+        self.working["cell_au"] = new_scale
         self.canvas.redraw()
+
+    def update_border(self):
+        self.working["system_border_au"] = self.border.value()
+        self.canvas.redraw()
+
+    def select_cell(self, x, y):
+        scale = self.working["cell_au"]
+        border = self.working["system_border_au"]
+        if math.hypot(x, y) * scale > border:
+            self.status.setText("Outside system border")
+            return
+        cell_id, local_x, local_y = grid_cell(x, y, scale, border)
+        self.status.setText(
+            f"Cell {cell_id} | within cell: ({local_x:.3f}, {local_y:.3f})"
+            f" | AU: ({x*scale:.3f}, {y*scale:.3f})")
 
     def update_zone(self):
         if self.inner.value() >= self.outer.value():
@@ -328,6 +382,9 @@ class SystemMapDialog(QDialog):
         return None, None
 
     def place(self, payload, x, y):
+        if math.hypot(x, y) * self.working["cell_au"] > self.working["system_border_au"]:
+            QMessageBox.information(self, "System border", "Placement must be inside the system border.")
+            return
         kind, ref = payload.split(":", 1)
         moving = next((o for o in self.working["objects"] if o["id"] == self.moving_id), None)
         if kind == "facility":
@@ -384,9 +441,9 @@ class SystemMapDialog(QDialog):
             self.canvas.redraw()
 
     def accept(self):
-        if self.inner.value() >= self.outer.value():
+        if self.inner.value() >= self.outer.value() or self.outer.value() >= self.border.value():
             QMessageBox.warning(self, "Habitable zone",
-                "Outer radius must exceed inner radius.")
+                "System border must exceed habitable outer radius, which must exceed inner radius.")
             return
         self.system.system_map = copy.deepcopy(self.working)
         super().accept()
