@@ -23,7 +23,7 @@ The existing `python star-map-editor/main.py` command remains supported as a leg
 
 ### In-system map (initial implementation in PR #30)
 
-In **Stats**, select a star system and click **Open System Map...**. A separate, static system grid opens without replacing the galactic view. Drag existing planets, moons or system-authorized facilities from the left list onto the grid. The star is at (0,0); the physical grid scale is editable in AU per cell and saved per system. Habitable-zone inner/outer radii are also editable. Objects use provisional circle icons.
+In **Stats**, select a star system and click **Open System Map...**. A separate, static system grid opens without replacing the galactic view. **Right-click** an existing planet, moon or system-authorized facility in the left list to pick it up, then **left-click** the grid to place it (Esc cancels). Drag & drop remains an alternative. Planet symbols are colored by type (desert yellow, temperate green, ice light blue, gas giant violet), moons grey, and constructed facilities red triangles. The star is at (0,0); the physical grid scale is editable in AU per cell and saved per system. Habitable-zone inner/outer radii are also editable. Objects use provisional circle icons.
 
 A facility dropped onto a planet or moon icon prompts for surface or orbit (subject to the allowed modes in `data/facilities/facility_placements.json`); a drop on empty space creates a deep-space facility only when permitted. The original facility IDs and system-level selections remain unchanged. The spatial map is stored as optional `system_map` data within each system in `.swmproj`; old saves without it remain valid.
 
