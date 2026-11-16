@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
     QGraphicsEllipseItem, QGraphicsTextItem, QDoubleSpinBox, QMessageBox,
-    QInputDialog, QDialogButtonBox, QGraphicsItem, QLineEdit, QTextEdit, QComboBox,
+    QInputDialog, QDialogButtonBox, QGraphicsItem, QLineEdit,
 )
 from app.editors.starmap.data_loader import get_data_loader
 
@@ -94,15 +94,13 @@ def rescale_cell_metadata(cells, old_scale, new_scale):
         target = cell_key((col + 0.5) * old_scale / new_scale,
                           (row + 0.5) * old_scale / new_scale)
         if target in updated:
-            # Preserve both notes if multiple old cells collapse into one.
-            previous = updated[target]
-            for field in ("name", "notes"):
-                if metadata.get(field) and metadata[field] != previous.get(field):
-                    previous[field] = (previous.get(field, "") + "\n" + metadata[field]).strip()
-            if metadata.get("traffic") != "normal":
-                previous["traffic"] = metadata["traffic"]
+            # Keep both names when several former cells merge.
+            existing = updated[target].get("name", "")
+            incoming = metadata.get("name", "")
+            if incoming and incoming not in existing.split(" / "):
+                updated[target]["name"] = " / ".join(filter(None, (existing, incoming)))
         else:
-            updated[target] = dict(metadata)
+            updated[target] = {"name": metadata.get("name", "")}
     return updated
 
 
@@ -299,15 +297,6 @@ class SystemMapDialog(QDialog):
         self.cell_name.setPlaceholderText("Cell name (optional)")
         self.cell_name.editingFinished.connect(self.save_cell_metadata)
         side.addWidget(self.cell_name)
-        self.cell_traffic = QComboBox()
-        self.cell_traffic.addItems(["normal", "busy", "restricted", "clear_corridor"])
-        self.cell_traffic.currentTextChanged.connect(self.save_cell_metadata)
-        side.addWidget(self.cell_traffic)
-        self.cell_notes = QTextEdit()
-        self.cell_notes.setPlaceholderText("Cell notes / future traffic rules")
-        self.cell_notes.setMaximumHeight(85)
-        self.cell_notes.textChanged.connect(self.save_cell_metadata)
-        side.addWidget(self.cell_notes)
         self.status = QLabel("Star at (0,0); positions are static")
         self.status.setWordWrap(True)
         side.addWidget(self.status)
@@ -433,8 +422,6 @@ class SystemMapDialog(QDialog):
     def load_selected_cell(self):
         selected = self.selected_cell
         self.cell_name.blockSignals(True)
-        self.cell_traffic.blockSignals(True)
-        self.cell_notes.blockSignals(True)
         if selected is None:
             self.cell_id_label.setText("None")
             metadata = {}
@@ -445,9 +432,7 @@ class SystemMapDialog(QDialog):
             self.cell_id_label.setText(cell_id)
             metadata = self.working["cells"].get(cell_key(x, y), {})
         self.cell_name.setText(metadata.get("name", ""))
-        self.cell_traffic.setCurrentText(metadata.get("traffic", "normal"))
-        self.cell_notes.setPlainText(metadata.get("notes", ""))
-        for widget in (self.cell_name, self.cell_traffic, self.cell_notes):
+        for widget in (self.cell_name,):
             widget.setEnabled(selected is not None)
             widget.blockSignals(False)
 
@@ -455,13 +440,11 @@ class SystemMapDialog(QDialog):
         if self.selected_cell is None:
             return
         key = cell_key(*self.selected_cell)
-        metadata = {"name": self.cell_name.text().strip(),
-                    "traffic": self.cell_traffic.currentText(),
-                    "notes": self.cell_notes.toPlainText().strip()}
-        if not metadata["name"] and not metadata["notes"] and metadata["traffic"] == "normal":
-            self.working["cells"].pop(key, None)
+        name = self.cell_name.text().strip()
+        if name:
+            self.working["cells"][key] = {"name": name}
         else:
-            self.working["cells"][key] = metadata
+            self.working["cells"].pop(key, None)
 
     def update_zone(self):
         if self.inner.value() >= self.outer.value():
