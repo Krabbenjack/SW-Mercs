@@ -30,17 +30,28 @@ def sun_polygon(cx=0, cy=0, outer_radius=12, inner_radius=8, points=12):
     ])
 
 
-def body_color(kind, planet_type=None):
+def military_facility_ids():
+    """Military facilities use red; all other facilities default to civilian blue."""
+    with (DATA_DIR / "facilities" / "facility_flags.json").open(encoding="utf-8") as handle:
+        categories = json.load(handle)["categories"]
+    return set(categories.get("military", [])) | {"military_science_lab"}
+
+
+def facility_color(facility_id):
+    return "#e84d55" if facility_id in military_facility_ids() else "#438ee8"
+
+
+def body_color(kind, planet_type=None, facility_id=None):
     if kind == "moon":
         return "#c7d2dd"
     if kind == "facility":
-        return "#ed5252"
+        return facility_color(facility_id)
     return {"desert": "#edc34b", "temperate": "#55bb78",
             "ice": "#89d9f4", "gas_giant": "#b69ce6"}.get(planet_type, "#8c9dab")
 
 
-def draw_symbol(painter, kind, x, y, radius, planet_type=None):
-    color = QColor(body_color(kind, planet_type))
+def draw_symbol(painter, kind, x, y, radius, planet_type=None, facility_id=None):
+    color = QColor(body_color(kind, planet_type, facility_id))
     painter.setPen(QPen(color.lighter(125), 1))
     painter.setBrush(QBrush(color))
     if kind == "facility":
@@ -108,7 +119,8 @@ class SourceList(QListWidget):
         painter.setPen(QColor("#ffffff"))
         payload = item.data(Qt.UserRole)
         draw_symbol(painter, payload.split(":", 1)[0], 14, 17, 8,
-                    self.window().planet_type_for(payload))
+                    self.window().planet_type_for(payload),
+                    payload.split(":", 1)[1] if payload.startswith("facility:") else None)
         painter.drawText(29, 23, item.text()[:19])
         painter.end()
         drag.setPixmap(preview)
@@ -160,7 +172,7 @@ class SystemCanvas(QGraphicsView):
         for obj in data["objects"]:
             x, y = obj["x"]*CELL_PX, obj["y"]*CELL_PX
             color = body_color(obj["kind"], self.owner.planet_type_for(
-                obj["kind"] + ":" + obj["ref_id"]))
+                obj["kind"] + ":" + obj["ref_id"]), obj["ref_id"])
             if obj["kind"] == "facility":
                 from PySide6.QtGui import QPolygonF
                 polygon = QPolygonF([QPointF(x, y-10), QPointF(x-10, y+9),
@@ -328,7 +340,8 @@ class SystemMapDialog(QDialog):
         icon.fill(Qt.transparent)
         painter = QPainter(icon)
         draw_symbol(painter, payload.split(":", 1)[0], 9, 9, 7,
-                    self.planet_type_for(payload))
+                    self.planet_type_for(payload),
+                    payload.split(":", 1)[1] if payload.startswith("facility:") else None)
         painter.end()
         item.setIcon(QIcon(icon))
         item.setToolTip("Right-click to pick up, then left-click on grid (or drag)")
