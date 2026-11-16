@@ -221,10 +221,8 @@ class SystemCanvas(QGraphicsView):
             label = self.scene_model.addText(obj["name"])
             label.setDefaultTextColor(QColor("#e7edf6"))
             # Keep the text anchored to the marker, not the nearest grid line.
-            label.setPos(x, y)
-            label.setFlag(QGraphicsItem.ItemIgnoresTransformations)
-            label.setTransformOriginPoint(0, 0)
-            label.setPos(x - label.boundingRect().width()/2, y + 12)
+            label.setParentItem(marker)
+            label.setPos(-label.boundingRect().width()/2, 12)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
