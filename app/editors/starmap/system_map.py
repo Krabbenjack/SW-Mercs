@@ -143,6 +143,7 @@ class SystemCanvas(QGraphicsView):
         self.scene_model = QGraphicsScene()
         super().__init__(self.scene_model)
         self.owner = owner
+        self._pan_origin = None
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.NoDrag)
         self.setMouseTracking(True)
@@ -197,12 +198,13 @@ class SystemCanvas(QGraphicsView):
                 obj["kind"] + ":" + obj["ref_id"]), obj["ref_id"])
             if obj["kind"] == "facility":
                 from PySide6.QtGui import QPolygonF
-                polygon = QPolygonF([QPointF(x, y-10), QPointF(x-10, y+9),
-                                     QPointF(x+10, y+9)])
+                polygon = QPolygonF([QPointF(0, -10), QPointF(-10, 9),
+                                     QPointF(10, 9)])
                 marker = self.scene_model.addPolygon(polygon, QPen(QColor(color)), QBrush(QColor(color)))
             else:
-                marker = self.scene_model.addEllipse(x-8, y-8, 16, 16,
+                marker = self.scene_model.addEllipse(-8, -8, 16, 16,
                     QPen(QColor(color)), QBrush(QColor(color)))
+            marker.setPos(x, y)
             marker.setFlag(QGraphicsItem.ItemIgnoresTransformations)
             label = self.scene_model.addText(obj["name"])
             label.setDefaultTextColor(QColor("#e7edf6"))
@@ -210,6 +212,11 @@ class SystemCanvas(QGraphicsView):
             label.setFlag(QGraphicsItem.ItemIgnoresTransformations)
 
     def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            self._pan_origin = event.position().toPoint()
+            self.viewport().setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
         if event.button() == Qt.RightButton:
             point = self.mapToScene(event.position().toPoint())
             self.owner.arm_map_object(point.x() / CELL_PX, point.y() / CELL_PX,
@@ -230,12 +237,31 @@ class SystemCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        if self._pan_origin is not None:
+            current = event.position().toPoint()
+            delta = current - self._pan_origin
+            self._pan_origin = current
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            event.accept()
+            return
         if self.owner.armed_payload:
             point = self.mapToScene(event.position().toPoint())
             self.owner.status.setText(
                 f"Ready to place at ({point.x()/CELL_PX:.2f}, {point.y()/CELL_PX:.2f}) — "
                 "left click to place; Esc to cancel")
         super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MiddleButton and self._pan_origin is not None:
+            self._pan_origin = None
+            if self.owner.armed_payload:
+                self.viewport().setCursor(Qt.CrossCursor)
+            else:
+                self.viewport().unsetCursor()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
         factor = 1.15 if event.angleDelta().y() > 0 else 1/1.15
