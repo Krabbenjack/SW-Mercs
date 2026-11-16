@@ -77,6 +77,7 @@ class SystemData:
     facilities: list[str] = field(default_factory=list)
     planets: list[PlanetData] = field(default_factory=list)
     fluff_text: str = ""
+    system_map: dict = field(default_factory=dict)
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):
