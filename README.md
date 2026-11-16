@@ -233,3 +233,6 @@ System-map grid: the **System border** field defines a finite circular radius (A
 
 
 Grid-cell inspector: left-click a cell to highlight it in amber and edit its optional name. Only named cells are stored under `system_map.cells`, keyed by signed grid column/row (`x,y`). On AU/cell changes, names follow the former cell centers; names are combined if multiple cells merge. Traffic rules and notes are not part of the cell editor.
+
+
+Map navigation: hold the **middle mouse button** and drag to pan without using scrollbars; wheel zooms. Zoom-independent map markers now use local symbol geometry anchored with `setPos` at the actual floating-point scene coordinate, avoiding visually misplaced icons at grid intersections after zooming.
