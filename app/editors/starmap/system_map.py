@@ -5,8 +5,8 @@ from app.shared.paths import DATA_DIR
 import math
 import uuid
 
-from PySide6.QtCore import Qt, QPointF, QMimeData
-from PySide6.QtGui import QColor, QBrush, QPen, QDrag, QPainter
+from PySide6.QtCore import Qt, QPointF, QMimeData, QEvent
+from PySide6.QtGui import QColor, QBrush, QPen, QDrag, QPainter, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
@@ -60,6 +60,17 @@ class SourceList(QListWidget):
         mime.setData(MIME, item.data(Qt.UserRole).encode("utf-8"))
         drag = QDrag(self)
         drag.setMimeData(mime)
+        # Visible feedback while dragging, independent of any external SVG assets.
+        preview = QPixmap(132, 34)
+        preview.fill(QColor("#23334b"))
+        painter = QPainter(preview)
+        painter.setPen(QColor("#ffffff"))
+        painter.setBrush(QBrush(QColor("#70b9ef")))
+        painter.drawEllipse(6, 9, 16, 16)
+        painter.drawText(29, 23, item.text()[:19])
+        painter.end()
+        drag.setPixmap(preview)
+        drag.setHotSpot(QPointF(8, 17).toPoint())
         drag.exec(Qt.CopyAction)
 
 
@@ -69,6 +80,10 @@ class SystemCanvas(QGraphicsView):
         super().__init__(self.scene_model)
         self.owner = owner
         self.setAcceptDrops(True)
+        # The QGraphicsView viewport receives native DnD events; intercept them
+        # before QGraphicsScene forwards them to a scene with no drop targets.
+        self.viewport().setAcceptDrops(True)
+        self.viewport().installEventFilter(self)
         self.setRenderHint(QPainter.Antialiasing)
         self.setDragMode(QGraphicsView.ScrollHandDrag)
         self.setSceneRect(-1200, -1200, 2400, 2400)
@@ -108,6 +123,21 @@ class SystemCanvas(QGraphicsView):
             label.setDefaultTextColor(QColor("#e7edf6"))
             label.setPos(x+10, y-12)
 
+    def eventFilter(self, watched, event):
+        if watched is self.viewport() and event.type() in (
+                QEvent.Type.DragEnter, QEvent.Type.DragMove, QEvent.Type.Drop):
+            if not event.mimeData().hasFormat(MIME):
+                return False
+            if event.type() == QEvent.Type.Drop:
+                point = self.mapToScene(event.position().toPoint())
+                x = round(point.x() / CELL_PX)
+                y = round(point.y() / CELL_PX)
+                payload = bytes(event.mimeData().data(MIME)).decode("utf-8")
+                self.owner.place(payload, x, y)
+            event.acceptProposedAction()
+            return True
+        return super().eventFilter(watched, event)
+
     def dragEnterEvent(self, event):
         if event.mimeData().hasFormat(MIME):
             event.acceptProposedAction()
@@ -121,14 +151,13 @@ class SystemCanvas(QGraphicsView):
             super().dragMoveEvent(event)
 
     def dropEvent(self, event):
-        if not event.mimeData().hasFormat(MIME):
-            return super().dropEvent(event)
-        point = self.mapToScene(event.position().toPoint())
-        x = round(point.x()/CELL_PX)
-        y = round(point.y()/CELL_PX)
-        payload = event.mimeData().data(MIME).data().decode("utf-8")
-        self.owner.place(payload, x, y)
-        event.acceptProposedAction()
+        if event.mimeData().hasFormat(MIME):
+            point = self.mapToScene(event.position().toPoint())
+            self.owner.place(bytes(event.mimeData().data(MIME)).decode("utf-8"),
+                             round(point.x() / CELL_PX), round(point.y() / CELL_PX))
+            event.acceptProposedAction()
+        else:
+            super().dropEvent(event)
 
     def wheelEvent(self, event):
         factor = 1.15 if event.angleDelta().y() > 0 else 1/1.15
@@ -203,6 +232,21 @@ class SystemMapDialog(QDialog):
         from PySide6.QtWidgets import QListWidgetItem
         item = QListWidgetItem(label)
         item.setData(Qt.UserRole, payload)
+        icon = QPixmap(18, 18)
+        icon.fill(Qt.transparent)
+        painter = QPainter(icon)
+        kind = payload.split(":", 1)[0]
+        color = {"planet": "#67b5f7", "moon": "#c7d2dd",
+                 "facility": "#f6a65c"}.get(kind, "#b78be8")
+        painter.setPen(QPen(QColor(color), 2))
+        painter.setBrush(QBrush(QColor(color)))
+        if kind == "facility":
+            painter.drawRect(3, 3, 12, 12)
+        else:
+            painter.drawEllipse(3, 3, 12, 12)
+        painter.end()
+        item.setIcon(QIcon(icon))
+        item.setToolTip("Drag onto the system grid to place")
         self.sources.addItem(item)
 
     def update_scale(self):
