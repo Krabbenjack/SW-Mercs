@@ -220,8 +220,11 @@ class SystemCanvas(QGraphicsView):
             marker.setFlag(QGraphicsItem.ItemIgnoresTransformations)
             label = self.scene_model.addText(obj["name"])
             label.setDefaultTextColor(QColor("#e7edf6"))
-            label.setPos(x+10, y-12)
+            # Keep the text anchored to the marker, not the nearest grid line.
+            label.setPos(x, y)
             label.setFlag(QGraphicsItem.ItemIgnoresTransformations)
+            label.setTransformOriginPoint(0, 0)
+            label.setPos(x - label.boundingRect().width()/2, y + 12)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
@@ -392,16 +395,23 @@ class SystemMapDialog(QDialog):
         super().keyPressEvent(event)
 
     def _populate_sources(self):
-        from PySide6.QtWidgets import QListWidgetItem
+        """List only objects not yet placed in the system map."""
+        self.sources.clear()
+        placed = {(obj["kind"], obj["ref_id"])
+                  for obj in self.working["objects"]}
+        listed = set()
         for planet in self.system.planets:
-            self._add_source("Planet: " + planet.name, "planet:" + planet.id)
+            if ("planet", planet.id) not in placed:
+                self._add_source("Planet: " + planet.name, "planet:" + planet.id)
             for moon in planet.moons:
-                self._add_source("  Moon: " + moon.name, "moon:" + moon.id)
+                if ("moon", moon.id) not in placed:
+                    self._add_source("  Moon: " + moon.name, "moon:" + moon.id)
         categories = get_data_loader().get_facility_categories()
         authorized = set(self.system.facilities)
         for category, ids in categories.items():
             for facility_id in ids:
-                if facility_id in authorized:
+                if facility_id in authorized and ("facility", facility_id) not in placed and facility_id not in listed:
+                    listed.add(facility_id)
                     self._add_source("Facility: " + facility_id.replace("_", " "),
                                      "facility:" + facility_id)
 
@@ -516,6 +526,7 @@ class SystemMapDialog(QDialog):
             self.canvas.viewport().unsetCursor()
         self.load_selected_cell()
         self.canvas.redraw()
+        self._populate_sources()
         self.status.setText(f"Cell {cell_id} cleared: {removed} facility placement(s) removed")
 
     def update_zone(self):
@@ -584,6 +595,7 @@ class SystemMapDialog(QDialog):
         self.working["objects"].append(obj)
         self.status.setText(f"{name}: ({x:.2f}, {y:.2f}) — {distance_au((0,0),(x,y),self.working['cell_au']):.3f} AU")
         self.canvas.redraw()
+        self._populate_sources()
         self.armed_payload = None
         self.moving_id = None
         self.canvas.viewport().unsetCursor()
@@ -592,6 +604,7 @@ class SystemMapDialog(QDialog):
         if self.working["objects"]:
             self.working["objects"].pop()
             self.canvas.redraw()
+            self._populate_sources()
 
     def accept(self):
         if self.inner.value() >= self.outer.value() or self.outer.value() >= self.border.value():
