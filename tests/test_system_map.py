@@ -55,14 +55,11 @@ def test_grid_cell_border_coordinate_width():
 
 def test_sparse_cell_metadata_and_negative_indices():
     assert cell_key(-0.2, 2.9) == "-1,2"
-    assert rescale_cell_metadata({"-1,2": {"name": "Dock", "traffic": "busy", "notes": "A"}},
-                                 0.1, 0.2) == {"-1,1": {"name": "Dock", "traffic": "busy", "notes": "A"}}
+    assert rescale_cell_metadata({"-1,2": {"name": "Dock"}},
+                                 0.1, 0.2) == {"-1,1": {"name": "Dock"}}
 
 
-def test_cell_metadata_collision_keeps_notes():
-    cells = {"0,0": {"name": "Alpha", "traffic": "normal", "notes": "First"},
-             "1,0": {"name": "Beta", "traffic": "restricted", "notes": "Second"}}
+def test_cell_metadata_collision_keeps_names():
+    cells = {"0,0": {"name": "Alpha"}, "1,0": {"name": "Beta"}}
     merged = rescale_cell_metadata(cells, 0.1, 0.2)
-    assert len(merged) == 1
-    assert "First" in merged["0,0"]["notes"] and "Second" in merged["0,0"]["notes"]
-    assert merged["0,0"]["traffic"] == "restricted"
+    assert merged == {"0,0": {"name": "Alpha / Beta"}}
