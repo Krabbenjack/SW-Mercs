@@ -6,7 +6,7 @@ import math
 import uuid
 
 from PySide6.QtCore import Qt, QPointF, QMimeData, QEvent
-from PySide6.QtGui import QColor, QBrush, QPen, QDrag, QPainter, QPixmap, QIcon
+from PySide6.QtGui import QColor, QBrush, QPen, QDrag, QPainter, QPixmap, QIcon, QPolygonF
 from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
@@ -17,6 +17,17 @@ from app.editors.starmap.data_loader import get_data_loader
 
 CELL_PX = 32
 MIME = "application/x-swmercs-system-object"
+
+
+def sun_polygon(cx=0, cy=0, outer_radius=12, inner_radius=8, points=12):
+    """Return alternating outer/inner vertices for a 12-pointed star."""
+    return QPolygonF([
+        QPointF(cx + (outer_radius if i % 2 == 0 else inner_radius)
+                * math.cos(i * math.pi / points - math.pi / 2),
+                cy + (outer_radius if i % 2 == 0 else inner_radius)
+                * math.sin(i * math.pi / points - math.pi / 2))
+        for i in range(points * 2)
+    ])
 
 
 def body_color(kind, planet_type=None):
@@ -144,8 +155,8 @@ class SystemCanvas(QGraphicsView):
             QPen(QColor("#44885b"), 1), QBrush(QColor(25, 115, 50, 28)))
         self.scene_model.addEllipse(-inner, -inner, 2*inner, 2*inner,
             QPen(QColor("#44885b"), 1), QBrush(QColor("#0b1526")))
-        self.scene_model.addEllipse(-11, -11, 22, 22,
-            QPen(QColor("#ffdf7b")), QBrush(QColor("#ffba36")))
+        self.scene_model.addPolygon(sun_polygon(),
+            QPen(QColor("#ffe69a"), 1.4), QBrush(QColor("#ffbd3d")))
         for obj in data["objects"]:
             x, y = obj["x"]*CELL_PX, obj["y"]*CELL_PX
             color = body_color(obj["kind"], self.owner.planet_type_for(
