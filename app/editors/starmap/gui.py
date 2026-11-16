@@ -31,6 +31,7 @@ from app.editors.starmap.project_io import save_project, load_project, export_ma
 from app.editors.starmap.data_loader import get_data_loader, format_population
 from app.editors.starmap.systems import MAX_FLUFF_LENGTH
 from app.editors.starmap.planet_editor import PlanetEditor
+from app.editors.starmap.system_map import SystemMapDialog
 
 
 class GridOverlay(QGraphicsScene):
@@ -1079,6 +1080,9 @@ class StatsWidget(QWidget):
         content_layout.addLayout(exports_row)
         content_layout.addSpacing(12)
 
+        self.open_system_map_btn = QPushButton("Open System Map...")
+        self.open_system_map_btn.clicked.connect(self.open_system_map)
+        content_layout.addWidget(self.open_system_map_btn)
         self.planet_editor = PlanetEditor()
         self.planet_editor.changed.connect(self.system_data_changed.emit)
         content_layout.addWidget(self.planet_editor)
@@ -1107,6 +1111,14 @@ class StatsWidget(QWidget):
         # Initially show no system selected
         self.set_system(None)
     
+    def open_system_map(self):
+        """Open the selected system's spatial editor without changing the galactic view."""
+        if self.current_system is None:
+            return
+        dialog = SystemMapDialog(self.current_system, self)
+        if dialog.exec() == QDialog.Accepted:
+            self.system_data_changed.emit()
+
     def populate_population_combo(self):
         """Populate the population combo box from data."""
         self.population_combo.clear()
