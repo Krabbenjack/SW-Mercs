@@ -239,3 +239,6 @@ Map navigation: hold the **middle mouse button** and drag to pan without using s
 
 
 **Clear Cell** below the selected-cell name removes every facility placement whose fractional grid coordinates fall inside that selected cell and clears the optional cell name, after a confirmation dialog. Planets and moons remain in place. The action edits only the dialog working copy until Save; Cancel discards the changes.
+
+
+The system-map source list shows **unplaced** planets, moons, and authorized facility types. After a successful placement, that source disappears from the list; removing the last placement of that type (including via Clear Cell) makes it available again. Moving a placed object does not consume a new source. A facility type is treated as accounted for once at least one instance is placed; additional instances can be handled separately in future. Object labels are anchored to their actual symbol positions, including during zoom.
