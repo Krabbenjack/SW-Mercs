@@ -1,5 +1,7 @@
 """Static, spatial in-system map. Coordinates are grid cells, not galactic HSU."""
 import copy
+import json
+from app.shared.paths import DATA_DIR
 import math
 import uuid
 
@@ -15,6 +17,12 @@ from app.editors.starmap.data_loader import get_data_loader
 
 CELL_PX = 32
 MIME = "application/x-swmercs-system-object"
+def allowed_placements(facility_id):
+    path = DATA_DIR / "facilities" / "facility_placements.json"
+    with path.open(encoding="utf-8") as handle:
+        return json.load(handle)["placements"].get(facility_id, [])
+
+
 DEFAULT_MAP = {"cell_au": 0.1, "habitable_inner_au": 0.8,
                "habitable_outer_au": 1.5, "objects": []}
 
@@ -225,13 +233,23 @@ class SystemMapDialog(QDialog):
                 if o["kind"] in ("planet", "moon")
                 and math.hypot(o["x"]-x, o["y"]-y) <= 1), None)
             placement, parent_id = "deep_space", None
+            allowed = allowed_placements(ref)
             if target:
-                options = ["Surface", "Orbit"]
+                options = [label for label, mode in (("Surface", "surface"), ("Orbit", "orbit"))
+                           if mode in allowed]
+                if not options:
+                    QMessageBox.information(self, "Invalid placement",
+                        "This facility cannot be placed on a celestial body.")
+                    return
                 choice, ok = QInputDialog.getItem(self, "Facility location",
                     "Place at " + target["name"], options, 0, False)
                 if not ok:
                     return
                 placement, parent_id = choice.lower(), target["ref_id"]
+            elif "deep_space" not in allowed:
+                QMessageBox.information(self, "Invalid placement",
+                    "This facility requires a planet or moon. Drop it on a body.")
+                return
             obj = {"id": str(uuid.uuid4()), "kind": kind, "ref_id": ref,
                    "name": name, "x": x, "y": y, "placement": placement,
                    "parent_body_id": parent_id, "influence_cells": 0}
