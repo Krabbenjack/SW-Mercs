@@ -11,12 +11,35 @@ from PySide6.QtWidgets import (
     QDialog, QWidget, QHBoxLayout, QVBoxLayout, QFormLayout, QLabel,
     QPushButton, QListWidget, QGraphicsView, QGraphicsScene,
     QGraphicsEllipseItem, QGraphicsTextItem, QDoubleSpinBox, QMessageBox,
-    QInputDialog, QDialogButtonBox,
+    QInputDialog, QDialogButtonBox, QAbstractItemView,
 )
 from app.editors.starmap.data_loader import get_data_loader
 
 CELL_PX = 32
 MIME = "application/x-swmercs-system-object"
+
+
+def body_color(kind, planet_type=None):
+    if kind == "moon":
+        return "#c7d2dd"
+    if kind == "facility":
+        return "#ed5252"
+    return {"desert": "#edc34b", "temperate": "#55bb78",
+            "ice": "#89d9f4", "gas_giant": "#b69ce6"}.get(planet_type, "#8c9dab")
+
+
+def draw_symbol(painter, kind, x, y, radius, planet_type=None):
+    color = QColor(body_color(kind, planet_type))
+    painter.setPen(QPen(color.lighter(125), 1))
+    painter.setBrush(QBrush(color))
+    if kind == "facility":
+        from PySide6.QtGui import QPolygonF
+        painter.drawPolygon(QPolygonF([
+            QPointF(x, y-radius), QPointF(x-radius, y+radius),
+            QPointF(x+radius, y+radius)]))
+    else:
+        painter.drawEllipse(QPointF(x, y), radius, radius)
+
 def allowed_placements(facility_id):
     path = DATA_DIR / "facilities" / "facility_placements.json"
     with path.open(encoding="utf-8") as handle:
@@ -52,6 +75,13 @@ def environment_at(data, x, y):
 
 
 class SourceList(QListWidget):
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        if event.button() == Qt.RightButton:
+            item = self.itemAt(event.position().toPoint())
+            if item is not None:
+                self.setCurrentItem(item)
+                self.window().arm_source(item.data(Qt.UserRole))
     def startDrag(self, supportedActions):
         item = self.currentItem()
         if item is None:
@@ -65,8 +95,9 @@ class SourceList(QListWidget):
         preview.fill(QColor("#23334b"))
         painter = QPainter(preview)
         painter.setPen(QColor("#ffffff"))
-        painter.setBrush(QBrush(QColor("#70b9ef")))
-        painter.drawEllipse(6, 9, 16, 16)
+        payload = item.data(Qt.UserRole)
+        draw_symbol(painter, payload.split(":", 1)[0], 14, 17, 8,
+                    self.window().planet_type_for(payload))
         painter.drawText(29, 23, item.text()[:19])
         painter.end()
         drag.setPixmap(preview)
@@ -85,7 +116,9 @@ class SystemCanvas(QGraphicsView):
         self.viewport().setAcceptDrops(True)
         self.viewport().installEventFilter(self)
         self.setRenderHint(QPainter.Antialiasing)
-        self.setDragMode(QGraphicsView.ScrollHandDrag)
+        self.setDragMode(QGraphicsView.NoDrag)
+        self.setMouseTracking(True)
+        self.viewport().setMouseTracking(True)
         self.setSceneRect(-1200, -1200, 2400, 2400)
         self.redraw()
 
@@ -115,13 +148,36 @@ class SystemCanvas(QGraphicsView):
             QPen(QColor("#ffdf7b")), QBrush(QColor("#ffba36")))
         for obj in data["objects"]:
             x, y = obj["x"]*CELL_PX, obj["y"]*CELL_PX
-            color = {"planet": "#67b5f7", "moon": "#c7d2dd",
-                     "facility": "#f6a65c"}.get(obj["kind"], "#b78be8")
-            self.scene_model.addEllipse(x-8, y-8, 16, 16,
-                QPen(QColor(color)), QBrush(QColor(color)))
+            color = body_color(obj["kind"], self.owner.planet_type_for(
+                obj["kind"] + ":" + obj["ref_id"]))
+            if obj["kind"] == "facility":
+                from PySide6.QtGui import QPolygonF
+                polygon = QPolygonF([QPointF(x, y-10), QPointF(x-10, y+9),
+                                     QPointF(x+10, y+9)])
+                self.scene_model.addPolygon(polygon, QPen(QColor(color)), QBrush(QColor(color)))
+            else:
+                self.scene_model.addEllipse(x-8, y-8, 16, 16,
+                    QPen(QColor(color)), QBrush(QColor(color)))
             label = self.scene_model.addText(obj["name"])
             label.setDefaultTextColor(QColor("#e7edf6"))
             label.setPos(x+10, y-12)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.owner.armed_payload:
+            point = self.mapToScene(event.position().toPoint())
+            self.owner.place(self.owner.armed_payload,
+                             round(point.x() / CELL_PX), round(point.y() / CELL_PX))
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.owner.armed_payload:
+            point = self.mapToScene(event.position().toPoint())
+            self.owner.status.setText(
+                f"Ready to place at ({round(point.x()/CELL_PX)}, {round(point.y()/CELL_PX)}) — "
+                "left click to place; Esc to cancel")
+        super().mouseMoveEvent(event)
 
     def eventFilter(self, watched, event):
         if watched is self.viewport() and event.type() in (
@@ -169,6 +225,7 @@ class SystemMapDialog(QDialog):
     def __init__(self, system, parent=None):
         super().__init__(parent)
         self.system = system
+        self.armed_payload = None
         self.original = copy.deepcopy(getattr(system, "system_map", None) or DEFAULT_MAP)
         self.working = copy.deepcopy(self.original)
         self.setWindowTitle("System Map — " + system.name)
@@ -176,8 +233,11 @@ class SystemMapDialog(QDialog):
         layout = QHBoxLayout(self)
         sidebar = QWidget()
         side = QVBoxLayout(sidebar)
-        side.addWidget(QLabel("Drag authorized objects onto the grid"))
+        side.addWidget(QLabel("Right-click to pick up; left-click grid to place. Drag & drop also supported."))
         self.sources = SourceList()
+        self.sources.setDragEnabled(True)
+        self.sources.setDragDropMode(QAbstractItemView.DragOnly)
+        self.sources.setContextMenuPolicy(Qt.NoContextMenu)
         side.addWidget(self.sources)
         self._populate_sources()
         settings = QFormLayout()
@@ -214,6 +274,27 @@ class SystemMapDialog(QDialog):
         self.canvas = SystemCanvas(self)
         layout.addWidget(self.canvas, 4)
 
+    def planet_type_for(self, payload):
+        kind, ref = payload.split(":", 1)
+        if kind == "planet":
+            return next((p.planet_type for p in self.system.planets if p.id == ref), None)
+        return None
+
+    def arm_source(self, payload):
+        self.armed_payload = payload
+        self.status.setText("Picked up: " + payload.replace(":", " — ") +
+                            " | Left-click the grid to place; Esc cancels.")
+        self.canvas.viewport().setCursor(Qt.CrossCursor)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape and self.armed_payload:
+            self.armed_payload = None
+            self.canvas.viewport().unsetCursor()
+            self.status.setText("Placement cancelled")
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
     def _populate_sources(self):
         from PySide6.QtWidgets import QListWidgetItem
         for planet in self.system.planets:
@@ -235,18 +316,11 @@ class SystemMapDialog(QDialog):
         icon = QPixmap(18, 18)
         icon.fill(Qt.transparent)
         painter = QPainter(icon)
-        kind = payload.split(":", 1)[0]
-        color = {"planet": "#67b5f7", "moon": "#c7d2dd",
-                 "facility": "#f6a65c"}.get(kind, "#b78be8")
-        painter.setPen(QPen(QColor(color), 2))
-        painter.setBrush(QBrush(QColor(color)))
-        if kind == "facility":
-            painter.drawRect(3, 3, 12, 12)
-        else:
-            painter.drawEllipse(3, 3, 12, 12)
+        draw_symbol(painter, payload.split(":", 1)[0], 9, 9, 7,
+                    self.planet_type_for(payload))
         painter.end()
         item.setIcon(QIcon(icon))
-        item.setToolTip("Drag onto the system grid to place")
+        item.setToolTip("Right-click to pick up, then left-click on grid (or drag)")
         self.sources.addItem(item)
 
     def update_scale(self):
@@ -310,6 +384,8 @@ class SystemMapDialog(QDialog):
         self.working["objects"].append(obj)
         self.status.setText(f"{name}: ({x}, {y}) — {distance_au((0,0),(x,y),self.working['cell_au']):.3f} AU")
         self.canvas.redraw()
+        self.armed_payload = None
+        self.canvas.viewport().unsetCursor()
 
     def remove_last(self):
         if self.working["objects"]:
