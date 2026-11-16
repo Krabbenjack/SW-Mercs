@@ -104,6 +104,18 @@ def rescale_cell_metadata(cells, old_scale, new_scale):
     return updated
 
 
+def clear_cell_facilities(data, col, row):
+    """Remove facilities in one grid cell; leave celestial bodies untouched."""
+    before = len(data["objects"])
+    data["objects"] = [
+        obj for obj in data["objects"]
+        if obj["kind"] != "facility" or
+        (math.floor(obj["x"]), math.floor(obj["y"])) != (col, row)
+    ]
+    data.setdefault("cells", {}).pop(cell_key(col, row), None)
+    return before - len(data["objects"])
+
+
 def distance_au(a, b, cell_au):
     return math.hypot(a[0] - b[0], a[1] - b[1]) * cell_au
 
@@ -323,6 +335,9 @@ class SystemMapDialog(QDialog):
         self.cell_name.setPlaceholderText("Cell name (optional)")
         self.cell_name.editingFinished.connect(self.save_cell_metadata)
         side.addWidget(self.cell_name)
+        self.clear_cell_button = QPushButton("Clear Cell")
+        self.clear_cell_button.clicked.connect(self.clear_selected_cell)
+        side.addWidget(self.clear_cell_button)
         self.status = QLabel("Star at (0,0); positions are static")
         self.status.setWordWrap(True)
         side.addWidget(self.status)
@@ -458,7 +473,7 @@ class SystemMapDialog(QDialog):
             self.cell_id_label.setText(cell_id)
             metadata = self.working["cells"].get(cell_key(x, y), {})
         self.cell_name.setText(metadata.get("name", ""))
-        for widget in (self.cell_name,):
+        for widget in (self.cell_name, self.clear_cell_button):
             widget.setEnabled(selected is not None)
             widget.blockSignals(False)
 
@@ -471,6 +486,37 @@ class SystemMapDialog(QDialog):
             self.working["cells"][key] = {"name": name}
         else:
             self.working["cells"].pop(key, None)
+
+    def clear_selected_cell(self):
+        if self.selected_cell is None:
+            return
+        col, row = self.selected_cell
+        cell_id, _, _ = grid_cell(col, row, self.working["cell_au"],
+                                  self.working["system_border_au"])
+        facilities = sum(
+            obj["kind"] == "facility" and
+            (math.floor(obj["x"]), math.floor(obj["y"])) == (col, row)
+            for obj in self.working["objects"])
+        has_name = bool(self.working["cells"].get(cell_key(col, row), {}).get("name"))
+        if not facilities and not has_name:
+            self.status.setText(f"Cell {cell_id} is already clear")
+            return
+        response = QMessageBox.question(
+            self, "Clear Cell",
+            f"Clear cell {cell_id}?\\n\\nRemove {facilities} facility placement(s) "
+            "and reset the cell name? Planets and moons will be kept.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if response != QMessageBox.Yes:
+            return
+        removed = clear_cell_facilities(self.working, col, row)
+        if self.moving_id is not None and not any(
+                obj["id"] == self.moving_id for obj in self.working["objects"]):
+            self.moving_id = None
+            self.armed_payload = None
+            self.canvas.viewport().unsetCursor()
+        self.load_selected_cell()
+        self.canvas.redraw()
+        self.status.setText(f"Cell {cell_id} cleared: {removed} facility placement(s) removed")
 
     def update_zone(self):
         if self.inner.value() >= self.outer.value():
