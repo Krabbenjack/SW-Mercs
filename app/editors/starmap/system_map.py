@@ -98,7 +98,7 @@ def rescale_cell_metadata(cells, old_scale, new_scale):
             previous = updated[target]
             for field in ("name", "notes"):
                 if metadata.get(field) and metadata[field] != previous.get(field):
-                    previous[field] = (previous.get(field, "") + "\\n" + metadata[field]).strip()
+                    previous[field] = (previous.get(field, "") + "\n" + metadata[field]).strip()
             if metadata.get("traffic") != "normal":
                 previous["traffic"] = metadata["traffic"]
         else:
@@ -322,6 +322,7 @@ class SystemMapDialog(QDialog):
         layout.addWidget(sidebar, 1)
         self.canvas = SystemCanvas(self)
         layout.addWidget(self.canvas, 4)
+        self.load_selected_cell()
 
     def planet_type_for(self, payload):
         kind, ref = payload.split(":", 1)
@@ -412,6 +413,7 @@ class SystemMapDialog(QDialog):
 
     def update_border(self):
         self.working["system_border_au"] = self.border.value()
+        self.load_selected_cell()
         self.canvas.redraw()
 
     def select_cell(self, x, y):
