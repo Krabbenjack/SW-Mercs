@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from app.editors.starmap.system_map import distance_au, environment_at, allowed_placements, grid_cell
+from app.editors.starmap.system_map import distance_au, environment_at, allowed_placements, grid_cell, cell_key, rescale_cell_metadata
 from app.shared.paths import DATA_DIR
 
 
@@ -51,3 +51,18 @@ def test_grid_cell_ids_and_subcell_offsets():
 def test_grid_cell_border_coordinate_width():
     cell_id, _, _ = grid_cell(0, 0, 0.00001, 5.0)
     assert cell_id == "500001500001"
+
+
+def test_sparse_cell_metadata_and_negative_indices():
+    assert cell_key(-0.2, 2.9) == "-1,2"
+    assert rescale_cell_metadata({"-1,2": {"name": "Dock", "traffic": "busy", "notes": "A"}},
+                                 0.1, 0.2) == {"-1,1": {"name": "Dock", "traffic": "busy", "notes": "A"}}
+
+
+def test_cell_metadata_collision_keeps_notes():
+    cells = {"0,0": {"name": "Alpha", "traffic": "normal", "notes": "First"},
+             "1,0": {"name": "Beta", "traffic": "restricted", "notes": "Second"}}
+    merged = rescale_cell_metadata(cells, 0.1, 0.2)
+    assert len(merged) == 1
+    assert "First" in merged["0,0"]["notes"] and "Second" in merged["0,0"]["notes"]
+    assert merged["0,0"]["traffic"] == "restricted"
