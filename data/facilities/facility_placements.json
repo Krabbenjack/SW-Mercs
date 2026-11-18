@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "description": "Provisional placement modes for existing facility IDs; no ID changes.",
+  "placements": {
+    "mining_facility": [
+      "surface"
+    ],
+    "orbital_mining_outpost": [
+      "orbit",
+      "deep_space"
+    ],
+    "gas_harvesting_station": [
+      "orbit",
+      "deep_space"
+    ],
+    "refinery": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "heavy_industry": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "factory": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "prefab_construction_plant": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "food_production": [
+      "surface",
+      "orbit"
+    ],
+    "civilian_spaceport": [
+      "surface"
+    ],
+    "trade_hub": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "customs_station": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "civilian_shipyard": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "repair_docks": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "orbital_freight_hub": [
+      "orbit",
+      "deep_space"
+    ],
+    "salvage_yard": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "hyperspace_beacon": [
+      "orbit",
+      "deep_space"
+    ],
+    "deep_space_relay": [
+      "deep_space"
+    ],
+    "orbital_habitat_ring": [
+      "orbit"
+    ],
+    "garrison": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "planetary_defense_hq": [
+      "surface"
+    ],
+    "military_shipyard": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "orbital_defense_station": [
+      "orbit",
+      "deep_space"
+    ],
+    "flight_academy": [
+      "surface",
+      "orbit"
+    ],
+    "army_academy": [
+      "surface"
+    ],
+    "military_research_division": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "base_shield_generator": [
+      "surface"
+    ],
+    "ground_to_orbit_battery": [
+      "surface"
+    ],
+    "research_lab": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "medical_research_facility": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "droid_rnd_center": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "hyperdrive_development_lab": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "fuel_stabilization_plant": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "coaxium_refinery": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "astrophysics_observatory": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "military_science_lab": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "smuggler_haven": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "pirate_base": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "black_market_hub": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "spice_refinery": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "slicer_den": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "illegal_ship_mod_shop": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "shadow_port": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "syndicate_stronghold": [
+      "surface",
+      "orbit",
+      "deep_space"
+    ],
+    "colony": [
+      "surface"
+    ],
+    "urban_megacity": [
+      "surface"
+    ],
+    "tourism_resort": [
+      "surface",
+      "orbit"
+    ],
+    "cultural_center": [
+      "surface",
+      "orbit"
+    ],
+    "diplomatic_embassy_station": [
+      "orbit",
+      "deep_space"
+    ],
+    "strange_ruins": [
+      "surface"
+    ]
+  }
+}

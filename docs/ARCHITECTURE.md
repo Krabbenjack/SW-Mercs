@@ -5,14 +5,19 @@ The root entry point `swmercs.py` checks dependencies via `app.launcher.bootstra
 ## Modules
 
 - `app/launcher/`: navigation and launcher-specific styling.
-- `app/editors/starmap/`: existing map editor, system and route graphics, templates, models, project I/O and data loader.
+- `app/editors/starmap/`: map editor, system and route graphics, templates, models, planet/moon editor, project I/O and data loader.
 - `app/editors/starships/`: class and weapon catalogs, field schema, validated JSON persistence and Qt editor; fleet tooling planned.
 - `app/editors/industry/`: reserved for goods and production tools.
 - `app/simulation/`: reserved for simulation logic.
 - `app/shared/paths.py`: canonical root-relative data, resources, saves and exports directories.
 - `app/shared/theme.py`: combines the common QSS and per-window stylesheet. See [UI design system](UI_DESIGN_SYSTEM.md).
 
-Data and resource paths are resolved from the repository, never the current working directory. Existing master data and the map save/export schemas remain unchanged. The launcher ensures `saves/starmaps/` and `saves/shipsets/` exist; new maps use the former, and the latter is reserved for whole-database persistence. Existing user saves are not relocated; the Open dialog also recognizes the former root `saves/` and legacy save directories. The standard folders are tracked via their README files, with personal saves ignored and curated examples allowed in their `examples/` subdirectories.
+Data and resource paths are resolved from the repository, never the current working directory. Existing master data remains unchanged and the map save/export formats remain backwards compatible. The launcher ensures `saves/starmaps/` and `saves/shipsets/` exist; new maps use the former, and the latter is reserved for whole-database persistence. Existing user saves are not relocated; the Open dialog also recognizes the former root `saves/` and legacy save directories. The standard folders are tracked via their README files, with personal saves ignored and curated examples allowed in their `examples/` subdirectories.
+
+Map system records optionally include `planets` (stable ID, name, optional
+`planet_type`, nested moons with ID/name) and `fluff_text`. Known planet types
+are `desert`, `ice`, `temperate` and `gas_giant`; absent types are unknown.
+Older files and the original planet/moon format load without migration.
 
 ## Verification
 

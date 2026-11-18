@@ -13,6 +13,39 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QPen, QBrush, QFont
 
+PLANET_TYPES = {
+    "desert": "Desert",
+    "ice": "Ice",
+    "temperate": "Temperate",
+    "gas_giant": "Gas Giant",
+}
+
+MAX_FLUFF_LENGTH = 500
+
+
+@dataclass
+class MoonData:
+    id: str
+    name: str
+
+    @classmethod
+    def create_new(cls, name: str):
+        return cls(str(uuid.uuid4()), name)
+
+
+@dataclass
+class PlanetData:
+    id: str
+    name: str
+    moons: list[MoonData] = field(default_factory=list)
+    planet_type: str | None = None
+
+    @classmethod
+    def create_new(cls, name: str, planet_type: str | None = None):
+        if planet_type is not None and planet_type not in PLANET_TYPES:
+            raise ValueError(f"Unknown planet type: {planet_type}")
+        return cls(str(uuid.uuid4()), name, planet_type=planet_type)
+
 
 @dataclass
 class SystemData:
@@ -32,6 +65,8 @@ class SystemData:
         imports: List of imported goods IDs (from goods.json)
         exports: List of exported goods IDs (from goods.json)
         facilities: List of facility IDs (from facility_flags.json)
+        planets: Planets with optional type and nested moons
+        fluff_text: System lore/description (editor limit: 500 characters)
     """
     id: str
     name: str
@@ -40,6 +75,9 @@ class SystemData:
     imports: list[str] = field(default_factory=list)
     exports: list[str] = field(default_factory=list)
     facilities: list[str] = field(default_factory=list)
+    planets: list[PlanetData] = field(default_factory=list)
+    fluff_text: str = ""
+    system_map: dict = field(default_factory=dict)
     
     @classmethod
     def create_new(cls, name: str, position: QPointF):

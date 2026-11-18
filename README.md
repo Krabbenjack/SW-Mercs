@@ -20,6 +20,15 @@ The launcher and Star Map Editor use the shared SW-Mercs dark-blue UI theme. Mod
 
 The existing `python star-map-editor/main.py` command remains supported as a legacy direct entry point. Existing map projects need no format conversion; their original locations remain accessible. The launcher creates `saves/starmaps/` and `saves/shipsets/` on startup. New star maps default to `saves/starmaps/`; the shipsets folder is reserved for whole-database saves. Exports default to the root `exports/` directory. Personal saves are ignored by Git; curated examples can be versioned in the respective `examples/` subfolders.
 
+
+### In-system map (initial implementation in PR #30)
+
+In **Stats**, select a star system and click **Open System Map...**. A separate, static system grid opens without replacing the galactic view. **Right-click** an existing planet, moon or system-authorized facility in the left list to pick it up, then **left-click** the grid to place it (Esc cancels). Right-click an existing map marker and left-click elsewhere to relocate the same object without changing its placement ID. Drag & drop is disabled. Planet symbols are colored by type (desert yellow, temperate green, ice light blue, gas giant violet), moons grey, and constructed facilities triangles: **red for military**, **blue for civilian/non-military** (provisional classification; the military science lab is also red). A facility represents a future package of installations/capabilities, not necessarily one building; package composition and capability accounting are not yet implemented. The star is at (0,0); the physical grid scale is editable in AU per cell and saved per system. Habitable-zone inner/outer radii are also editable. Objects use provisional circle icons.
+
+A facility dropped onto a planet or moon icon prompts for surface or orbit (subject to the allowed modes in `data/facilities/facility_placements.json`); a drop on empty space creates a deep-space facility only when permitted. The original facility IDs and system-level selections remain unchanged. The spatial map is stored as optional `system_map` data within each system in `.swmproj`; old saves without it remain valid.
+
+**Known limitations of this initial increment:** placed icons are not yet individually draggable for repositioning, object removal is currently last-placement-only, the habitable zone is a configurable guide rather than stellar-physics-derived, and tactical/facility detail editors are not implemented. The dialog's Save commits its working copy to the project model; save the overall project to write the `.swmproj` file.
+
 ## Quick Start
 
 ### Installation
@@ -86,6 +95,23 @@ SW-Mercs/
 - 🌍 **World Rescaling**: Adjust world scale to fix travel time issues
 - 💾 **Project Management**: Save/load projects with full state
 - 📤 **Export**: Generate game-ready JSON data
+
+## System Statistics
+
+In Stats mode, select a star system to edit its population, facilities,
+imports and exports in the right-hand sidebar. The population label also shows
+the estimated numeric population (midpoint of the selected population category).
+Uninhabited is explicitly 0; an unspecified category is unknown.
+
+- Add, rename and delete planets, each with its own stable ID and optional type:
+  Desert, Ice, Temperate or Gas Giant.
+- Select a planet to add, rename or delete its moons. Deleting a planet requires
+  confirmation and removes its moons from that system as well.
+- Enter a system description (up to 500 characters) with a live character count.
+
+The new fields are included in map saves and game JSON exports. Older maps load
+without modification; missing planets, planet types and descriptions remain
+unspecified/empty. Edits mark the project as unsaved.
 
 ## World Menu
 
@@ -198,3 +224,21 @@ See [.github/copilot-instructions.md](.github/copilot-instructions.md) for:
 
 See [LICENSE](LICENSE) file for details.
 
+
+
+In-system map placement uses **continuous floating-point grid-cell coordinates** (no snap to grid intersections), allowing multiple facilities within one cell. Map markers, labels, and the central star retain a constant on-screen size while zooming; the grid and habitable-zone geometry still zoom normally. Right-click hit testing adjusts for zoom.
+
+
+System-map grid: the **System border** field defines a finite circular radius (AU); the grid runs continuously through the central star and is clipped at that border. The habitable-zone inner/outer rings are outlines only and no longer mask the grid. Left-click an empty map cell (while no placement is armed) to inspect its BattleTech-style positive column/row ID and normalized in-cell X/Y offsets. Cell IDs are derived from the current AU/cell and border settings and may change when either changes; object positions retain their physical AU coordinates when AU/cell changes. Placing new objects outside the border is rejected. Persisted map objects retain continuous coordinates for backward compatibility. Cell-specific metadata/editing is planned, not yet implemented.
+
+
+Grid-cell inspector: left-click a cell to highlight it in amber and edit its optional name. Only named cells are stored under `system_map.cells`, keyed by signed grid column/row (`x,y`). On AU/cell changes, names follow the former cell centers; names are combined if multiple cells merge. Traffic rules and notes are not part of the cell editor.
+
+
+Map navigation: hold the **middle mouse button** and drag to pan without using scrollbars; wheel zooms. Zoom-independent map markers now use local symbol geometry anchored with `setPos` at the actual floating-point scene coordinate, avoiding visually misplaced icons at grid intersections after zooming.
+
+
+**Clear Cell** below the selected-cell name removes every facility placement whose fractional grid coordinates fall inside that selected cell and clears the optional cell name, after a confirmation dialog. Planets and moons remain in place. The action edits only the dialog working copy until Save; Cancel discards the changes.
+
+
+The system-map source list shows **unplaced** planets, moons, and authorized facility types. After a successful placement, that source disappears from the list; removing the last placement of that type (including via Clear Cell) makes it available again. Moving a placed object does not consume a new source. A facility type is treated as accounted for once at least one instance is placed; additional instances can be handled separately in future. Object labels are anchored to their actual symbol positions, including during zoom.
