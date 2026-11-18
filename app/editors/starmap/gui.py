@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QGraphicsView, QGraphicsScene,
     QPushButton, QHBoxLayout, QVBoxLayout, QWidget, QFileDialog, 
     QMessageBox, QLabel, QSlider, QToolBar, QMenuBar, QMenu,
-    QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget,
+    QGraphicsPathItem, QInputDialog, QGraphicsTextItem, QListWidget, QListWidgetItem, QLineEdit,
     QDialog, QDialogButtonBox, QComboBox, QSplitter, QTabWidget,
     QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup, QFormLayout, QScrollArea,
     QSizePolicy, QPlainTextEdit
@@ -1710,7 +1710,28 @@ class TravelCalculatorWidget(QWidget):
         self.time_display.setText(f"Travel Time: {travel_time:.1f} hours")
 
 
+def find_system_body_matches(system_items, query):
+    """Case-insensitive navigation search, including nested celestial bodies."""
+    term = query.strip().casefold()
+    if not term:
+        return []
+    results = []
+    for system_id, item in system_items.items():
+        system = item.get_system_data()
+        if term in system.name.casefold():
+            results.append((system_id, "System", system.name, system.name))
+        for planet in system.planets:
+            if term in planet.name.casefold():
+                results.append((system_id, "Planet", planet.name, system.name))
+            for moon in planet.moons:
+                if term in moon.name.casefold():
+                    results.append((system_id, "Moon", moon.name, system.name))
+    return sorted(results, key=lambda entry: (entry[3].casefold(), entry[1], entry[2].casefold()))
+
+
 class StatsInspector(QWidget):
+    navigate_to_system = Signal(str)
+
     """Container widget with tabs for System, Route, and Calculator stats.
     
     This widget contains a QTabWidget that switches between different
@@ -1732,6 +1753,17 @@ class StatsInspector(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         
+        self.system_search = QLineEdit()
+        self.system_search.setPlaceholderText("Find system, planet or moon…")
+        self.system_search.setClearButtonEnabled(True)
+        self.system_search.textChanged.connect(self.update_search_results)
+        layout.addWidget(self.system_search)
+        self.search_results = QListWidget()
+        self.search_results.setMaximumHeight(180)
+        self.search_results.hide()
+        self.search_results.itemClicked.connect(self.activate_search_result)
+        layout.addWidget(self.search_results)
+
         # Create tab widget
         self.tab_widget = QTabWidget()
         
@@ -1752,6 +1784,26 @@ class StatsInspector(QWidget):
         self.tab_widget.addTab(self.calculator_scroll, "Calculator")
         
         layout.addWidget(self.tab_widget)
+
+    def update_search_results(self, query):
+        self.search_results.clear()
+        matches = find_system_body_matches(self.system_items, query)
+        for system_id, kind, name, system_name in matches:
+            label = system_name if kind == "System" else f"{name} ({kind}) — {system_name}"
+            item = QListWidgetItem(label)
+            item.setData(Qt.UserRole, system_id)
+            self.search_results.addItem(item)
+        self.search_results.setVisible(bool(query.strip()))
+        if query.strip() and not matches:
+            empty = QListWidgetItem("No matching systems, planets or moons")
+            empty.setFlags(Qt.NoItemFlags)
+            self.search_results.addItem(empty)
+
+    def activate_search_result(self, item):
+        system_id = item.data(Qt.UserRole)
+        if system_id:
+            self.navigate_to_system.emit(system_id)
+            self.search_results.hide()
 
     @staticmethod
     def _scroll_tab(content):
@@ -1981,6 +2033,7 @@ class StarMapEditor(QMainWindow):
         # Pass system_items dict for route calculations
         self.stats_inspector = StatsInspector(self.system_items)
         self.stats_inspector.system_stats_widget.system_data_changed.connect(self.mark_unsaved_changes)
+        self.stats_inspector.navigate_to_system.connect(self.navigate_to_system)
         self.stats_inspector.hide()
         
         # Fixed, narrow width for the stats sidebar
@@ -4133,6 +4186,18 @@ class StarMapEditor(QMainWindow):
         else:
             self.set_mode('stats')
     
+    def navigate_to_system(self, system_id):
+        """Center the galactic map and select the matching system."""
+        item = self.system_items.get(system_id)
+        if item is None:
+            return
+        self.scene.clearSelection()
+        item.setSelected(True)
+        self.view.centerOn(item.sceneBoundingRect().center())
+        if self.current_mode != "stats":
+            self.set_mode("stats")
+        self.stats_inspector.set_selected_system(item.get_system_data())
+
     def update_stats_inspector(self):
         """Update the stats inspector with the currently selected system or route."""
         # Find the currently selected system or route
